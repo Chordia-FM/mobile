@@ -1,0 +1,27 @@
+# Flutter / Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+build/
+.pub-cache/
+.pub/
+
+# Generated platform projects (re-create with `flutter create .` when needed)
+# Keep our native source under android/.../kotlin and ios/Runner; ignore generated build files.
+android/.gradle/
+android/local.properties
+ios/Pods/
+ios/.symlinks/
+
+# Env & secrets
+.env
+*.keystore
+*.jks
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+*.iml
+*.swp

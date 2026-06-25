@@ -1,0 +1,25 @@
+name: chordia_mobile
+description: Chordia mobile client with native audio modules for high-fidelity playback.
+publish_to: "none"
+version: 0.1.0+1
+
+environment:
+  sdk: ">=3.5.0 <4.0.0"
+  flutter: ">=3.24.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  go_router: ^14.2.0        # routing
+  dio: ^5.7.0               # HTTP (Hub control + library Range streaming)
+  riverpod: ^2.5.0          # state
+  flutter_riverpod: ^2.5.0
+  drift: ^2.20.0            # local sqlite (offline scrobble queue + own-copy index)
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
