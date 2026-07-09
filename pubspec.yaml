@@ -14,7 +14,7 @@ dependencies:
   dio: ^5.7.0               # HTTP (Hub control + library Range streaming)
   riverpod: ^2.5.0          # state
   flutter_riverpod: ^2.5.0
-  drift: ^2.20.0            # local sqlite (offline scrobble queue + own-copy index)
+  drift: ^2.34.1            # local sqlite (offline scrobble queue + own-copy index)
 
 dev_dependencies:
   flutter_test:
