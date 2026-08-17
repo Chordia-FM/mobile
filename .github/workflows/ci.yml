@@ -6,9 +6,16 @@ on:
   pull_request:
     branches: [main]
 
+# Nothing pushes to this repo today — it is a scaffold, not active work — so in practice this runs
+# only when somebody opens a PR against it. That is deliberate: the gate is here and working for
+# whenever mobile becomes real, and costs nothing until then.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   analyze:
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
@@ -16,4 +23,13 @@ jobs:
           channel: stable
       - run: flutter pub get
       - run: flutter analyze
-      - run: flutter test
+      # `flutter test` exits 1 on `Test directory "test" not found`, which is not a failing test — it
+      # is a scaffold that has not grown any yet, and a job that is red for that reason teaches
+      # everyone to ignore it. Runs for real the moment the directory appears.
+      - name: Test, once there are tests
+        run: |
+          if [ -d test ]; then
+            flutter test
+          else
+            echo "No test/ directory yet — skipping."
+          fi
