@@ -16,3 +16,4 @@ export 'src/queue/upcoming.dart';
 export 'src/scrobble/fingerprint.dart';
 export 'src/scrobble/scrobble_latch.dart';
 export 'src/scrobble/scrobble_service.dart';
+export 'src/handler/audio_handler.dart';
