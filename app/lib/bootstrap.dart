@@ -12,6 +12,8 @@ import 'app/app.dart';
 import 'app/config.dart';
 import 'app/providers.dart';
 import 'app/theme.dart';
+import 'data/mesh/providers.dart';
+import 'data/playback/adaptive.dart';
 import 'features/downloads/downloads_api.dart';
 import 'i18n/keys.g.dart';
 import 'i18n/translations.dart';
@@ -86,6 +88,16 @@ Future<void> bootstrap(AppConfig config) async {
   // Adopts whatever the last run left queued. A download interrupted by the process dying resumes
   // from the bytes already on disk rather than starting the file again.
   unawaited(container.read(downloadsApiProvider).start());
+
+  // Held open for the life of the app rather than by whichever screen happens to want them.
+  //
+  // The mesh has to be joined whenever the listener is signed in, not only while the device picker
+  // is on screen — the whole point is that their other devices can see this phone and hand playback
+  // to it. `listen` rather than `read` because both rebuild when the active hub or the session
+  // changes, and a rebuilt provider with no listener is disposed immediately.
+  container
+    ..listen(meshConnectionProvider, (_, _) {}, fireImmediately: true)
+    ..listen(adaptiveQualityProvider, (_, _) {}, fireImmediately: true);
 
   runApp(
     UncontrolledProviderScope(container: container, child: const ChordiaApp()),

@@ -5,6 +5,7 @@
 /// around is a future implementation of that interface, not a rewrite of everything above it.
 library;
 
+export 'src/engine/android_eq.dart';
 export 'src/engine/chordia_audio_source.dart';
 export 'src/engine/engine.dart';
 export 'src/engine/just_audio_engine.dart';
@@ -17,3 +18,4 @@ export 'src/scrobble/fingerprint.dart';
 export 'src/scrobble/scrobble_latch.dart';
 export 'src/scrobble/scrobble_service.dart';
 export 'src/handler/audio_handler.dart';
+export 'src/handler/auto_browse.dart';

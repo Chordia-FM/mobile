@@ -4,6 +4,7 @@ import 'package:chordia_api/chordia_api.dart';
 import 'package:chordia_net/chordia_net.dart';
 import 'package:just_audio/just_audio.dart';
 
+import 'android_eq.dart';
 import 'chordia_audio_source.dart';
 import 'engine.dart';
 import 'stream_cache.dart';
@@ -22,8 +23,13 @@ class JustAudioEngine implements PlaybackEngine {
     required this.grants,
     required this.factory,
     required this.cache,
+    AndroidEqualizerController? equalizer,
     AudioPlayer Function()? createPlayer,
-  }) : _createPlayer = createPlayer ?? AudioPlayer.new {
+  }) : _equalizer = equalizer,
+       // Decks come from the equaliser when there is one, because just_audio only accepts an
+       // AudioPipeline at construction — a player built without one can never gain an effect.
+       _createPlayer =
+           createPlayer ?? equalizer?.createPlayer ?? AudioPlayer.new {
     _a = _createPlayer();
     _b = _createPlayer();
     _primary = _a;
@@ -35,6 +41,7 @@ class JustAudioEngine implements PlaybackEngine {
   final PinnedHttpClientFactory factory;
   final StreamCache cache;
   final AudioPlayer Function() _createPlayer;
+  final AndroidEqualizerController? _equalizer;
 
   late final AudioPlayer _a;
   late final AudioPlayer _b;
@@ -296,12 +303,16 @@ class JustAudioEngine implements PlaybackEngine {
 
   @override
   Future<void> setEq(EqConfig? config) async {
-    // The Android equaliser attaches to a player's audio session through an AudioPipeline, which
-    // just_audio only accepts at construction. Applying a curve therefore belongs to whoever builds
-    // the players; this engine reports the request as unsupported rather than silently ignoring it.
-    throw UnsupportedError(
-      'EQ is applied through the AudioPipeline the players are constructed with.',
-    );
+    final equalizer = _equalizer;
+    // Without a controller there is no effect in the signal path — on iOS there is no equaliser to
+    // reach at all. Accepting the call silently would be a lie; refusing it lets the settings
+    // screen say so.
+    if (equalizer == null) {
+      throw UnsupportedError(
+        'This engine was built without an equaliser, so a curve cannot be applied.',
+      );
+    }
+    await equalizer.apply(config);
   }
 
   @override

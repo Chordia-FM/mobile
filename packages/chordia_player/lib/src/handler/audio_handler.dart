@@ -8,6 +8,7 @@ import 'package:chordia_sync/chordia_sync.dart' hide PlaybackState;
 
 import '../engine/engine.dart';
 import '../queue/queue_controller.dart';
+import 'auto_browse.dart';
 import '../queue/queue_events.dart';
 import '../scrobble/scrobble_latch.dart';
 
@@ -43,7 +44,9 @@ class ChordiaAudioHandler extends BaseAudioHandler with SeekHandler {
     ScrobbleSink? onScrobble,
     NowPlayingSink? onNowPlaying,
     ScrobbleLatch? latch,
-  }) : _resolveArt = resolveArt,
+    AutoBrowse? browse,
+  }) : _browse = browse,
+       _resolveArt = resolveArt,
        _onScrobble = onScrobble,
        _onNowPlaying = onNowPlaying,
        _latch = latch ?? ScrobbleLatch() {
@@ -65,6 +68,10 @@ class ChordiaAudioHandler extends BaseAudioHandler with SeekHandler {
   final ScrobbleSink? _onScrobble;
   final NowPlayingSink? _onNowPlaying;
   final ScrobbleLatch _latch;
+
+  /// The car's view of the catalog. Null when the app has not supplied one, in which case Android
+  /// Auto sees an app with nothing to browse rather than a broken one.
+  final AutoBrowse? _browse;
 
   final _subs = <StreamSubscription<Object?>>[];
 
@@ -163,6 +170,38 @@ class ChordiaAudioHandler extends BaseAudioHandler with SeekHandler {
 
   @override
   Future<void> skipToQueueItem(int index) async => controller.jumpTo(index);
+
+  // ── Android Auto ────────────────────────────────────────────────────────────────────────────
+
+  @override
+  Future<List<MediaItem>> getChildren(
+    String parentMediaId, [
+    Map<String, dynamic>? options,
+  ]) async => await _browse?.getChildren(parentMediaId, options) ?? const [];
+
+  @override
+  Future<MediaItem?> getMediaItem(String mediaId) async =>
+      _browse?.getMediaItem(mediaId);
+
+  /// Plays what a browse id stands for.
+  ///
+  /// Reached from a cold process — a head unit can ask an app that is not running to resume — so
+  /// nothing here may assume a widget tree, a signed-in screen, or anything the app builds lazily.
+  @override
+  Future<void> playFromMediaId(
+    String mediaId, [
+    Map<String, dynamic>? extras,
+  ]) async {
+    final browse = _browse;
+    if (browse == null) return;
+    final playback = await browse.playback(mediaId);
+    if (playback == null || playback.tracks.isEmpty) return;
+    controller.playQueue(
+      playback.tracks,
+      startIndex: playback.startIndex,
+      context: playback.context,
+    );
+  }
 
   // ── reacting to our own state ───────────────────────────────────────────────────────────────
 

@@ -24,6 +24,8 @@ import '../data/hub.dart';
 import '../data/hub_probe.dart';
 import '../data/hub_registry.dart';
 import '../data/hub_transport.dart';
+import '../data/playback/auto_browse_source.dart';
+import '../data/playback/eq.dart';
 import '../data/playback/notification_art.dart';
 import '../data/playback/playback_service.dart';
 import '../data/playback/player_state.dart';
@@ -285,8 +287,65 @@ final playbackEngineProvider = Provider<PlaybackEngine>(
     grants: ref.watch(playbackGrantsProvider),
     factory: ref.watch(httpClientFactoryProvider),
     cache: ref.watch(streamCacheProvider),
+    equalizer: ref.watch(equalizerControllerProvider),
   ),
 );
+
+/// What a car head unit can browse.
+///
+/// Built even when nobody is signed in: Android Auto can start this app cold, and a source that
+/// refuses to exist until a session loads would show an empty app to somebody whose downloads are
+/// sitting right there on the device.
+final autoBrowseProvider = Provider<AutoBrowse>((ref) {
+  final t = ref.watch(translationsProvider).call;
+  final art = ref.watch(artCacheProvider);
+  return AutoBrowse(
+    sections: [
+      BrowseNode(
+        id: BrowseId.section(BrowseId.home),
+        title: t(CommonKeys.navHome),
+      ),
+      BrowseNode(
+        id: BrowseId.section(BrowseId.library),
+        title: t(CommonKeys.navLibrary),
+      ),
+      BrowseNode(
+        id: BrowseId.section(BrowseId.downloads),
+        title: t(LibraryKeys.downloadsTitle),
+      ),
+    ],
+    source: HubAutoBrowseSource(
+      hub: () => ref.read(hubClientProvider),
+      downloads: ref.watch(downloadsDaoProvider),
+      artFile: (sha, width) => art.file(sha, width: width),
+      labels: AutoBrowseLabels(
+        home: t(CommonKeys.navHome),
+        library: t(CommonKeys.navLibrary),
+        downloads: t(LibraryKeys.downloadsTitle),
+        playlists: t(LibraryKeys.sidebarPlaylists),
+        liked: t(LibraryKeys.likedTitle),
+        recentlyAdded: t(DiscoveryKeys.shelfRecentlyAdded),
+      ),
+    ),
+  );
+});
+
+/// The Android equaliser, and the one definition of how our curve becomes a device's bands.
+///
+/// The same function draws the curve on the EQ screen, so the picture and the sound cannot drift
+/// apart. On iOS the controller reports itself unsupported and the screen says so rather than
+/// pretending a curve is reaching the audio.
+final equalizerControllerProvider = Provider<AndroidEqualizerController>((ref) {
+  final controller = AndroidEqualizerController(mapCurve: deviceBandGains);
+  // A curve stored on the account applies to a deck the moment it is built, so a listener who set
+  // one on another device hears it on the first track here rather than the second.
+  ref.listen(
+    userSettingsProvider,
+    (_, next) => unawaited(controller.apply(next.value?.eq)),
+    fireImmediately: true,
+  );
+  return controller;
+});
 
 /// The queue. Also disposed by the handler rather than here.
 final queueControllerProvider = Provider<QueueController>(
@@ -354,6 +413,7 @@ final Provider<ChordiaAudioHandler> audioHandlerProvider = Provider((ref) {
         ref.read(playbackServiceProvider).onScrobble(track, msPlayed),
     onNowPlaying: (track) =>
         ref.read(playbackServiceProvider).onTrackStarted(track),
+    browse: ref.watch(autoBrowseProvider),
   );
   // Disposes the engine and the queue with it.
   ref.onDispose(handler.dispose);
