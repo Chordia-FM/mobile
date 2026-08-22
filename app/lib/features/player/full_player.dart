@@ -13,6 +13,8 @@ import '../../i18n/keys.g.dart';
 import '../../i18n/translations_provider.dart';
 import '../../widgets/cover_art.dart';
 import 'player_format.dart';
+import '../devices/device_picker_sheet.dart';
+import '../lyrics/lyrics_screen.dart';
 import 'queue_sheet.dart';
 import 'sleep_timer_sheet.dart';
 
@@ -139,6 +141,14 @@ class FullPlayerScreen extends ConsumerWidget {
                       label: Text(t(PlayerKeys.sleepTimerTitle)),
                     ),
                     TextButton.icon(
+                      onPressed: () => showLyricsSheet(context),
+                      icon: const Icon(
+                        Icons.lyrics_outlined,
+                        color: ChordiaColors.mutedForeground,
+                      ),
+                      label: Text(t(CatalogKeys.lyricsHeading)),
+                    ),
+                    TextButton.icon(
                       onPressed: () => showQueueSheet(context),
                       icon: const Icon(
                         Icons.queue_music_rounded,
@@ -199,8 +209,13 @@ class _Header extends ConsumerWidget {
             ],
           ),
         ),
-        // Balances the collapse button so the label above stays optically centred.
-        const SizedBox(width: 48),
+        // Occupies the slot that used to be an empty spacer balancing the collapse button, so the
+        // label above stays optically centred and this costs no extra width.
+        IconButton(
+          onPressed: () => showDevicePickerSheet(buildContext),
+          tooltip: t(PlayerKeys.devicesTitle),
+          icon: const Icon(Icons.devices_rounded),
+        ),
       ],
     );
   }

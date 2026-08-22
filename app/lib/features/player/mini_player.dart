@@ -3,10 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/providers.dart';
 import '../../app/theme.dart';
+import '../../data/mesh/providers.dart';
 import '../../data/playback/notification_art.dart';
 import '../../i18n/keys.g.dart';
 import '../../i18n/translations_provider.dart';
 import '../../widgets/cover_art.dart';
+import '../devices/mirror_player.dart';
 import 'full_player.dart';
 
 /// Height of the docked bar, art and all. Exported so a layout can reserve the same space.
@@ -22,6 +24,11 @@ class MiniPlayer extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Another device owning playback takes this slot instead: what is playing is real and
+    // controllable, it simply is not sounding here. Showing the local bar as well would offer two
+    // transports for one stream.
+    if (ref.watch(mirrorStateProvider).active) return const MirrorBar();
+
     final track = ref.watch(currentTrackProvider);
     if (track == null) return const SizedBox.shrink();
 
