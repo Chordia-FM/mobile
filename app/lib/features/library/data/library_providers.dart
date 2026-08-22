@@ -1,5 +1,5 @@
 import 'package:chordia_api/chordia_api.dart';
-import 'package:chordia_db/open.dart';
+import 'package:chordia_db/chordia_db.dart';
 import 'package:chordia_sync/chordia_sync.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,21 +7,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../app/providers.dart';
 import 'library_api.dart';
 
-/// The on-device database.
-///
-/// Declared here because the Library tab is the first screen that needs it; it belongs in
-/// `app/lib/app/providers.dart` beside the other app-wide seams as soon as a second feature reads
-/// it, and moving it there is a cut-and-paste with no call-site changes.
-final chordiaDatabaseProvider = Provider<ChordiaDatabase>((ref) {
-  final database = openChordiaDatabase();
-  ref.onDispose(database.close);
-  return database;
-});
-
-/// The index of audio held on this device.
-final downloadsDaoProvider = Provider<DownloadsDao>(
-  (ref) => ref.watch(chordiaDatabaseProvider).downloadsDao,
-);
+// The database and its DAOs live in `app/lib/app/providers.dart`, opened once in `bootstrap`.
+// This feature deliberately declares neither: a second connection to the same file would have its
+// own drift stream set, so a download finishing on one would never redraw a screen watching the
+// other — and the two would look identical while doing it.
 
 /// Everything downloaded, most recent first, kept live so a removal on this screen — or a
 /// download finishing in the background — redraws without a manual refresh.

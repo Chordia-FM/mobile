@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:audio_service/audio_service.dart';
@@ -11,6 +12,7 @@ import 'app/app.dart';
 import 'app/config.dart';
 import 'app/providers.dart';
 import 'app/theme.dart';
+import 'features/downloads/downloads_api.dart';
 import 'i18n/keys.g.dart';
 import 'i18n/translations.dart';
 import 'i18n/translations_provider.dart';
@@ -80,6 +82,10 @@ Future<void> bootstrap(AppConfig config) async {
 
   await container.read(audioHandlerProvider).configureSession();
   container.read(playbackServiceProvider).start();
+
+  // Adopts whatever the last run left queued. A download interrupted by the process dying resumes
+  // from the bytes already on disk rather than starting the file again.
+  unawaited(container.read(downloadsApiProvider).start());
 
   runApp(
     UncontrolledProviderScope(container: container, child: const ChordiaApp()),

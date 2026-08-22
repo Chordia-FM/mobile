@@ -3,7 +3,9 @@ import 'package:chordia_sync/chordia_sync.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../app/providers.dart';
 import '../../i18n/keys.g.dart';
+import '../downloads/downloads_api.dart';
 import '../../i18n/translations_provider.dart';
 import '../../widgets/cover_art.dart';
 import 'data/downloads_grouping.dart';
@@ -15,9 +17,8 @@ import 'widgets/track_tile.dart';
 
 /// What is actually on this device, grouped by album.
 ///
-/// Reads the download index and nothing else — the download PIPELINE that fills it is a separate
-/// milestone. That is why the empty state names the action that would put something here rather
-/// than pretending the list is still loading.
+/// Reads the download index, which the pipeline in `features/downloads` fills. Removing anything
+/// goes back through that pipeline so the files go with the rows.
 class DownloadsScreen extends ConsumerWidget {
   const DownloadsScreen({super.key});
 
@@ -138,10 +139,9 @@ class _DownloadsList extends ConsumerWidget {
     if (!(confirmed ?? false)) return;
 
     try {
-      // Only the index. The files themselves are deleted by the download pipeline, which owns the
-      // paths — clearing rows here without it would strand bytes on disk, so this screen must not
-      // be the only thing that ever runs.
-      await ref.read(downloadsDaoProvider).clear();
+      // Through the download pipeline, which owns the file paths: clearing index rows alone would
+      // leave the audio on disk with nothing left that knows it is there.
+      await ref.read(downloadsApiProvider).clear();
     } on Object catch (error) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(

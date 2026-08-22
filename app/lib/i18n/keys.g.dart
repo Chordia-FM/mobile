@@ -1437,14 +1437,36 @@ abstract final class LibraryKeys {
   static const cardMoveUp = 'library:card.moveUp';
   static const cardShareTitle = 'library:card.shareTitle';
   static const cardTrackCount = 'library:card.trackCount';
+  static const downloadsActionCancel = 'library:downloads.action.cancel';
+  static const downloadsActionDownload = 'library:downloads.action.download';
+  static const downloadsActionDownloadAlbum =
+      'library:downloads.action.downloadAlbum';
+  static const downloadsActionDownloadPlaylist =
+      'library:downloads.action.downloadPlaylist';
+  static const downloadsActionManage = 'library:downloads.action.manage';
+  static const downloadsActionPause = 'library:downloads.action.pause';
+  static const downloadsActionRemove = 'library:downloads.action.remove';
+  static const downloadsActionResume = 'library:downloads.action.resume';
+  static const downloadsActionRetry = 'library:downloads.action.retry';
   static const downloadsClearConfirmMessage =
       'library:downloads.clearConfirm.message';
   static const downloadsClearConfirmTitle =
       'library:downloads.clearConfirm.title';
   static const downloadsClearError = 'library:downloads.clearError';
   static const downloadsEmptyState = 'library:downloads.emptyState';
+  static const downloadsErrorCap = 'library:downloads.error.cap';
+  static const downloadsErrorIncomplete = 'library:downloads.error.incomplete';
+  static const downloadsErrorOffline = 'library:downloads.error.offline';
+  static const downloadsErrorServer = 'library:downloads.error.server';
+  static const downloadsErrorStorage = 'library:downloads.error.storage';
+  static const downloadsErrorUnknown = 'library:downloads.error.unknown';
   static const downloadsEyebrow = 'library:downloads.eyebrow';
   static const downloadsNavLabel = 'library:downloads.navLabel';
+  static const downloadsQueueEmpty = 'library:downloads.queue.empty';
+  static const downloadsQueuePaused = 'library:downloads.queue.paused';
+  static const downloadsQueueProgress = 'library:downloads.queue.progress';
+  static const downloadsQueueQueued = 'library:downloads.queue.queued';
+  static const downloadsQueueTitle = 'library:downloads.queue.title';
   static const downloadsRemoveError = 'library:downloads.removeError';
   static const downloadsRemoveTooltip = 'library:downloads.removeTooltip';
   static const downloadsSongCount = 'library:downloads.songCount';
@@ -1467,8 +1489,24 @@ abstract final class LibraryKeys {
   static const downloadsStatsTitle = 'library:downloads.stats.title';
   static const downloadsStatsUnknownQuota =
       'library:downloads.stats.unknownQuota';
+  static const downloadsStorageCap = 'library:downloads.storage.cap';
+  static const downloadsStorageCapUnlimited =
+      'library:downloads.storage.capUnlimited';
+  static const downloadsStorageClear = 'library:downloads.storage.clear';
+  static const downloadsStorageFull = 'library:downloads.storage.full';
+  static const downloadsStorageTitle = 'library:downloads.storage.title';
+  static const downloadsStorageUsed = 'library:downloads.storage.used';
+  static const downloadsStorageUsedNoCap =
+      'library:downloads.storage.usedNoCap';
   static const downloadsStoredOnDevice = 'library:downloads.storedOnDevice';
   static const downloadsTitle = 'library:downloads.title';
+  static const downloadsToastCleared = 'library:downloads.toast.cleared';
+  static const downloadsToastExisting = 'library:downloads.toast.existing';
+  static const downloadsToastInUse = 'library:downloads.toast.inUse';
+  static const downloadsToastQueued = 'library:downloads.toast.queued';
+  static const downloadsToastRefused = 'library:downloads.toast.refused';
+  static const downloadsToastRemoved = 'library:downloads.toast.removed';
+  static const downloadsToastSkipped = 'library:downloads.toast.skipped';
   static const editAlbumsLabel = 'library:edit.albumsLabel';
   static const editAutoRescanEvery = 'library:edit.autoRescanEvery';
   static const editDedupeLabel = 'library:edit.dedupeLabel';
@@ -1960,7 +1998,11 @@ abstract final class PlayerKeys {
   static const devicesCurrent = 'player:devices.current';
   static const devicesMobileApp = 'player:devices.mobileApp';
   static const devicesNone = 'player:devices.none';
+  static const devicesOffline = 'player:devices.offline';
+  static const devicesPlayHere = 'player:devices.playHere';
+  static const devicesPlayingOn = 'player:devices.playingOn';
   static const devicesPressPlay = 'player:devices.pressPlay';
+  static const devicesThisDevice = 'player:devices.thisDevice';
   static const devicesThisTab = 'player:devices.thisTab';
   static const devicesTitle = 'player:devices.title';
   static const devicesUnreachable = 'player:devices.unreachable';
@@ -1982,6 +2024,8 @@ abstract final class PlayerKeys {
   static const equalizerBandWidth = 'player:equalizer.bandWidth';
   static const equalizerClose = 'player:equalizer.close';
   static const equalizerDeletePreset = 'player:equalizer.deletePreset';
+  static const equalizerDeviceApproximation =
+      'player:equalizer.deviceApproximation';
   static const equalizerDragHint = 'player:equalizer.dragHint';
   static const equalizerDragHintParametric =
       'player:equalizer.dragHintParametric';
@@ -1989,6 +2033,7 @@ abstract final class PlayerKeys {
   static const equalizerFreqDisplay = 'player:equalizer.freqDisplay';
   static const equalizerGraphAriaLabel = 'player:equalizer.graph.ariaLabel';
   static const equalizerGraphTitle = 'player:equalizer.graph.title';
+  static const equalizerNotApplied = 'player:equalizer.notApplied';
   static const equalizerParametric = 'player:equalizer.parametric';
   static const equalizerPreamp = 'player:equalizer.preamp';
   static const equalizerPreampDisplay = 'player:equalizer.preampDisplay';
@@ -2026,6 +2071,7 @@ abstract final class PlayerKeys {
   static const qualityChange = 'player:quality.change';
   static const qualityDataPerHourGb = 'player:quality.dataPerHourGb';
   static const qualityDataPerHourMb = 'player:quality.dataPerHourMb';
+  static const qualityFixedLocal = 'player:quality.fixedLocal';
   static const qualityKhz = 'player:quality.khz';
   static const qualityLossless = 'player:quality.lossless';
   static const qualityLossy = 'player:quality.lossy';
@@ -2042,6 +2088,7 @@ abstract final class PlayerKeys {
   static const qualityStreamingRate = 'player:quality.streamingRate';
   static const qualityTitle = 'player:quality.title';
   static const qualityUpTo = 'player:quality.upTo';
+  static const qualityYourSetting = 'player:quality.yourSetting';
   static const queueAdd = 'player:queue.add';
   static const queueAddedAlbum = 'player:queue.addedAlbum';
   static const queueAutoplayNext = 'player:queue.autoplayNext';
@@ -2338,12 +2385,15 @@ abstract final class SettingsKeys {
   static const accountChangeEmailBody = 'settings:account.changeEmailBody';
   static const accountChangeEmailTitle = 'settings:account.changeEmailTitle';
   static const accountChangePhoto = 'settings:account.changePhoto';
+  static const accountDeleteTypeHandle = 'settings:account.deleteTypeHandle';
   static const accountDisplayName = 'settings:account.displayName';
   static const accountEmailChangeSent = 'settings:account.emailChangeSent';
   static const accountEmailTitle = 'settings:account.emailTitle';
   static const accountHandle = 'settings:account.handle';
   static const accountHandleHint = 'settings:account.handleHint';
   static const accountHandlePlaceholder = 'settings:account.handlePlaceholder';
+  static const accountLeaveDesc = 'settings:account.leaveDesc';
+  static const accountLeaveTitle = 'settings:account.leaveTitle';
   static const accountNewEmailPlaceholder =
       'settings:account.newEmailPlaceholder';
   static const accountNoEmail = 'settings:account.noEmail';
@@ -2356,12 +2406,15 @@ abstract final class SettingsKeys {
       'settings:account.resendVerification';
   static const accountSaveProfile = 'settings:account.saveProfile';
   static const accountSendConfirmation = 'settings:account.sendConfirmation';
+  static const accountSignOutConfirm = 'settings:account.signOutConfirm';
   static const accountTitle = 'settings:account.title';
   static const accountUnverified = 'settings:account.unverified';
   static const accountVerificationSent = 'settings:account.verificationSent';
   static const accountVerified = 'settings:account.verified';
   static const appearanceAccentColour = 'settings:appearance.accentColour';
   static const appearanceAccentHexAria = 'settings:appearance.accentHexAria';
+  static const appearanceAccentProfileHint =
+      'settings:appearance.accentProfileHint';
   static const appearanceAccentsAmber = 'settings:appearance.accents.amber';
   static const appearanceAccentsBlue = 'settings:appearance.accents.blue';
   static const appearanceAccentsCrimson = 'settings:appearance.accents.crimson';
@@ -2379,6 +2432,7 @@ abstract final class SettingsKeys {
   static const appearanceCustomColour = 'settings:appearance.customColour';
   static const appearanceCustomColourHint =
       'settings:appearance.customColourHint';
+  static const appearanceLanguageHint = 'settings:appearance.languageHint';
   static const appearanceModeArtwork = 'settings:appearance.mode.artwork';
   static const appearanceModeArtworkHint =
       'settings:appearance.mode.artworkHint';
@@ -2411,6 +2465,11 @@ abstract final class SettingsKeys {
   static const appearanceSpeedSteady = 'settings:appearance.speed.steady';
   static const appearanceSpeedTitle = 'settings:appearance.speedTitle';
   static const appearanceTitle = 'settings:appearance.title';
+  static const connectionsDiscordDesc = 'settings:connections.discord.desc';
+  static const connectionsDiscordLabel = 'settings:connections.discord.label';
+  static const connectionsDiscordLinked = 'settings:connections.discord.linked';
+  static const connectionsDiscordNotLinked =
+      'settings:connections.discord.notLinked';
   static const connectionsLastfmConnect = 'settings:connections.lastfm.connect';
   static const connectionsLastfmConnectedAs =
       'settings:connections.lastfm.connectedAs';
@@ -2425,6 +2484,9 @@ abstract final class SettingsKeys {
       'settings:connections.lastfm.disconnected';
   static const connectionsLastfmFailed = 'settings:connections.lastfm.failed';
   static const connectionsLastfmLabel = 'settings:connections.lastfm.label';
+  static const connectionsLastfmOpensBrowser =
+      'settings:connections.lastfm.opensBrowser';
+  static const connectionsRefresh = 'settings:connections.refresh';
   static const connectionsTitle = 'settings:connections.title';
   static const dataBody = 'settings:data.body';
   static const dataDeleteAccountConfirm = 'settings:data.deleteAccountConfirm';
@@ -2435,6 +2497,8 @@ abstract final class SettingsKeys {
   static const dataExportFailedBody = 'settings:data.exportFailedBody';
   static const dataExportFailedTitle = 'settings:data.exportFailedTitle';
   static const dataExportMyData = 'settings:data.exportMyData';
+  static const dataExportReady = 'settings:data.exportReady';
+  static const dataExportSubject = 'settings:data.exportSubject';
   static const dataTitle = 'settings:data.title';
   static const desktopCloseDesc = 'settings:desktop.close.desc';
   static const desktopCloseQuit = 'settings:desktop.close.quit';
@@ -2539,6 +2603,7 @@ abstract final class SettingsKeys {
   static const equalizerTitle = 'settings:equalizer.title';
   static const importBody = 'settings:import.body';
   static const importChooseFile = 'settings:import.chooseFile';
+  static const importEmpty = 'settings:import.empty';
   static const importErrorsInternal = 'settings:import.errors.internal';
   static const importErrorsInterrupted = 'settings:import.errors.interrupted';
   static const importErrorsMalformed = 'settings:import.errors.malformed';
@@ -2546,6 +2611,7 @@ abstract final class SettingsKeys {
   static const importHint = 'settings:import.hint';
   static const importProgress = 'settings:import.progress';
   static const importSourceAuto = 'settings:import.sourceAuto';
+  static const importStartInBrowser = 'settings:import.startInBrowser';
   static const importStatusDone = 'settings:import.status.done';
   static const importStatusFailed = 'settings:import.status.failed';
   static const importStatusPending = 'settings:import.status.pending';
@@ -2565,12 +2631,17 @@ abstract final class SettingsKeys {
   static const layoutSidebarHelp = 'settings:layout.sidebar.help';
   static const layoutSidebarTitle = 'settings:layout.sidebar.title';
   static const layoutTitle = 'settings:layout.title';
+  static const planCurrent = 'settings:plan.current';
+  static const planIncludes = 'settings:plan.includes';
+  static const planOpensInBrowser = 'settings:plan.opensInBrowser';
   static const planSelfHosted = 'settings:plan.selfHosted';
   static const planTitle = 'settings:plan.title';
   static const playbackAutoplayDesc = 'settings:playback.autoplay.desc';
   static const playbackAutoplayLabel = 'settings:playback.autoplay.label';
   static const playbackCrossfadeDesc = 'settings:playback.crossfade.desc';
   static const playbackCrossfadeLabel = 'settings:playback.crossfade.label';
+  static const playbackCrossfadeSeconds = 'settings:playback.crossfadeSeconds';
+  static const playbackEqualizerDesc = 'settings:playback.equalizerDesc';
   static const playbackNormalizeDesc = 'settings:playback.normalize.desc';
   static const playbackNormalizeLabel = 'settings:playback.normalize.label';
   static const playbackOutputChoose = 'settings:playback.output.choose';
@@ -2596,6 +2667,7 @@ abstract final class SettingsKeys {
       'settings:playback.quality.original.desc';
   static const playbackQualityOriginalLabel =
       'settings:playback.quality.original.label';
+  static const playbackStorageDesc = 'settings:playback.storageDesc';
   static const playbackStreamingQuality = 'settings:playback.streamingQuality';
   static const playbackTitle = 'settings:playback.title';
   static const privacyActivityVisibilityDesc =
@@ -2684,6 +2756,14 @@ abstract final class SettingsKeys {
   static const regionTimezoneZoneWithOffset =
       'settings:region.timezone.zoneWithOffset';
   static const regionTitle = 'settings:region.title';
+  static const sectionsAccount = 'settings:sections.account';
+  static const sectionsAppearance = 'settings:sections.appearance';
+  static const sectionsConnections = 'settings:sections.connections';
+  static const sectionsData = 'settings:sections.data';
+  static const sectionsPlan = 'settings:sections.plan';
+  static const sectionsPlayback = 'settings:sections.playback';
+  static const sectionsPrivacy = 'settings:sections.privacy';
+  static const sectionsSecurity = 'settings:sections.security';
   static const securityPasswordChanged = 'settings:security.password.changed';
   static const securityPasswordConfirm = 'settings:security.password.confirm';
   static const securityPasswordCurrent = 'settings:security.password.current';
