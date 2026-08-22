@@ -73,6 +73,13 @@ jobs:
         run: dart tool/sync_i18n.dart --check --source .i18n-src
       - name: Generated API models match the vendored schema
         run: dart tool/gen_api.dart --check
+      # build_runner has to run in the package that owns the builder; from the workspace root it
+      # finds no code and cheerfully writes nothing.
+      - name: Drift output matches the schema
+        run: dart run build_runner build
+        working-directory: packages/chordia_db
+      - name: Nothing regenerated differently
+        run: git diff --exit-code
 
   build:
     runs-on: blacksmith-4vcpu-ubuntu-2404
