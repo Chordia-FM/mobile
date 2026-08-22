@@ -14,3 +14,6 @@ export 'src/library.dart';
 export 'src/models.g.dart';
 export 'src/session.dart';
 export 'src/transport.dart' show queryOf;
+
+/// The typed Hub call surface: one extension on `HubClient` per OpenAPI tag.
+export 'src/endpoints/endpoints.dart';
