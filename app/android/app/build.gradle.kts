@@ -6,13 +6,36 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
-// Release signing is configured from android/key.properties, which is never committed. Absent it,
-// release builds fall back to the debug key so `flutter run --release` still works locally.
+// Release signing is configured from android/key.properties, which is never committed — see
+// key.properties.example. Absent it, release builds fall back to the debug key, so a contributor
+// with no keystore can still `flutter run --release` and still build an APK to try on a phone.
+//
+// Present but incomplete is a different thing entirely, and it fails the build rather than falling
+// back. The failure this guards is the expensive one: a CI secret that did not decode leaves a
+// truncated key.properties behind, and a silent fallback would publish a debug-signed APK to a
+// GitHub release. Android refuses to install that over a properly signed one, so every existing
+// user's update would break, and nothing would have gone red to say so.
+val keystoreConfig = rootProject.file("key.properties")
 val keystoreProperties = Properties().apply {
-    val f = rootProject.file("key.properties")
-    if (f.exists()) f.inputStream().use { load(it) }
+    if (keystoreConfig.exists()) keystoreConfig.inputStream().use { load(it) }
 }
-val hasReleaseKeystore = keystoreProperties.getProperty("storeFile") != null
+val releaseKeystore = keystoreProperties.getProperty("storeFile")
+    // Resolved against android/, where key.properties lives, so a relative path in it means what
+    // somebody writing that file would expect. An absolute path is passed through unchanged.
+    ?.let { rootProject.file(it) }
+
+if (keystoreConfig.exists()) {
+    val missing = listOf("storeFile", "storePassword", "keyAlias", "keyPassword")
+        .filter { keystoreProperties.getProperty(it).isNullOrBlank() }
+    require(missing.isEmpty()) {
+        "android/key.properties is missing: ${missing.joinToString(", ")}"
+    }
+    require(releaseKeystore!!.exists()) {
+        "android/key.properties points at a keystore that is not there: $releaseKeystore"
+    }
+}
+
+val hasReleaseKeystore = releaseKeystore != null
 
 android {
     namespace = "fm.chordia.mobile"
@@ -56,7 +79,7 @@ android {
             create("release") {
                 keyAlias = keystoreProperties.getProperty("keyAlias")
                 keyPassword = keystoreProperties.getProperty("keyPassword")
-                storeFile = file(keystoreProperties.getProperty("storeFile"))
+                storeFile = releaseKeystore
                 storePassword = keystoreProperties.getProperty("storePassword")
             }
         }

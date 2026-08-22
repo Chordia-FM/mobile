@@ -110,6 +110,12 @@ abstract final class AdminKeys {
   static const badgesTranslatorHint = 'admin:badges.translatorHint';
   static const badgesTranslatorPlaceholder =
       'admin:badges.translatorPlaceholder';
+  static const contentAlbums = 'admin:content.albums';
+  static const contentArtists = 'admin:content.artists';
+  static const contentDescription = 'admin:content.description';
+  static const contentEmpty = 'admin:content.empty';
+  static const desktopOnlyBody = 'admin:desktopOnly.body';
+  static const desktopOnlyTitle = 'admin:desktopOnly.title';
   static const editCatalogTitle = 'admin:editCatalog.title';
   static const enrichmentDescription = 'admin:enrichment.description';
   static const enrichmentNothingToRefresh = 'admin:enrichment.nothingToRefresh';
@@ -177,6 +183,7 @@ abstract final class AdminKeys {
   static const moderationLoadFailed = 'admin:moderation.loadFailed';
   static const noAccessBackToApp = 'admin:noAccess.backToApp';
   static const noAccessBody = 'admin:noAccess.body';
+  static const noAccessPlainBody = 'admin:noAccess.plainBody';
   static const noAccessTitle = 'admin:noAccess.title';
   static const overviewAccountHealth = 'admin:overview.accountHealth';
   static const overviewAccountsGained = 'admin:overview.accountsGained';
@@ -247,6 +254,9 @@ abstract final class AdminKeys {
   static const reportsDismiss = 'admin:reports.dismiss';
   static const reportsEmpty = 'admin:reports.empty';
   static const reportsResolve = 'admin:reports.resolve';
+  static const reportsStatusDismissed = 'admin:reports.statusDismissed';
+  static const reportsStatusOpen = 'admin:reports.statusOpen';
+  static const reportsStatusResolved = 'admin:reports.statusResolved';
   static const reportsTitle = 'admin:reports.title';
   static const reportsTitleWithCount = 'admin:reports.titleWithCount';
   static const suggestionsApprove = 'admin:suggestions.approve';
@@ -332,6 +342,7 @@ abstract final class AdminKeys {
   static const usersLastSeen = 'admin:users.lastSeen';
   static const usersLibraries = 'admin:users.libraries';
   static const usersLoadFailed = 'admin:users.loadFailed';
+  static const usersLoadMore = 'admin:users.loadMore';
   static const usersMatching = 'admin:users.matching';
   static const usersMetaLine = 'admin:users.metaLine';
   static const usersNever = 'admin:users.never';
@@ -884,7 +895,14 @@ abstract final class CommonKeys {
   static const statusSaved = 'common:status.saved';
   static const statusSending = 'common:status.sending';
   static const updateAvailable = 'common:update.available';
+  static const updateDownload = 'common:update.download';
+  static const updateFile = 'common:update.file';
+  static const updateLater = 'common:update.later';
+  static const updateNotes = 'common:update.notes';
   static const updateRefresh = 'common:update.refresh';
+  static const updateSideload = 'common:update.sideload';
+  static const updateTitle = 'common:update.title';
+  static const updateYouHave = 'common:update.youHave';
   static const userMenuAdmin = 'common:userMenu.admin';
   static const userMenuLibraries = 'common:userMenu.libraries';
   static const userMenuProfile = 'common:userMenu.profile';
@@ -1604,8 +1622,26 @@ abstract final class LibraryKeys {
   static const listServerSummary = 'library:list.serverSummary';
   static const listSharedWithYou = 'library:list.sharedWithYou';
   static const listTitle = 'library:list.title';
+  static const manageContents = 'library:manage.contents';
+  static const manageCountAlbums = 'library:manage.countAlbums';
+  static const manageCountArtists = 'library:manage.countArtists';
+  static const manageCountTracks = 'library:manage.countTracks';
+  static const manageCountsUnavailable = 'library:manage.countsUnavailable';
+  static const manageNameLabel = 'library:manage.nameLabel';
+  static const manageNotOwner = 'library:manage.notOwner';
+  static const manageOpenOverrides = 'library:manage.openOverrides';
+  static const manageOverridesSection = 'library:manage.overridesSection';
+  static const manageServerSection = 'library:manage.serverSection';
+  static const manageSharingSection = 'library:manage.sharingSection';
+  static const manageTitle = 'library:manage.title';
   static const metadataIntro = 'library:metadata.intro';
   static const metadataNoMatches = 'library:metadata.noMatches';
+  static const metadataOverridesApplyToCatalog =
+      'library:metadata.overrides.applyToCatalog';
+  static const metadataOverridesApplyToCatalogHint =
+      'library:metadata.overrides.applyToCatalogHint';
+  static const metadataOverridesEditTitle =
+      'library:metadata.overrides.editTitle';
   static const metadataOverridesFieldAlbum =
       'library:metadata.overrides.field.album';
   static const metadataOverridesFieldAlbumType =
@@ -1636,6 +1672,8 @@ abstract final class LibraryKeys {
       'library:metadata.overrides.field.track_no';
   static const metadataOverridesFieldYear =
       'library:metadata.overrides.field.year';
+  static const metadataOverridesInherited =
+      'library:metadata.overrides.inherited';
   static const metadataOverridesKindAlbum =
       'library:metadata.overrides.kind.album';
   static const metadataOverridesKindArtist =
@@ -1649,6 +1687,9 @@ abstract final class LibraryKeys {
       'library:metadata.overrides.resetConfirm';
   static const metadataOverridesResetDone =
       'library:metadata.overrides.resetDone';
+  static const metadataOverridesSaveFailed =
+      'library:metadata.overrides.saveFailed';
+  static const metadataOverridesSaved = 'library:metadata.overrides.saved';
   static const metadataOverridesTitle = 'library:metadata.overrides.title';
   static const metadataOverridesWasCalled =
       'library:metadata.overrides.wasCalled';
@@ -1674,6 +1715,34 @@ abstract final class LibraryKeys {
   static const newServerSelectLabel = 'library:new.serverSelectLabel';
   static const newSubmit = 'library:new.submit';
   static const newTitle = 'library:new.title';
+  static const pairingCheckingBody = 'library:pairing.checkingBody';
+  static const pairingCheckingTitle = 'library:pairing.checkingTitle';
+  static const pairingClaimingBody = 'library:pairing.claimingBody';
+  static const pairingClaimingTitle = 'library:pairing.claimingTitle';
+  static const pairingConnect = 'library:pairing.connect';
+  static const pairingDoneAction = 'library:pairing.doneAction';
+  static const pairingDoneBody = 'library:pairing.doneBody';
+  static const pairingDoneTitle = 'library:pairing.doneTitle';
+  static const pairingIntro = 'library:pairing.intro';
+  static const pairingLinkInvalid = 'library:pairing.linkInvalid';
+  static const pairingLinkLabel = 'library:pairing.linkLabel';
+  static const pairingNameBody = 'library:pairing.nameBody';
+  static const pairingNamePlaceholder = 'library:pairing.namePlaceholder';
+  static const pairingNameTitle = 'library:pairing.nameTitle';
+  static const pairingRefused = 'library:pairing.refused';
+  static const pairingRegistering = 'library:pairing.registering';
+  static const pairingStartOver = 'library:pairing.startOver';
+  static const pairingStepLinkBody = 'library:pairing.stepLinkBody';
+  static const pairingStepLinkTitle = 'library:pairing.stepLinkTitle';
+  static const pairingStepStartBody = 'library:pairing.stepStartBody';
+  static const pairingStepStartTitle = 'library:pairing.stepStartTitle';
+  static const pairingTicketExpired = 'library:pairing.ticketExpired';
+  static const pairingTitle = 'library:pairing.title';
+  static const pairingTrustBody = 'library:pairing.trustBody';
+  static const pairingTrustConfirm = 'library:pairing.trustConfirm';
+  static const pairingTrustFingerprint = 'library:pairing.trustFingerprint';
+  static const pairingTrustTitle = 'library:pairing.trustTitle';
+  static const pairingUnreachable = 'library:pairing.unreachable';
   static const pinPin = 'library:pin.pin';
   static const pinUnpin = 'library:pin.unpin';
   static const setupAddFolderFailed = 'library:setup.addFolderFailed';
@@ -2163,6 +2232,7 @@ abstract final class PlaylistsKeys {
   static const editRemovePhoto = 'playlists:edit.removePhoto';
   static const editSaveError = 'playlists:edit.saveError';
   static const editTitle = 'playlists:edit.title';
+  static const editUploadPhoto = 'playlists:edit.uploadPhoto';
   static const editVisibilityLabel = 'playlists:edit.visibility.label';
   static const editVisibilityPrivate = 'playlists:edit.visibility.private';
   static const editVisibilityPrivateHint =
@@ -2359,6 +2429,21 @@ abstract final class PlaylistsKeys {
   static const smartValueListRemove = 'playlists:smart.valueList.remove';
   static const smartValuePlaceholder = 'playlists:smart.valuePlaceholder';
   static const smartValueUpper = 'playlists:smart.valueUpper';
+  static const smartVariantAcoustic = 'playlists:smart.variant.acoustic';
+  static const smartVariantBonus = 'playlists:smart.variant.bonus';
+  static const smartVariantCover = 'playlists:smart.variant.cover';
+  static const smartVariantDeluxe = 'playlists:smart.variant.deluxe';
+  static const smartVariantDemo = 'playlists:smart.variant.demo';
+  static const smartVariantExtended = 'playlists:smart.variant.extended';
+  static const smartVariantInstrumental =
+      'playlists:smart.variant.instrumental';
+  static const smartVariantKaraoke = 'playlists:smart.variant.karaoke';
+  static const smartVariantLive = 'playlists:smart.variant.live';
+  static const smartVariantRadioEdit = 'playlists:smart.variant.radio_edit';
+  static const smartVariantRemaster = 'playlists:smart.variant.remaster';
+  static const smartVariantRemix = 'playlists:smart.variant.remix';
+  static const smartVariantSingleVersion =
+      'playlists:smart.variant.single_version';
   static const songCount = 'playlists:songCount';
   static const statsEmpty = 'playlists:stats.empty';
   static const statsScopeEveryone = 'playlists:stats.scopeEveryone';
@@ -2898,9 +2983,11 @@ abstract final class SocialKeys {
   static const badgesStageNova = 'social:badges.stage.nova';
   static const badgesStageOrbit = 'social:badges.stage.orbit';
   static const badgesStageSpark = 'social:badges.stage.spark';
+  static const blockBlockedHeading = 'social:block.blockedHeading';
   static const blockConfirmLabel = 'social:block.confirmLabel';
   static const blockConfirmMessage = 'social:block.confirmMessage';
   static const blockConfirmTitle = 'social:block.confirmTitle';
+  static const blockUnblock = 'social:block.unblock';
   static const discoveryAddFriend = 'social:discovery.addFriend';
   static const discoveryFriendsStatus = 'social:discovery.friendsStatus';
   static const discoveryRequestSent = 'social:discovery.requestSent';
@@ -2931,6 +3018,7 @@ abstract final class SocialKeys {
   static const friendsEmpty = 'social:friends.empty';
   static const friendsHeading = 'social:friends.heading';
   static const friendsRemoving = 'social:friends.removing';
+  static const friendsRequestByHandle = 'social:friends.requestByHandle';
   static const friendsTitle = 'social:friends.title';
   static const modMenuBlocked = 'social:modMenu.blocked';
   static const modMenuReport = 'social:modMenu.report';
@@ -2967,7 +3055,9 @@ abstract final class SocialKeys {
   static const reportPromptMessage = 'social:report.promptMessage';
   static const requestsAccept = 'social:requests.accept';
   static const requestsAccepting = 'social:requests.accepting';
+  static const requestsCancel = 'social:requests.cancel';
   static const requestsPendingHeading = 'social:requests.pendingHeading';
+  static const requestsSentHeading = 'social:requests.sentHeading';
   static const searchNoResults = 'social:search.noResults';
   static const searchPlaceholder = 'social:search.placeholder';
   static const searchSearching = 'social:search.searching';

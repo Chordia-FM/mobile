@@ -5,6 +5,7 @@ import 'package:audio_service/audio_service.dart';
 import 'package:chordia_db/open.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
 
@@ -81,6 +82,11 @@ Future<void> bootstrap(AppConfig config) async {
       notificationColor: ChordiaColors.accent,
     ),
   );
+
+  // Without this, `DateFormat` throws LocaleDataException the first time a screen formats a date
+  // in any locale — the listening history is the one that shows it. Loading every locale rather
+  // than the active one keeps a language change from being able to break formatting later.
+  await initializeDateFormatting();
 
   await container.read(audioHandlerProvider).configureSession();
   container.read(playbackServiceProvider).start();

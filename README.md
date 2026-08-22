@@ -47,16 +47,79 @@ flutter run --flavor dev -t app/lib/main_dev.dart --dart-define-from-file=env/de
 
 `dev` and `prod` install side by side (`fm.chordia.mobile.dev` and `fm.chordia.mobile`). The dev
 flavour points at `10.0.2.2:8080`, which is how an Android emulator reaches a Hub running on the
-host. Point it somewhere else by editing `env/dev.json`.
+host, and its version name carries a `-dev` suffix. Point it somewhere else by editing
+`env/dev.json`.
+
+The prod flavour talks to the public Hub in `env/prod.json`:
+
+```bash
+flutter run --flavor prod -t app/lib/main_prod.dart --dart-define-from-file=env/prod.json
+```
+
+Build an installable APK by swapping `run` for `build apk --release`. Every flavour argument is
+required every time — a `flutter run` with no `--dart-define-from-file` compiles fine and then has
+no Hub to talk to.
 
 ## Gates
 
 ```bash
-flutter analyze
-flutter test                      # app widget + integration tests
-dart test                         # inside any packages/* directory
+bash tool/test_all.sh             # every suite in the workspace, one line each
+flutter analyze                   # must report no issues
+dart format .                     # must leave nothing changed
 dart tool/sync_i18n.dart --check  # locale assets match the shared catalogs
+dart tool/gen_api.dart --check    # API models match the vendored OpenAPI schema
 ```
+
+`tool/test_all.sh` is the quick way; the suites underneath it are `dart test` in each
+`packages/*` and `flutter test` in `app`, and either can be run alone (`flutter test
+test/update_test.dart`).
+
+## Signing
+
+Release builds need a keystore, and it is never in the repository. Copy
+`app/android/key.properties.example` to `app/android/key.properties` and fill it in; that file and
+`*.jks` are both gitignored. The example carries the `keytool` invocation that makes the keystore.
+
+Without `key.properties`, a release build falls back to the debug key — enough to try a build on
+your own phone, not enough for anything anyone else installs, because Android refuses to update an
+app whose signing certificate has changed. With a `key.properties` that is present but incomplete,
+the build fails rather than falling back; a silent fallback in CI would publish a debug-signed APK
+and break every existing install's upgrade path.
+
+CI builds from four repository secrets: `ANDROID_KEYSTORE_BASE64` (`base64 -w0 chordia-release.jks`),
+`ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` and `ANDROID_KEY_PASSWORD`.
+
+## Cutting a release
+
+Tag it. The `release` job in `.github/workflows/ci.yml` runs on any `v*` tag, after the analyze,
+test and drift gates have passed on that same commit:
+
+```bash
+git tag v0.2.0 && git push origin v0.2.0
+```
+
+It builds a signed universal APK plus per-ABI builds for `arm64-v8a` and `armeabi-v7a`, writes
+`SHA256SUMS` over them, and publishes the lot to a GitHub release with notes generated from the
+commits since the previous tag. The version name comes from the tag, so `v0.2.0` produces an app
+that reports `0.2.0`; a tag with a suffix (`v0.3.0-rc.1`) is marked as a pre-release and stays out
+of `/releases/latest`.
+
+Nothing in the repository needs its version bumped first — `pubspec.yaml`'s `version:` is the
+development default, and the release build overrides both the name and the build number.
+
+## Updates in the app
+
+There is no Play Store listing, so the app checks for itself. On launch, and at most once a day, it
+asks its Hub for `GET /v1/mobile/latest` — which republishes this repo's GitHub release, because
+GitHub serves release assets with no CORS headers and the filenames carry the version. If the
+release is newer than the running build, a sheet offers the release notes and the universal APK,
+which downloads in the browser; Android then asks the user to confirm the install. The app does not
+install it itself: that needs `REQUEST_INSTALL_PACKAGES`, which is a permission prompt nobody wants
+to meet on first run.
+
+A version that has been dismissed stays dismissed until a newer one exists. The comparison is
+semantic-version precedence, so `0.2.0` is an update for somebody on `0.2.0-dev` and build metadata
+never prompts anybody.
 
 ## Localisation
 

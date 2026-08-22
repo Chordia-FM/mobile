@@ -9,6 +9,7 @@ import '../../data/art/art_cache.dart';
 import '../../i18n/keys.g.dart';
 import '../../i18n/translations_provider.dart';
 import '../../widgets/cover_art.dart';
+import '../downloads/widgets/download_controls.dart';
 import 'data/catalog_providers.dart';
 import 'data/playback.dart';
 import 'format.dart';
@@ -94,6 +95,14 @@ class _AlbumView extends ConsumerWidget {
                     shuffle: true,
                   )
                 : null,
+            trailing: [
+              if (canPlay)
+                IconButton(
+                  onPressed: () => saveDownloads(context, ref, album.tracks),
+                  icon: const Icon(Icons.download_rounded),
+                  tooltip: ref.t(LibraryKeys.downloadsActionDownload),
+                ),
+            ],
           ),
         ),
         if (album.tracks.isEmpty)

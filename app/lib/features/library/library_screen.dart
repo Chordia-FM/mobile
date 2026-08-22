@@ -6,10 +6,10 @@ import '../../data/art/art_cache.dart';
 import '../../i18n/keys.g.dart';
 import '../../i18n/translations_provider.dart';
 import '../../widgets/cover_art.dart';
+import '../libraries/libraries_home_screen.dart';
 import 'catalog_browse_screen.dart';
 import 'data/library_providers.dart';
 import 'downloads_screen.dart';
-import 'libraries_screen.dart';
 import 'liked_screen.dart';
 import 'playlist_detail_screen.dart';
 import 'playlists_screen.dart';
@@ -84,7 +84,7 @@ class LibraryScreen extends ConsumerWidget {
               icon: Icons.dns_rounded,
               label: t(LibraryKeys.listTitle),
               trailing: _countOf(libraries, (rows) => rows.length),
-              onTap: () => _push(context, const LibrariesScreen()),
+              onTap: () => _push(context, const LibrariesHomeScreen()),
             ),
           ],
         ),

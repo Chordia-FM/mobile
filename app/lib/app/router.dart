@@ -2,15 +2,23 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../features/admin/admin_routes.dart';
 import '../features/auth/auth_routes.dart';
 import '../features/auth/forgot_password_screen.dart';
 import '../features/auth/register_screen.dart';
 import '../features/auth/resolving_screen.dart';
 import '../features/auth/sign_in_screen.dart';
 import '../features/auth/two_factor_screen.dart';
+import '../features/catalog/catalog_routes.dart';
 import '../features/home/home_screen.dart';
+import '../features/insights/insights_routes.dart';
+import '../features/libraries/libraries_routes.dart';
 import '../features/library/library_screen.dart';
+import '../features/manager/manager_routes.dart';
+import '../features/playlists/playlists_routes.dart';
 import '../features/search/search_screen.dart';
+import '../features/settings/settings_routes.dart';
+import '../features/social/social_routes.dart';
 import '../features/you/you_screen.dart';
 import 'providers.dart';
 import 'shell.dart';
@@ -93,6 +101,10 @@ GoRouter buildRouter() {
               GoRoute(
                 path: '/home',
                 builder: (context, state) => const HomeScreen(),
+                // Catalog screens hang off every tab that can reach them rather than living in one
+                // place, so each tab keeps its own back stack: opening an album from Search and
+                // switching to Library must not drop you into Search's history on the way back.
+                routes: catalogRoutes(),
               ),
             ],
           ),
@@ -101,6 +113,7 @@ GoRouter buildRouter() {
               GoRoute(
                 path: '/search',
                 builder: (context, state) => const SearchScreen(),
+                routes: catalogRoutes(),
               ),
             ],
           ),
@@ -109,6 +122,11 @@ GoRouter buildRouter() {
               GoRoute(
                 path: '/library',
                 builder: (context, state) => const LibraryScreen(),
+                routes: [
+                  ...catalogRoutes(),
+                  ...librariesRoutes(),
+                  ...playlistsRoutes(),
+                ],
               ),
             ],
           ),
@@ -117,6 +135,14 @@ GoRouter buildRouter() {
               GoRoute(
                 path: '/you',
                 builder: (context, state) => const YouScreen(),
+                routes: [
+                  ...settingsRoutes(),
+                  ...socialRoutes(),
+                  ...insightsRoutes(),
+                  ...managerRoutes(),
+                  ...adminRoutes(),
+                  ...catalogRoutes(),
+                ],
               ),
             ],
           ),

@@ -10,8 +10,9 @@ import '../../../data/art/art_cache.dart';
 import '../../../i18n/keys.g.dart';
 import '../../../i18n/translations_provider.dart';
 import '../../../widgets/cover_art.dart';
+import '../../downloads/widgets/download_controls.dart';
+import '../../playlists/add_to_playlist_sheet.dart';
 import '../catalog_routes.dart';
-import '../data/catalog_api.dart';
 import '../data/catalog_providers.dart';
 import '../data/playback.dart';
 
@@ -147,12 +148,19 @@ class _TrackMenuSheet extends ConsumerWidget {
                 }
               },
             ),
+            DownloadMenuTile(tracks: [track]),
             ListTile(
               leading: const Icon(Icons.playlist_add_rounded),
               title: Text(t(PlaylistsKeys.addToPlaylist)),
               onTap: () {
                 close();
-                unawaited(showAddToPlaylist(page, track));
+                unawaited(
+                  showAddToPlaylistSheet(
+                    page,
+                    trackIds: [track.id],
+                    label: track.title,
+                  ),
+                );
               },
             ),
             if (track.artistId != null)
@@ -191,112 +199,6 @@ class _TrackMenuSheet extends ConsumerWidget {
           ],
         ),
       ),
-    );
-  }
-}
-
-/// Picks one of the caller's playlists and adds [track] to it.
-Future<void> showAddToPlaylist(BuildContext context, BrowseTrack track) =>
-    showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      isScrollControlled: true,
-      builder: (sheetContext) => _PlaylistPickerSheet(track: track),
-    );
-
-class _PlaylistPickerSheet extends ConsumerWidget {
-  const _PlaylistPickerSheet({required this.track});
-
-  final BrowseTrack track;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final t = ref.t;
-    final playlists = ref.watch(playlistsProvider);
-    final page = Navigator.of(context).context;
-
-    Future<void> add(Playlist playlist) async {
-      Navigator.of(context).pop();
-      try {
-        await ref
-            .read(catalogApiProvider)
-            .addPlaylistTrack(playlist.id, track.id);
-        if (page.mounted) {
-          showCatalogSnack(
-            page,
-            t(PlaylistsKeys.addedToast, {'playlist': playlist.name}),
-          );
-        }
-      } on Object {
-        if (page.mounted) showCatalogSnack(page, t(ErrorsKeys.changeFailed));
-      }
-    }
-
-    return SafeArea(
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.sizeOf(context).height * 0.7,
-        ),
-        child: _pickerBody(context, ref, playlists, add),
-      ),
-    );
-  }
-
-  Widget _pickerBody(
-    BuildContext context,
-    WidgetRef ref,
-    AsyncValue<List<Playlist>> playlists,
-    Future<void> Function(Playlist playlist) add,
-  ) {
-    final t = ref.t;
-    final loaded = playlists.value;
-
-    if (loaded == null) {
-      return playlists.hasError
-          ? Padding(
-              padding: const EdgeInsets.all(24),
-              child: Text(t(ErrorsKeys.failedToLoad)),
-            )
-          : const Padding(
-              padding: EdgeInsets.all(24),
-              child: Center(child: CircularProgressIndicator()),
-            );
-    }
-    if (loaded.isEmpty) {
-      return Padding(
-        padding: const EdgeInsets.all(24),
-        child: Text(t(PlaylistsKeys.menuEmpty)),
-      );
-    }
-
-    return ListView.builder(
-      shrinkWrap: true,
-      itemCount: loaded.length,
-      itemBuilder: (context, index) {
-        final playlist = loaded[index];
-        final autoCovers = playlist.autoCoverUrls;
-        return ListTile(
-          leading: CoverArt(
-            sha256: artHashOf(
-              playlist.coverUrl ??
-                  (autoCovers == null || autoCovers.isEmpty
-                      ? null
-                      : autoCovers.first),
-            ),
-            size: 44,
-            fallbackIcon: Icons.queue_music_rounded,
-          ),
-          title: Text(
-            playlist.name,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          subtitle: Text(
-            t(CatalogKeys.songCount, {'count': playlist.trackCount}),
-          ),
-          onTap: () => unawaited(add(playlist)),
-        );
-      },
     );
   }
 }
