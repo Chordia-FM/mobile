@@ -1,6 +1,16 @@
 include: package:flutter_lints/flutter.yaml
 
+analyzer:
+  errors:
+    # A missing translation key or an unhandled union variant is a bug, not a note.
+    unnecessary_null_comparison: error
+
 linter:
   rules:
     prefer_const_constructors: true
     require_trailing_commas: true
+
+    # Chordia's convention is a public named parameter feeding a private field. An initializing
+    # formal for a private field would have to be named `_thing`, which is not a legal named
+    # parameter, so this rule fires on code that cannot be written the way it asks.
+    prefer_initializing_formals: false

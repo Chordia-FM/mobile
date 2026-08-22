@@ -1,7 +1,3 @@
-// The fields these parameters feed are private, so an initializing formal would have to be named
-// `_connectionTimeout` — which is not a legal named parameter. The lint does not model that case.
-// ignore_for_file: prefer_initializing_formals
-
 import 'dart:io';
 
 import 'package:meta/meta.dart';

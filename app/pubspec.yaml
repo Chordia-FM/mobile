@@ -18,6 +18,8 @@ dependencies:
   chordia_sync: ^0.1.0
   connectivity_plus: ^7.0.0
   crypto: ^3.0.6
+  # No dio: every request goes through the pinned HttpClient in chordia_net, and an HTTP wrapper
+  # whose adapter has to be swapped out to honour that only obscures where the socket comes from.
   drift_flutter: ^0.3.1
   flutter:
     sdk: flutter
