@@ -45,11 +45,17 @@ jobs:
       - name: Package tests
         run: |
           for pkg in packages/*/; do
-            if [ -d "$pkg/test" ]; then
-              echo "::group::$pkg"
+            [ -d "$pkg/test" ] || continue
+            echo "::group::$pkg"
+            # A package that reaches Flutter — chordia_player does, through just_audio — has to run
+            # under `flutter test`. `dart test` compiles it for the plain VM, where `dart:ui` does
+            # not exist, and the failure names flutter_test's own files rather than the package.
+            if grep -q '^  flutter:' "$pkg/pubspec.yaml"; then
+              (cd "$pkg" && flutter test)
+            else
               (cd "$pkg" && dart test)
-              echo "::endgroup::"
             fi
+            echo "::endgroup::"
           done
       - name: App tests
         run: flutter test
