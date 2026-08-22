@@ -1,8 +1,17 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:audio_service/audio_service.dart';
 import 'package:chordia_api/chordia_api.dart';
+// `Hub` here is the drift row for a paired server; the app's own `Hub` in `data/hub.dart` is
+// the one every screen speaks, and the registry still keeps hubs in the keystore.
+import 'package:chordia_db/chordia_db.dart' hide Hub;
 import 'package:chordia_net/chordia_net.dart';
+import 'package:chordia_player/chordia_player.dart';
+// `PlaybackState` is audio_service's here; chordia_sync's namesake describes the mesh and is not
+// what any provider below publishes.
+import 'package:chordia_sync/chordia_sync.dart' hide PlaybackState;
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
@@ -15,14 +24,27 @@ import '../data/hub.dart';
 import '../data/hub_probe.dart';
 import '../data/hub_registry.dart';
 import '../data/hub_transport.dart';
+import '../data/playback/notification_art.dart';
+import '../data/playback/playback_service.dart';
+import '../data/playback/player_state.dart';
+import '../data/playback/quality.dart';
+import '../data/playback/routed_grants.dart';
+import '../data/playback/source_resolver.dart';
 import '../data/secret_store.dart';
 import '../data/session_store.dart';
+import '../i18n/keys.g.dart';
 import '../i18n/translations_provider.dart';
 
 /// `appConfigProvider` and `translationsProvider` were declared alongside the catalogs; they are
 /// re-exported so a screen needs one import for "the app's providers" rather than two.
 export '../i18n/translations_provider.dart'
     show appConfigProvider, translationsProvider;
+
+/// The playback vocabulary the providers below publish, re-exported for the same reason.
+export '../data/playback/playback_service.dart'
+    show PlaybackPreferences, PlaybackService;
+export '../data/playback/player_state.dart' show PlayerActions, PlayerSnapshot;
+export '../data/playback/quality.dart' show NetworkStatus, effectiveQuality;
 
 /// The platform keystore. Overridden in tests with `MemorySecretStore`.
 final secretStoreProvider = Provider<SecretStore>(
@@ -165,6 +187,335 @@ final browserHandoffProvider = Provider<BrowserHandoff?>((ref) {
 final authControllerProvider = NotifierProvider<AuthController, AuthState>(
   AuthController.new,
 );
+
+// ── on-device storage ─────────────────────────────────────────────────────────────────────────
+
+/// The drift database. Overridden in `bootstrap`, which opens it before the first frame because
+/// the audio service can be started into a process that never builds a widget.
+final databaseProvider = Provider<ChordiaDatabase>(
+  (ref) => throw StateError('databaseProvider must be overridden in bootstrap'),
+);
+
+final downloadsDaoProvider = Provider<DownloadsDao>(
+  (ref) => ref.watch(databaseProvider).downloadsDao,
+);
+
+final scrobbleQueueDaoProvider = Provider<ScrobbleQueueDao>(
+  (ref) => ref.watch(databaseProvider).scrobbleQueueDao,
+);
+
+final kvDaoProvider = Provider<KvDao>(
+  (ref) => ref.watch(databaseProvider).kvDao,
+);
+
+/// This install's opaque device id, minted once and kept.
+///
+/// One per app install, never per screen or per session: the Hub uses it only so a client can tell
+/// its own now-playing report from another of the user's devices, and a fresh id each launch would
+/// make one phone look like a growing crowd.
+final deviceIdProvider = Provider<String>(
+  (ref) => throw StateError('deviceIdProvider must be overridden in bootstrap'),
+);
+
+/// Directory the partial-stream cache writes into. Overridden in `bootstrap`: the path comes from
+/// an async platform call and [StreamCache] takes a resolved directory.
+final audioCacheDirectoryProvider = Provider<Directory>(
+  (ref) => throw StateError(
+    'audioCacheDirectoryProvider must be overridden in bootstrap',
+  ),
+);
+
+// ── network class ─────────────────────────────────────────────────────────────────────────────
+
+/// The live interface list from the platform.
+///
+/// Seeded with an explicit `checkConnectivity` rather than relying on the change stream to open
+/// with the current state, which it does not promise to do on every platform — and a player that
+/// believes it is offline until the user next walks between networks would refuse to stream at all.
+final connectivityProvider = StreamProvider<List<ConnectivityResult>>((
+  ref,
+) async* {
+  final connectivity = Connectivity();
+  yield await connectivity.checkConnectivity();
+  yield* connectivity.onConnectivityChanged;
+});
+
+final networkStatusProvider = Provider<NetworkStatus>((ref) {
+  final results = ref.watch(connectivityProvider).value;
+  return results == null ? NetworkStatus.unknown : NetworkStatus.from(results);
+});
+
+// ── listener preferences ──────────────────────────────────────────────────────────────────────
+
+/// The signed-in listener's settings, or null when nobody is signed in.
+///
+/// Errors are left on the `AsyncValue` rather than swallowed — a settings screen has to be able to
+/// say the fetch failed. Playback reads `valueOrNull` and falls back to [PlaybackPreferences]'
+/// defaults, which is the right behaviour for a phone that is simply offline.
+final userSettingsProvider = FutureProvider<UserSettings?>((ref) async {
+  final hub = ref.watch(hubClientProvider);
+  if (hub == null || !ref.watch(authControllerProvider).isSignedIn) return null;
+  return hub.settings();
+});
+
+final playbackPreferencesProvider = Provider<PlaybackPreferences>(
+  (ref) => PlaybackPreferences.from(ref.watch(userSettingsProvider).value),
+);
+
+// ── the playback stack ────────────────────────────────────────────────────────────────────────
+
+/// Capability tokens, for a consumer that outlives any one hub session.
+///
+/// The engine is built once at boot and never rebuilt, so it cannot hold the per-hub
+/// [GrantManager] directly; see [RoutedGrantManager].
+final playbackGrantsProvider = Provider<GrantManager>(
+  (ref) => RoutedGrantManager(() => ref.read(grantManagerProvider)),
+);
+
+final streamCacheProvider = Provider<StreamCache>(
+  (ref) => StreamCache(directory: ref.watch(audioCacheDirectoryProvider)),
+);
+
+/// The engine, built once for the life of the process.
+///
+/// Nothing here disposes it: [audioHandlerProvider] owns the whole stack's teardown, and disposing
+/// the engine twice is not something just_audio survives.
+final playbackEngineProvider = Provider<PlaybackEngine>(
+  (ref) => JustAudioEngine(
+    grants: ref.watch(playbackGrantsProvider),
+    factory: ref.watch(httpClientFactoryProvider),
+    cache: ref.watch(streamCacheProvider),
+  ),
+);
+
+/// The queue. Also disposed by the handler rather than here.
+final queueControllerProvider = Provider<QueueController>(
+  (ref) => QueueController(),
+);
+
+/// The durable listening pipeline.
+///
+/// Built once and shared across hub switches on purpose: it holds the retry backoff, and the queue
+/// it drains is a table on disk that does not belong to any one session either. The Hub client is
+/// read per send rather than watched, so a switch changes where the next batch goes without
+/// resetting how long the last failure said to wait.
+final scrobbleServiceProvider = Provider<ScrobbleService>((ref) {
+  return ScrobbleService(
+    queue: ref.watch(scrobbleQueueDaoProvider),
+    send: (events) async {
+      final hub = ref.read(hubClientProvider);
+      if (hub == null) {
+        // Status 0 is the transport-failure code the service treats as retryable, which is what
+        // "signed out for the moment" should be: the plays stay queued.
+        throw const ApiException(
+          status: 0,
+          title: 'No hub session to deliver scrobbles to.',
+          method: 'POST',
+          path: '/v1/scrobbles:batch',
+        );
+      }
+      return hub.submitScrobbles(ScrobbleBatch(events: events));
+    },
+    reportNowPlayingWith: (report) async =>
+        ref.read(hubClientProvider)?.reportNowPlaying(report),
+    deviceId: ref.watch(deviceIdProvider),
+    deviceLabel: ref.watch(translationsProvider)(PlayerKeys.devicesMobileApp),
+  );
+});
+
+/// Reads a track's measured loudness from the library holding it.
+final loudnessReaderProvider = Provider<LoudnessReader>((ref) {
+  final grants = ref.watch(playbackGrantsProvider);
+  final factory = ref.watch(httpClientFactoryProvider);
+  return (track) async {
+    final client = LibraryClient(
+      grant: await grants.forLibrary(track.libraryId),
+      factory: factory,
+    );
+    try {
+      return (await client.track(track.trackRef)).audio;
+    } finally {
+      client.close();
+    }
+  };
+});
+
+/// The media session: the notification, the lock screen, a headset button, a car head unit.
+///
+/// Handed to `AudioService.init` in `bootstrap`, so it must be built exactly once. Everything it
+/// watches is itself built once; the two sinks reach the app's playback service through
+/// `ref.read` at call time, which is what keeps this provider from depending on it.
+final Provider<ChordiaAudioHandler> audioHandlerProvider = Provider((ref) {
+  final handler = ChordiaAudioHandler(
+    engine: ref.watch(playbackEngineProvider),
+    controller: ref.watch(queueControllerProvider),
+    resolveArt: notificationArtResolver(ref.watch(artCacheProvider)),
+    onScrobble: (track, msPlayed) =>
+        ref.read(playbackServiceProvider).onScrobble(track, msPlayed),
+    onNowPlaying: (track) =>
+        ref.read(playbackServiceProvider).onTrackStarted(track),
+  );
+  // Disposes the engine and the queue with it.
+  ref.onDispose(handler.dispose);
+  return handler;
+});
+
+/// Everything around a track that is not the audio: which bytes, how loud, and when a play becomes
+/// durable. Started from `bootstrap`.
+final Provider<PlaybackService> playbackServiceProvider = Provider((ref) {
+  final service = PlaybackService(
+    handler: ref.watch(audioHandlerProvider),
+    engine: ref.watch(playbackEngineProvider),
+    queue: ref.watch(queueControllerProvider),
+    resolver: SourceResolver(
+      downloads: (trackId) => ref.read(downloadsDaoProvider).byTrack(trackId),
+      quality: () => effectiveQuality(
+        chosen: ref.read(playbackPreferencesProvider).quality,
+        network: ref.read(networkStatusProvider),
+      ),
+    ),
+    recordPlay:
+        (
+          track, {
+          required startedAt,
+          required msPlayed,
+          context,
+          source = PlaybackSource.ownLibrary,
+        }) async {
+          await ref
+              .read(scrobbleServiceProvider)
+              .record(
+                track: track,
+                startedAt: startedAt,
+                msPlayed: msPlayed,
+                context: context,
+                source: source,
+              );
+        },
+    flush: ({bool force = false}) async {
+      await ref.read(scrobbleServiceProvider).flush(force: force);
+    },
+    reportNowPlaying: (track) =>
+        ref.read(scrobbleServiceProvider).reportNowPlaying(track),
+    readLoudness: (track) => ref.read(loudnessReaderProvider)(track),
+    preferences: () => ref.read(playbackPreferencesProvider),
+    network: () => ref.read(networkStatusProvider),
+  );
+  // Regaining a connection is one of the three flush triggers, and the only one the service cannot
+  // observe for itself.
+  ref.listen(
+    networkStatusProvider,
+    (_, next) => service.onNetworkChanged(next),
+  );
+  ref.onDispose(service.dispose);
+  return service;
+});
+
+// ── what the player UI reads ──────────────────────────────────────────────────────────────────
+
+/// Everything the player draws except the playhead.
+final playerStateProvider =
+    NotifierProvider<PlayerStateNotifier, PlayerSnapshot>(
+      PlayerStateNotifier.new,
+    );
+
+/// The current entry, for the many widgets that need nothing else.
+final currentTrackProvider = Provider<PlayerTrack?>(
+  (ref) => ref.watch(playerStateProvider.select((s) => s.current)),
+);
+
+/// The playhead, sampled at the engine's 2 Hz and on every seek.
+///
+/// Separate from [playerStateProvider] precisely so it can be watched alone: a widget that reads
+/// this rebuilds twice a second, and only the two that draw elapsed time should be doing that.
+/// Publishing it inside the snapshot would re-lay-out the whole player at the same rate, which is
+/// the thing that makes a player feel cheap.
+final playerPositionProvider = StreamProvider<Duration>(
+  (ref) => ref
+      .watch(audioHandlerProvider)
+      .playbackState
+      // `updatePosition` is the last sample the engine reported, not an extrapolation from it —
+      // the scrubber advances in the same steps the engine actually measured.
+      .map((state) => state.updatePosition)
+      .distinct(),
+);
+
+final playerActionsProvider = Provider<PlayerActions>(
+  (ref) => PlayerActions(
+    handler: ref.watch(audioHandlerProvider),
+    queue: ref.watch(queueControllerProvider),
+  ),
+);
+
+/// Folds the queue and the media session into one value the UI can draw.
+///
+/// Two sources, because neither alone is enough: the queue knows what is loaded, in what order and
+/// with which modes, and the handler knows whether it is sounding. They are combined here rather
+/// than in two providers so a widget cannot render a track from one and a transport state from the
+/// other frame.
+class PlayerStateNotifier extends Notifier<PlayerSnapshot> {
+  /// Guards against the media session's replayed current value arriving during [build], before
+  /// there is a `state` to assign to.
+  bool _ready = false;
+
+  bool _playing = false;
+  bool _buffering = false;
+
+  late QueueController _queue;
+
+  /// Rebuilt only when the queue changes, so [PlayerSnapshot]'s equality can settle the common
+  /// case — a playhead tick that changed nothing — on identity alone.
+  List<PlayerTrack> _entries = const [];
+
+  @override
+  PlayerSnapshot build() {
+    _ready = false;
+    final handler = ref.watch(audioHandlerProvider);
+    _queue = ref.watch(queueControllerProvider);
+    _entries = List<PlayerTrack>.unmodifiable(_queue.queue);
+
+    final subscriptions = <StreamSubscription<Object?>>[
+      _queue.events.listen((_) {
+        _entries = List<PlayerTrack>.unmodifiable(_queue.queue);
+        _publish();
+      }),
+      handler.playbackState.listen((playback) {
+        _playing = playback.playing;
+        _buffering =
+            playback.processingState == AudioProcessingState.loading ||
+            playback.processingState == AudioProcessingState.buffering;
+        _publish();
+      }),
+    ];
+    ref.onDispose(() {
+      for (final subscription in subscriptions) {
+        unawaited(subscription.cancel());
+      }
+    });
+
+    final initial = _compute();
+    _ready = true;
+    return initial;
+  }
+
+  void _publish() {
+    if (!_ready) return;
+    final next = _compute();
+    if (next != state) state = next;
+  }
+
+  PlayerSnapshot _compute() => PlayerSnapshot(
+    current: _queue.current,
+    queue: _entries,
+    currentIndex: _queue.currentIndex,
+    playing: _playing,
+    buffering: _buffering,
+    shuffle: _queue.shuffle,
+    repeat: _queue.repeat,
+    sleepTimer: _queue.sleepTimer,
+    context: _queue.context,
+  );
+}
 
 /// Adds, removes and switches hubs, keeping the stored registry and the in-memory one in step.
 class HubsController extends AsyncNotifier<HubRegistrySnapshot> {

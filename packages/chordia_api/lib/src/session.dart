@@ -3,6 +3,8 @@ import 'dart:convert';
 
 import 'package:meta/meta.dart';
 
+import 'errors.dart';
+
 /// A signed-in session for one hub.
 @immutable
 class Session {
@@ -122,6 +124,17 @@ class SessionManager {
   Session? _session;
   Future<Session?>? _inFlight;
 
+  /// The last refresh that failed for want of a network, kept so the UI can say the server is
+  /// unreachable rather than silently showing stale state.
+  ApiException? _lastRefreshFailure;
+
+  /// Set when the most recent refresh could not reach the server. Cleared by a successful one.
+  ApiException? get lastRefreshFailure => _lastRefreshFailure;
+
+  /// True when there is a session whose access token could not be renewed because the server was
+  /// unreachable — signed in, but currently unable to talk to the Hub.
+  bool get isOffline => _session != null && _lastRefreshFailure != null;
+
   /// Emits on sign-out, whether the user asked or a refresh failed terminally.
   final _signedOut = StreamController<void>.broadcast();
   Stream<void> get onSignedOut => _signedOut.stream;
@@ -168,13 +181,23 @@ class SessionManager {
 
     final attempt = _refresher(session.refreshToken)
         .then<Session?>((next) async {
+          _lastRefreshFailure = null;
           await adopt(next);
           return next;
         })
         .catchError((Object error) async {
-          // A refresh token is only rejected when it is gone for good: expired, revoked, or
-          // already spent. Retrying cannot help, and holding the dead session would leave the app
-          // insisting it is signed in.
+          // Only an answer from the server ends a session. A refresh token is rejected when it is
+          // gone for good — expired, revoked, already spent — and retrying cannot help, so the
+          // session is cleared rather than left insisting it is valid.
+          //
+          // A request that never reached the server says nothing about the token. Signing out
+          // there would mean opening the app on a plane logs you out and takes your downloaded
+          // music with it, which is the opposite of what an offline-capable client should do: the
+          // session is kept and the next attempt retries.
+          if (error is ApiException && error.isNetworkFailure) {
+            _lastRefreshFailure = error;
+            return null;
+          }
           await signOut();
           return null;
         })

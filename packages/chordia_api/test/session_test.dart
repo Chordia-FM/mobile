@@ -141,6 +141,66 @@ void main() {
       expect(refreshCalls, 1);
     });
 
+    test('a network failure keeps the session rather than signing out', () async {
+      // Opening the app with no connection must not log someone out — that would take their
+      // downloaded music with it. Only an answer from the server ends a session.
+      final store = MemorySessionStore();
+      final m = build(
+        store: store,
+        refresher: (_) async {
+          refreshCalls++;
+          throw const ApiException(
+            status: 0,
+            title: 'offline',
+            method: 'POST',
+            path: '/v1/auth/refresh',
+          );
+        },
+      );
+      await m.adopt(sessionExpiring(now + 1));
+
+      expect(
+        await m.freshAccessToken(),
+        isNull,
+        reason: 'no usable token right now',
+      );
+      expect(m.isSignedIn, isTrue, reason: 'but still signed in');
+      expect(m.isOffline, isTrue);
+      expect(
+        await store.read('hub'),
+        isNotNull,
+        reason: 'the session stays on disk',
+      );
+    });
+
+    test('a refresh that succeeds later clears the offline flag', () async {
+      var offline = true;
+      final m = build(
+        refresher: (_) async {
+          refreshCalls++;
+          if (offline) {
+            throw const ApiException(
+              status: 0,
+              title: 'offline',
+              method: 'POST',
+              path: '/v1/auth/refresh',
+            );
+          }
+          return sessionExpiring(now + const Duration(hours: 1).inMilliseconds);
+        },
+      );
+      await m.adopt(sessionExpiring(now + 1));
+
+      await m.freshAccessToken();
+      expect(m.isOffline, isTrue);
+
+      offline = false;
+      await m.forceRefresh();
+
+      expect(m.isOffline, isFalse);
+      expect(m.isSignedIn, isTrue);
+    });
+
     test('a later refresh works after an earlier one finished', () async {
       final m = build(
         refresher: (_) async {

@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:math';
 
 import 'package:chordia_api/chordia_api.dart';
+import 'package:chordia_net/chordia_net.dart';
 import 'package:chordia_mobile/app/app.dart';
 import 'package:chordia_mobile/app/config.dart';
 import 'package:chordia_mobile/app/providers.dart';
@@ -17,6 +19,10 @@ import 'package:chordia_mobile/i18n/translations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+// Only the database itself: chordia_db also generates a row class called `Hub`, which would
+// collide with the app's own hub model.
+import 'package:chordia_db/chordia_db.dart' show ChordiaDatabase;
+import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// Loaded once, in real async.
@@ -590,13 +596,51 @@ Future<void> _pumpApp(WidgetTester tester, MemorySecretStore secrets) async {
         translationsProvider.overrideWith((ref) => translations),
         secretStoreProvider.overrideWithValue(secrets),
         deepLinkSourceProvider.overrideWithValue(_FakeLinks()),
+        // Booting the real app boots the real shell: the Home tab reads the on-device store and
+        // the mini-player builds the playback graph. `bootstrap` supplies these in production, so
+        // a widget test has to stand them up itself.
+        databaseProvider.overrideWithValue(
+          ChordiaDatabase(NativeDatabase.memory()),
+        ),
+        deviceIdProvider.overrideWithValue('test-device'),
+        // Every HTTP request in a widget test is answered with a 400 by the test binding, which
+        // the app would read as the server rejecting the refresh token and sign out. An offline
+        // launch is the case worth pinning here, so the client cannot connect at all.
+        httpClientFactoryProvider.overrideWithValue(
+          PinnedHttpClientFactory(clientFactory: (_) => _OfflineHttpClient()),
+        ),
+        audioCacheDirectoryProvider.overrideWithValue(
+          Directory.systemTemp.createTempSync('chordia_test_audio'),
+        ),
       ],
       child: const ChordiaApp(),
     ),
   );
-  for (var i = 0; i < 5; i++) {
-    await tester.pump();
+  // Fixed pumps rather than `pumpAndSettle`: the player publishes a position twice a second, so
+  // the tree never goes quiet and settling would time out. Enough frames for the session to load
+  // from storage and the gate to redirect.
+  for (var i = 0; i < 40; i++) {
+    await tester.pump(const Duration(milliseconds: 20));
   }
+}
+
+/// An HttpClient that cannot reach anything, standing in for a device with no connection.
+///
+/// `noSuchMethod` answers everything else with null so the factory can set its timeouts and user
+/// agent on the way past; only the three members the code under test actually calls are real.
+class _OfflineHttpClient implements HttpClient {
+  @override
+  Future<HttpClientRequest> openUrl(String method, Uri url) =>
+      Future.error(const SocketException('offline'));
+
+  @override
+  Future<HttpClientRequest> getUrl(Uri url) => openUrl('GET', url);
+
+  @override
+  void close({bool force = false}) {}
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
 }
 
 BrowserHandoff _handoff(SecretStore secrets) => BrowserHandoff(

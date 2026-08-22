@@ -251,8 +251,11 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
       label: Text(t(AuthKeys.desktopSignInWithBrowser)),
     ),
     const SizedBox(height: 20),
-    Row(
-      mainAxisAlignment: MainAxisAlignment.center,
+    // Wraps rather than a Row: these are two translated strings side by side, and a language that
+    // spells either of them longer than English overflows a Row on a narrow phone.
+    Wrap(
+      alignment: WrapAlignment.center,
+      crossAxisAlignment: WrapCrossAlignment.center,
       children: [
         Text(
           t(AuthKeys.loginNoAccount),

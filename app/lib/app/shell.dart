@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../features/player/mini_player.dart';
 import '../i18n/keys.g.dart';
 import '../i18n/translations_provider.dart';
 
@@ -20,7 +21,7 @@ class AppShell extends ConsumerWidget {
       bottomNavigationBar: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const _MiniPlayerSlot(),
+          const MiniPlayer(),
           NavigationBar(
             selectedIndex: shell.currentIndex,
             onDestinationSelected: (index) => shell.goBranch(
@@ -55,13 +56,4 @@ class AppShell extends ConsumerWidget {
       ),
     );
   }
-}
-
-/// Reserved for the mini-player, which arrives with the playback milestone. It renders nothing
-/// until there is something playing, so the shell already has the right shape.
-class _MiniPlayerSlot extends StatelessWidget {
-  const _MiniPlayerSlot();
-
-  @override
-  Widget build(BuildContext context) => const SizedBox.shrink();
 }

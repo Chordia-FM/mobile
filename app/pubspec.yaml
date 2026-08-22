@@ -10,6 +10,9 @@ environment:
 
 dependencies:
   app_links: ^6.4.0
+  # Direct, not transitive through chordia_player: `bootstrap` calls `AudioService.init` itself,
+  # because the media session has to exist before the first frame.
+  audio_service: ^0.18.18
   cached_network_image: ^3.4.1
   chordia_api: ^0.1.0
   chordia_db: ^0.1.0
@@ -36,6 +39,10 @@ dependencies:
 
 dev_dependencies:
   build_runner: ^2.4.13
+  # Test-only: the DAO-backed screens are exercised against `NativeDatabase.memory()`, the same
+  # in-memory database `chordia_db`'s own tests use. The app itself never opens one directly — it
+  # goes through `package:chordia_db/open.dart`.
+  drift: ^2.34.0
   flutter_lints: ^6.0.0
   flutter_test:
     sdk: flutter

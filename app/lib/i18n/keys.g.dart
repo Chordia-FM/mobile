@@ -552,6 +552,7 @@ abstract final class CatalogKeys {
   static const albumDurationMin = 'catalog:album.durationMin';
   static const albumGenresJoin = 'catalog:album.genresJoin';
   static const albumGoToRadio = 'catalog:album.goToRadio';
+  static const albumNoTracks = 'catalog:album.noTracks';
   static const albumReleaseDate = 'catalog:album.releaseDate';
   static const albumSongCount = 'catalog:album.songCount';
   static const albumTypesJoin = 'catalog:album.typesJoin';
@@ -643,6 +644,7 @@ abstract final class CatalogKeys {
   static const genresTitle = 'catalog:genres.title';
   static const genresTopAlbums = 'catalog:genres.topAlbums';
   static const genresTopArtists = 'catalog:genres.topArtists';
+  static const genresTopTracks = 'catalog:genres.topTracks';
   static const genresVariants = 'catalog:genres.variants';
   static const labelAlbumCount = 'catalog:label.albumCount';
   static const labelAlbumCountWithPrefix = 'catalog:label.albumCountWithPrefix';
@@ -698,7 +700,9 @@ abstract final class CatalogKeys {
   static const searchPlaceholder = 'catalog:search.placeholder';
   static const sectionAlbums = 'catalog:section.albums';
   static const sectionArtists = 'catalog:section.artists';
+  static const sectionGenres = 'catalog:section.genres';
   static const sectionLabels = 'catalog:section.labels';
+  static const sectionPlaylists = 'catalog:section.playlists';
   static const sectionSongs = 'catalog:section.songs';
   static const sectionTracks = 'catalog:section.tracks';
   static const songCount = 'catalog:songCount';
@@ -708,6 +712,7 @@ abstract final class CatalogKeys {
   static const trackColumnPlays = 'catalog:track.column.plays';
   static const trackColumnTitle = 'catalog:track.column.title';
   static const trackCount = 'catalog:trackCount';
+  static const trackDetails = 'catalog:track.details';
   static const trackDownloadExists = 'catalog:track.download.exists';
   static const trackDownloadRemoveAction =
       'catalog:track.download.removeAction';
@@ -715,8 +720,13 @@ abstract final class CatalogKeys {
   static const trackDownloadRemoved = 'catalog:track.download.removed';
   static const trackDownloadSavedNamed = 'catalog:track.download.savedNamed';
   static const trackExplicit = 'catalog:track.explicit';
+  static const trackExplicitShort = 'catalog:track.explicitShort';
+  static const trackHubPlays = 'catalog:track.hubPlays';
+  static const trackLength = 'catalog:track.length';
+  static const trackNumber = 'catalog:track.number';
   static const trackPlayAria = 'catalog:track.playAria';
   static const trackPlaysNumber = 'catalog:track.playsNumber';
+  static const trackRank = 'catalog:track.rank';
   static const trackRelTimeDaysAgo = 'catalog:track.relTime.daysAgo';
   static const trackRelTimeFullDate = 'catalog:track.relTime.fullDate';
   static const trackRelTimeToday = 'catalog:track.relTime.today';
@@ -886,6 +896,7 @@ abstract final class CommonKeys {
 /// Keys for the `discovery` namespace.
 abstract final class DiscoveryKeys {
   static const dailyMixLabel = 'discovery:dailyMix.label';
+  static const friendsNowPlaying = 'discovery:friends.nowPlaying';
   static const greetingAfternoon = 'discovery:greeting.afternoon';
   static const greetingEvening = 'discovery:greeting.evening';
   static const greetingMorning = 'discovery:greeting.morning';
@@ -1013,7 +1024,11 @@ abstract final class ErrorsKeys {
   static const catalogAlbumLoadFailed = 'errors:catalog.albumLoadFailed';
   static const catalogArtistLoadFailed = 'errors:catalog.artistLoadFailed';
   static const catalogArtistNameTaken = 'errors:catalog.artistNameTaken';
+  static const catalogGenreLoadFailed = 'errors:catalog.genreLoadFailed';
+  static const catalogGenresLoadFailed = 'errors:catalog.genresLoadFailed';
   static const catalogLabelLoadFailed = 'errors:catalog.labelLoadFailed';
+  static const catalogLabelsLoadFailed = 'errors:catalog.labelsLoadFailed';
+  static const catalogTrackLoadFailed = 'errors:catalog.trackLoadFailed';
   static const catalogUnknownArtist = 'errors:catalog.unknownArtist';
   static const catalogUnknownImageHash = 'errors:catalog.unknownImageHash';
   static const changeFailed = 'errors:changeFailed';
@@ -1933,6 +1948,9 @@ abstract final class PlayerKeys {
   static const controlsPlay = 'player:controls.play';
   static const controlsPrevious = 'player:controls.previous';
   static const controlsRepeat = 'player:controls.repeat';
+  static const controlsRepeatAll = 'player:controls.repeatAll';
+  static const controlsRepeatOff = 'player:controls.repeatOff';
+  static const controlsRepeatOne = 'player:controls.repeatOne';
   static const controlsSeek = 'player:controls.seek';
   static const controlsShuffle = 'player:controls.shuffle';
   static const controlsUnmute = 'player:controls.unmute';
@@ -1940,6 +1958,7 @@ abstract final class PlayerKeys {
   static const controlsVolumeButton = 'player:controls.volumeButton';
   static const controlsVolumeSlider = 'player:controls.volumeSlider';
   static const devicesCurrent = 'player:devices.current';
+  static const devicesMobileApp = 'player:devices.mobileApp';
   static const devicesNone = 'player:devices.none';
   static const devicesPressPlay = 'player:devices.pressPlay';
   static const devicesThisTab = 'player:devices.thisTab';
@@ -1998,6 +2017,7 @@ abstract final class PlayerKeys {
   static const monthlyListeners = 'player:monthlyListeners';
   static const notPlaying = 'player:notPlaying';
   static const nothingPlaying = 'player:nothingPlaying';
+  static const notificationChannelName = 'player:notification.channelName';
   static const nowPlayingAboutArtist = 'player:nowPlaying.aboutArtist';
   static const nowPlayingAlbumFallback = 'player:nowPlaying.albumFallback';
   static const nowPlayingPlayingFrom = 'player:nowPlaying.playingFrom';
@@ -2308,6 +2328,7 @@ abstract final class PlaylistsKeys {
 abstract final class SearchKeys {
   static const noResults = 'search:noResults';
   static const prompt = 'search:prompt';
+  static const recentTitle = 'search:recent.title';
 }
 
 /// Keys for the `settings` namespace.
