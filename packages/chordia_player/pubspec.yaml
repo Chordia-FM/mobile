@@ -25,6 +25,9 @@ dependencies:
   uuid: ^4.5.1
 
 dev_dependencies:
+  drift: ^2.34.0
   flutter_lints: ^6.0.0
   flutter_test:
     sdk: flutter
+  sqlite3: ^3.4.0
+  test: ^1.25.0

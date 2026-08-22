@@ -126,6 +126,10 @@ class HubClient {
     return _url('/v1/images/$sha256', {'w': snapped});
   }
 
+  /// Downloads an image. Unauthenticated on the Hub — the address is the capability.
+  Future<List<int>> imageBytes(String sha256, {int? width}) =>
+      _transport.bytes(url: imageUrl(sha256, width: width));
+
   void close() => _transport.close();
 }
 

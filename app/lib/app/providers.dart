@@ -1,11 +1,14 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:chordia_api/chordia_api.dart';
 import 'package:chordia_net/chordia_net.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../data/art/art_cache.dart';
 import '../data/auth_repository.dart';
 import '../data/browser_handoff.dart';
 import '../data/hub.dart';
@@ -98,6 +101,31 @@ final hubClientProvider = Provider<HubClient?>((ref) {
   );
   ref.onDispose(client.close);
   return client;
+});
+
+/// Artwork, fetched once at a width the Hub derives and then read off disk.
+///
+/// Deliberately not scoped to the active hub: covers are content-addressed, so the same hash is
+/// the same image whichever server served it, and re-downloading a shared cover after a hub switch
+/// would be waste.
+final artCacheProvider = Provider<ArtCache>((ref) {
+  return ArtCache(
+    directory: getApplicationCacheDirectory().then(
+      (base) => Directory('${base.path}${Platform.pathSeparator}art'),
+    ),
+    fetch: (sha256, width) async {
+      final hub = ref.read(hubClientProvider);
+      if (hub == null) throw const ArtMissingException('no active hub');
+      try {
+        return Uint8List.fromList(await hub.imageBytes(sha256, width: width));
+      } on ApiException catch (e) {
+        // A 404 is an answer, not a failure: this entity has no artwork, and the cache remembers
+        // that so a grid of art-less albums does not re-ask on every scroll.
+        if (e.isNotFound) throw ArtMissingException(sha256);
+        rethrow;
+      }
+    },
+  );
 });
 
 /// Capability tokens for library servers.

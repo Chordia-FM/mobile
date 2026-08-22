@@ -86,6 +86,43 @@ class JsonTransport {
     }
   }
 
+  /// Fetches a raw body, for the endpoints that answer with bytes rather than JSON.
+  Future<List<int>> bytes({
+    required Uri url,
+    Map<String, String> headers = const {},
+  }) async {
+    try {
+      final request = await client.getUrl(url).timeout(timeout);
+      headers.forEach(request.headers.set);
+      final response = await request.close().timeout(timeout);
+
+      if (response.statusCode >= 400) {
+        throw ApiException(
+          status: response.statusCode,
+          title: response.reasonPhrase,
+          method: 'GET',
+          path: url.path,
+        );
+      }
+      final chunks = await response.toList();
+      return [for (final c in chunks) ...c];
+    } on ApiException {
+      rethrow;
+    } on Object catch (e) {
+      final mismatch = factory.takeLastMismatch();
+      throw ApiException(
+        status: 0,
+        title: mismatch != null
+            ? 'This server presented an unexpected certificate.'
+            : 'Could not reach the server.',
+        method: 'GET',
+        path: url.path,
+        detail: (mismatch ?? e).toString(),
+        cause: mismatch ?? e,
+      );
+    }
+  }
+
   void close() => client.close(force: true);
 }
 
