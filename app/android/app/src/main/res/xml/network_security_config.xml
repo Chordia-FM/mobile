@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Audio never reaches ExoPlayer directly: it is fetched by Dart over a pinned TLS connection and
+  handed to the player through just_audio's loopback proxy. That local leg is plain HTTP on
+  127.0.0.1 and never leaves the device, so cleartext is permitted for localhost only.
+-->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">127.0.0.1</domain>
+        <domain includeSubdomains="false">localhost</domain>
+    </domain-config>
+    <base-config cleartextTrafficPermitted="false"/>
+</network-security-config>

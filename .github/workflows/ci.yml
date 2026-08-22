@@ -6,12 +6,12 @@ on:
   pull_request:
     branches: [main]
 
-# Nothing pushes to this repo today — it is a scaffold, not active work — so in practice this runs
-# only when somebody opens a PR against it. That is deliberate: the gate is here and working for
-# whenever mobile becomes real, and costs nothing until then.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
+
+env:
+  FLUTTER_VERSION: "3.44.2"
 
 jobs:
   analyze:
@@ -20,16 +20,80 @@ jobs:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
         with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
+          cache: true
       - run: flutter pub get
+      - run: dart format --output=none --set-exit-if-changed .
       - run: flutter analyze
-      # `flutter test` exits 1 on `Test directory "test" not found`, which is not a failing test — it
-      # is a scaffold that has not grown any yet, and a job that is red for that reason teaches
-      # everyone to ignore it. Runs for real the moment the directory appears.
-      - name: Test, once there are tests
+
+  test:
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      # The pure-Dart packages hold the load-bearing logic — certificate pinning, the mesh
+      # protocol, queue semantics, the scrobble latch — and run on the VM with no emulator.
+      - name: Package tests
         run: |
-          if [ -d test ]; then
-            flutter test
-          else
-            echo "No test/ directory yet — skipping."
-          fi
+          for pkg in packages/*/; do
+            if [ -d "$pkg/test" ]; then
+              echo "::group::$pkg"
+              (cd "$pkg" && dart test)
+              echo "::endgroup::"
+            fi
+          done
+      - name: App tests
+        run: flutter test
+        working-directory: app
+
+  drift-check:
+    # Generated code and synced locale assets are committed, so a change that was never regenerated
+    # is a diff here rather than a surprise at runtime.
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check out the shared locale catalogs beside this repo
+        uses: actions/checkout@v4
+        with:
+          repository: chordia-fm/i18n
+          path: .i18n-src
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Locale assets are in sync
+        run: dart tool/sync_i18n.dart --check --source .i18n-src
+
+  build:
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Build dev APK
+        run: >-
+          flutter build apk --debug --flavor dev
+          -t lib/main_dev.dart
+          --dart-define-from-file=../env/dev.json
+        working-directory: app
+      - uses: actions/upload-artifact@v4
+        with:
+          name: chordia-dev-apk
+          path: app/build/app/outputs/flutter-apk/app-dev-debug.apk
+          if-no-files-found: error

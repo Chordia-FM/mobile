@@ -1,0 +1,30 @@
+name: chordia_player
+description: >-
+  The playback engine and everything the OS sees of it: queue, crossfade decks, adaptive quality,
+  the pinned caching audio source, and the media session that drives the notification and lock
+  screen.
+publish_to: "none"
+version: 0.1.0
+resolution: workspace
+
+environment:
+  sdk: ^3.12.0
+  flutter: ">=3.44.0"
+
+dependencies:
+  audio_service: ^0.18.18
+  audio_session: ^0.2.0
+  chordia_api: ^0.1.0
+  chordia_db: ^0.1.0
+  chordia_net: ^0.1.0
+  chordia_sync: ^0.1.0
+  flutter:
+    sdk: flutter
+  just_audio: ^0.10.0
+  meta: ^1.16.0
+  uuid: ^4.5.1
+
+dev_dependencies:
+  flutter_lints: ^6.0.0
+  flutter_test:
+    sdk: flutter
