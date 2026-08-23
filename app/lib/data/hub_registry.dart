@@ -22,6 +22,13 @@ abstract interface class HubRegistry {
 
   /// Points the app at [id]. An unknown id leaves the registry untouched.
   Future<HubRegistrySnapshot> setActive(String id);
+
+  /// True when nothing has ever been written here — a first launch, not an emptied list.
+  ///
+  /// The difference is what makes seeding a default hub safe to do once. Somebody who removes the
+  /// last server has expressed an opinion, and putting it back on the next launch would override
+  /// it silently; a fresh install has expressed nothing.
+  Future<bool> isPristine();
 }
 
 /// The registry as one JSON blob in the keystore.
@@ -36,6 +43,9 @@ class SecretsHubRegistry implements HubRegistry {
   static const storageKey = 'chordia_hubs::v1';
 
   final SecretStore _secrets;
+
+  @override
+  Future<bool> isPristine() async => await _secrets.read(storageKey) == null;
 
   @override
   Future<HubRegistrySnapshot> list() async {

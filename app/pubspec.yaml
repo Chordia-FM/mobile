@@ -65,13 +65,14 @@ flutter_launcher_icons:
   android: true
   ios: true
   image_path: assets/brand/icon.png
-  # Android 8+ composites these two and animates them independently. The foreground is the UNPADDED
-  # render: this tool insets it 16% to make the safe zone itself, and feeding it the maskable file —
-  # which already carries 10% padding of its own — would stack the two and leave the mark at roughly
-  # half the icon, visibly smaller than everything else in the launcher.
+  # Android 8+ composites these two, so the foreground must be TRANSPARENT outside the mark. Both
+  # PNGs the frontend publishes are opaque on purpose — one is the square app icon, the other a PWA
+  # maskable icon, which the spec requires to fill its canvas — and either one used here hides the
+  # background entirely and renders as a flat near-black tile. `tool/gen_icon_foreground.mjs` makes
+  # the transparent render this needs.
   adaptive_icon_background: "#040208"
-  adaptive_icon_foreground: assets/brand/icon.png
+  adaptive_icon_foreground: assets/brand/icon-foreground.png
   # The monochrome layer Android 13+ tints for themed icons. Same artwork: the system takes the
   # alpha and discards the colour, so a flat silhouette is what it actually renders.
-  adaptive_icon_monochrome: assets/brand/icon.png
+  adaptive_icon_monochrome: assets/brand/icon-foreground.png
   remove_alpha_ios: true

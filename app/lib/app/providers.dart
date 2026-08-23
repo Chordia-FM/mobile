@@ -580,7 +580,30 @@ class PlayerStateNotifier extends Notifier<PlayerSnapshot> {
 /// Adds, removes and switches hubs, keeping the stored registry and the in-memory one in step.
 class HubsController extends AsyncNotifier<HubRegistrySnapshot> {
   @override
-  Future<HubRegistrySnapshot> build() => ref.watch(hubRegistryProvider).list();
+  Future<HubRegistrySnapshot> build() async {
+    final registry = ref.watch(hubRegistryProvider);
+    final snapshot = await registry.list();
+    if (snapshot.hubs.isNotEmpty || !await registry.isPristine()) {
+      return snapshot;
+    }
+
+    // First launch: put the build's own hub in the list so somebody who just installed the app is
+    // looking at a server rather than an empty picker. Deliberately not probed — a network call on
+    // the launch path delays the first frame, and an unreachable server is something sign-in will
+    // say plainly a moment later. The host stands in as the name until a probe learns the real one.
+    final url = Uri.tryParse(ref.watch(appConfigProvider).defaultHubUrl);
+    if (url == null || url.host.isEmpty) {
+      return snapshot;
+    }
+    return registry.add(
+      Hub(
+        id: Hub.idFor(url),
+        url: url,
+        name: url.host,
+        addedAt: DateTime.now().millisecondsSinceEpoch,
+      ),
+    );
+  }
 
   /// Records a hub that answered a probe, and makes it active.
   Future<void> addProbed(HubProbeResult result) => add(

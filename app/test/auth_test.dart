@@ -371,6 +371,28 @@ void main() {
       expect(snapshot.active?.name, 'one.example');
     });
 
+    test('a fresh registry is pristine, a used one is not', () async {
+      // This is the whole basis for seeding a default hub exactly once: an emptied list and a
+      // never-written one look identical through `list()`, and only one of them should be seeded.
+      final registry = SecretsHubRegistry(MemorySecretStore());
+      expect(await registry.isPristine(), isTrue);
+
+      final added = await registry.add(hub('one.example'));
+      expect(await registry.isPristine(), isFalse);
+
+      await registry.remove(added.hubs.single.id);
+      expect(
+        (await registry.list()).hubs,
+        isEmpty,
+        reason: 'the list is empty again',
+      );
+      expect(
+        await registry.isPristine(),
+        isFalse,
+        reason: 'but somebody has been here, so the default is not put back',
+      );
+    });
+
     test(
       'adding the same address twice replaces rather than duplicates',
       () async {
