@@ -1,7 +1,9 @@
 import 'package:chordia_api/chordia_api.dart';
 import 'package:chordia_mobile/app/router.dart';
 import 'package:chordia_mobile/features/admin/data/admin_providers.dart';
+import 'package:chordia_mobile/app/theme.dart';
 import 'package:chordia_mobile/features/nav/insights_tab.dart';
+import 'package:chordia_mobile/features/nav/mobile_tab_bar.dart';
 import 'package:chordia_mobile/features/nav/nav_drawer.dart';
 import 'package:chordia_mobile/features/nav/nav_tabs.dart';
 import 'package:chordia_mobile/features/social/data/social_providers.dart';
@@ -72,6 +74,95 @@ void main() {
             .map((branch) => (branch.routes.single as GoRoute).path)
             .toList(),
         NavTab.values.map((tab) => tab.path).toList(),
+      );
+    });
+  });
+
+  group('the tab bar is drawn, not inherited', () {
+    Future<void> pumpBar(WidgetTester tester, {int selected = 0}) =>
+        tester.pumpWidget(
+          ProviderScope(
+            overrides: [translationsProvider.overrideWithValue(translations)],
+            child: MaterialApp(
+              theme: buildChordiaTheme(),
+              home: Scaffold(
+                body: MobileTabBar(currentIndex: selected, onSelected: (_) {}),
+              ),
+            ),
+          ),
+        );
+
+    testWidgets("is not Material's NavigationBar", (tester) async {
+      // The whole reason this widget exists. `NavigationBar` brings an indicator pill behind the
+      // selected icon, its own height and its own ripple; the web's bar has none of the three, and
+      // a phone wearing Material's shape in this app's colours is the complaint in miniature.
+      await pumpBar(tester);
+      expect(find.byType(MobileTabBar), findsOneWidget);
+      expect(find.byType(NavigationBar), findsNothing);
+      expect(find.byType(NavigationDestination), findsNothing);
+    });
+
+    testWidgets('marks the selected tab in the accent, on icon and label', (
+      tester,
+    ) async {
+      await pumpBar(tester, selected: 2);
+      final context = tester.element(find.byType(MobileTabBar));
+      final accent = context.surfaces.accent;
+      final muted = Theme.of(context).colorScheme.onSurfaceVariant;
+
+      Color iconColour(String label) => tester
+          .widget<Icon>(
+            find.descendant(
+              of: find
+                  .ancestor(of: find.text(label), matching: find.byType(Column))
+                  .first,
+              matching: find.byType(Icon),
+            ),
+          )
+          .color!;
+      Color textColour(String label) =>
+          tester.widget<Text>(find.text(label)).style!.color!;
+
+      final selected = translations(CommonKeys.navLibrary);
+      final other = translations(CommonKeys.navHome);
+
+      // `text-primary` on the web colours the glyph AND the word. Colouring only the icon is what
+      // makes a tab bar look half-lit.
+      expect(iconColour(selected), accent);
+      expect(textColour(selected), accent);
+      expect(iconColour(other), muted);
+      expect(textColour(other), muted);
+    });
+
+    testWidgets('keeps the labels off the home-indicator inset', (
+      tester,
+    ) async {
+      // `pb-(--safe-b)`: the inset is padding UNDER the bar's own height, not a slice taken out of
+      // it, so a gesture-bar phone gets a taller bar rather than squashed labels.
+      const inset = 34.0;
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [translationsProvider.overrideWithValue(translations)],
+          child: MaterialApp(
+            theme: buildChordiaTheme(),
+            home: MediaQuery(
+              data: const MediaQueryData(
+                viewPadding: EdgeInsets.only(bottom: inset),
+              ),
+              // Loose constraints, the way a `Scaffold` gives its bottom bar. As `home` it would be
+              // handed the whole screen tight and report the screen's height, measuring nothing.
+              child: Align(
+                alignment: Alignment.bottomCenter,
+                child: MobileTabBar(currentIndex: 0, onSelected: (_) {}),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      expect(
+        tester.getSize(find.byType(MobileTabBar)).height,
+        MobileTabBar.barHeight + inset,
       );
     });
   });

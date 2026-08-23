@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../features/nav/mobile_tab_bar.dart';
 import '../features/nav/nav_drawer.dart';
 import '../features/nav/nav_tabs.dart';
 import '../features/player/mini_player.dart';
-import '../i18n/translations_provider.dart';
 
 /// The persistent frame: tab bar at the bottom, mini-player docked above it, tab content above
 /// that. The player survives tab switches because it lives in the shell, not in any branch.
@@ -31,7 +31,6 @@ class _AppShellState extends ConsumerState<AppShell> {
 
   @override
   Widget build(BuildContext context) {
-    final t = ref.t;
     final tab = NavTab.values[widget.shell.currentIndex];
     // A tab root is a one-segment location: `/home`, not `/home/albums/x`. Anything deeper is a
     // screen the tab pushed, and those bring their own bar with a back button.
@@ -57,21 +56,13 @@ class _AppShellState extends ConsumerState<AppShell> {
           mainAxisSize: MainAxisSize.min,
           children: [
             const MiniPlayer(),
-            NavigationBar(
-              selectedIndex: widget.shell.currentIndex,
-              onDestinationSelected: (index) => widget.shell.goBranch(
+            MobileTabBar(
+              currentIndex: widget.shell.currentIndex,
+              onSelected: (index) => widget.shell.goBranch(
                 index,
                 // Tapping the tab you are already on pops that tab back to its root.
                 initialLocation: index == widget.shell.currentIndex,
               ),
-              destinations: [
-                for (final destination in NavTab.values)
-                  NavigationDestination(
-                    icon: Icon(destination.icon),
-                    selectedIcon: Icon(destination.selectedIcon),
-                    label: t(destination.labelKey),
-                  ),
-              ],
             ),
           ],
         ),
