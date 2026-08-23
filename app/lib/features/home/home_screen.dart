@@ -14,6 +14,7 @@ import 'data/daypart.dart';
 import 'data/discovery_nav.dart';
 import 'data/home_feed.dart';
 import 'widgets/cards.dart';
+import 'widgets/hero.dart';
 import 'widgets/rail.dart';
 
 /// The home tab: a scrolling feed of horizontal shelves.
@@ -72,17 +73,12 @@ class HomeScreen extends ConsumerWidget {
       return const [SliverToBoxAdapter(child: HomeSkeleton())];
     }
 
-    if (feed.isEmpty) {
-      return [
-        SliverFillRemaining(
-          hasScrollBody: false,
-          child: CatalogEmpty(message: ref.t(DiscoveryKeys.homeEmptyState)),
-        ),
-      ];
-    }
-
+    // No empty state below this point, and that is the web's shape rather than an omission: the
+    // hero has a variant for every degree of nothing — no library, no history, no mixes — and each
+    // one hands the listener something to press. `CatalogEmpty` here was a sentence and a shrug.
     final rails = feed.rails;
     return [
+      SliverToBoxAdapter(child: HomeHero(feed: feed)),
       SliverList.builder(
         itemCount: rails.length,
         itemBuilder: (context, index) =>
@@ -122,52 +118,14 @@ class HomeScreen extends ConsumerWidget {
           ),
         );
 
-      case HomeRail.jumpBackIn:
-        return RailSection(
-          title: t(DiscoveryKeys.shelfJumpBackIn),
-          child: RailShelf(
-            height: shelfHeight,
-            itemCount: feed.recent.length,
-            itemBuilder: (context, index) {
-              final item = feed.recent[index];
-              return EntityCard(
-                imageUrl: item.imageUrl,
-                title: item.name,
-                subtitle: item.subtitle,
-                shape: item.kind == RecentKind.artist
-                    ? BoxShape.circle
-                    : BoxShape.rectangle,
-                fallbackIcon: switch (item.kind) {
-                  RecentKind.artist => Icons.person_rounded,
-                  RecentKind.playlist => Icons.queue_music_rounded,
-                  RecentKind.album => Icons.album_rounded,
-                },
-                onTap: () => switch (item.kind) {
-                  RecentKind.album => context.goToAlbum(item.id),
-                  RecentKind.artist => context.goToArtist(item.id),
-                  RecentKind.playlist => context.goToPlaylist(item.id),
-                },
-              );
-            },
-          ),
-        );
-
       case HomeRail.madeForYou:
         return RailSection(
           title: t(DiscoveryKeys.madeForYouTitle),
+          onSeeAll: () => context.goToMadeForYou(),
           child: RailShelf(
             height: shelfHeight,
             itemCount: feed.mixes.length,
-            itemBuilder: (context, index) {
-              final mix = feed.mixes[index];
-              return EntityCard(
-                imageUrl: mix.imageUrl,
-                title: mix.title,
-                subtitle: mix.subtitle,
-                fallbackIcon: Icons.radio_rounded,
-                onTap: () => context.goToArtistRadio(mix.seedArtistId),
-              );
-            },
+            itemBuilder: (context, index) => MixCard(mix: feed.mixes[index]),
           ),
         );
 

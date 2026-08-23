@@ -2,6 +2,8 @@ import 'package:chordia_api/chordia_api.dart';
 import 'package:chordia_mobile/app/router.dart';
 import 'package:chordia_mobile/features/admin/data/admin_providers.dart';
 import 'package:chordia_mobile/app/theme.dart';
+import 'package:chordia_mobile/features/library/data/library_providers.dart';
+import 'package:chordia_mobile/features/nav/account_menu.dart';
 import 'package:chordia_mobile/features/nav/insights_tab.dart';
 import 'package:chordia_mobile/features/nav/mobile_tab_bar.dart';
 import 'package:chordia_mobile/features/nav/nav_drawer.dart';
@@ -11,6 +13,7 @@ import 'package:chordia_mobile/features/social/profile_screen.dart';
 import 'package:chordia_mobile/i18n/keys.g.dart';
 import 'package:chordia_mobile/i18n/translations.dart';
 import 'package:chordia_mobile/i18n/translations_provider.dart';
+import 'package:chordia_mobile/widgets/cover_art.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -28,6 +31,31 @@ import 'package:go_router/go_router.dart';
 /// Loaded once, in real async: `testWidgets` runs inside a fake-async zone where an asset read never
 /// completes, so the catalogs have to be in hand before the first pump.
 late Translations translations;
+
+const _viewer = UserProfile(
+  createdAt: 0,
+  displayName: 'Kanin',
+  handle: 'kanin',
+  id: 'kanin-id',
+);
+
+const _mine = LibrarySummary(
+  createdAt: 0,
+  id: 'lib-1',
+  name: 'Mine',
+  ownerId: 'kanin-id',
+  serverId: 'srv-1',
+  trackCount: 900,
+);
+
+const _theirs = LibrarySummary(
+  createdAt: 0,
+  id: 'lib-2',
+  name: 'Theirs',
+  ownerId: 'dee-id',
+  serverId: 'srv-2',
+  trackCount: 40,
+);
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -174,16 +202,19 @@ void main() {
       await _pumpDrawer(tester, admin: false);
 
       expect(_labels(tester), <String>[
-        // Above the rule the web hosts its whole sidebar. Everything in it is the Library tab on
-        // this client except the Manager, which would otherwise have nowhere to be opened from.
         translations(ManagerKeys.nav),
-        // Below the rule: `MobileNavDrawer.tsx`, entry for entry, in its order.
+        // `MobileNavDrawer.tsx`, entry for entry, in its order.
         translations(CommonKeys.navFriends),
         translations(CommonKeys.navAllLibraries),
         translations(CatalogKeys.genresTitle),
         translations(CatalogKeys.labelsTitle),
         translations(SettingsKeys.equalizerTitle),
         translations(CommonKeys.navSettings),
+        // Then the sidebar block's fixed rows — the web's system rows, minus Search (a tab here)
+        // and minus the Manager (already above). Everything after these is the listener's own
+        // content, which is a `NavDrawerEntityRow` and is asserted separately.
+        translations(LibraryKeys.likedSongs),
+        translations(LibraryKeys.downloadsNavLabel),
       ]);
       // The web's keybinds-help entry is deliberately absent: it lists chords a phone cannot type.
       expect(
@@ -204,6 +235,75 @@ void main() {
       expect(_labels(tester), contains(translations(AdminKeys.title)));
     });
 
+    testWidgets('carries the sidebar block: the listener\'s own things', (
+      tester,
+    ) async {
+      // The web's phone drawer hosts `<Sidebar variant="drawer" />`, and its tab bar is only four
+      // entries BECAUSE of that ("Everything the rail carries ... lives in that drawer"). Leaving
+      // it out sent anybody wanting a named playlist through the Library tab and a list.
+      await _pumpDrawer(
+        tester,
+        admin: false,
+        pins: const [
+          PinnedItem(id: 'p1', kind: PinKind.artist, name: 'Pinned artist'),
+        ],
+        smart: const [
+          SmartPlaylist(
+            createdAt: 0,
+            id: 's1',
+            name: 'Auto mix',
+            rules: SmartRules(),
+            trackCount: 12,
+          ),
+        ],
+        playlists: const [
+          Playlist(createdAt: 0, id: 'pl1', name: 'Late night', trackCount: 30),
+        ],
+        libraries: const [_mine],
+        shared: const [_theirs],
+      );
+
+      // Pins, smart playlists and hand-built playlists are entity rows: artwork and a name, the
+      // shape the web's sidebar gives them.
+      expect(_entityRows(tester), <String>[
+        'Pinned artist',
+        'Auto mix',
+        'Late night',
+      ]);
+      // Libraries are icon rows, so they land in the destination list rather than beside the
+      // artwork — same split the web draws.
+      expect(_labels(tester), containsAllInOrder(<String>['Mine', 'Theirs']));
+    });
+
+    testWidgets('shows nothing of the block that has nothing in it', (
+      tester,
+    ) async {
+      // A drawer opened before five requests land — or by an account with no playlists at all —
+      // must not be a column of empty headings.
+      await _pumpDrawer(tester, admin: false);
+
+      expect(_entityRows(tester), isEmpty);
+      expect(
+        find.text(translations(LibraryKeys.sidebarPlaylists).toUpperCase()),
+        findsNothing,
+      );
+      expect(
+        find.text(translations(LibraryKeys.sidebarSharedWithYou).toUpperCase()),
+        findsNothing,
+      );
+    });
+
+    testWidgets('carries the account menu the web keeps in its top bar', (
+      tester,
+    ) async {
+      // `UserMenu` is ungated on the web — it is on every /app page including a phone — and this
+      // client had no equivalent anywhere, which is why signing out was four levels down.
+      await _pumpDrawer(tester, admin: false);
+
+      expect(find.byType(NavAccountButton), findsOneWidget);
+      expect(find.byType(CoverArt), findsWidgets);
+    });
+
     test('every destination it offers resolves from every tab', () {
       final router = _router();
       // The drawer pushes onto the CURRENT tab, so a destination registered under one branch only
@@ -217,6 +317,18 @@ void main() {
         'settings',
         'admin',
         'insights',
+        // The sidebar block. These were screens the Library tab pushed by hand; the drawer is built
+        // above every branch navigator, so a route is the only thing it can push.
+        'liked',
+        'downloads',
+        'smart/sp-1',
+        'library/lib-1',
+        'playlists/pl-1',
+        'albums/al-1',
+        'artists/ar-1',
+        'radio/artist/ar-1',
+        // The account menu's own list.
+        'u/kanin',
       ];
       for (final tab in NavTab.values) {
         for (final destination in destinations) {
@@ -307,14 +419,44 @@ List<String> _labels(WidgetTester tester) => tester
     .map((row) => row.label)
     .toList();
 
-Future<void> _pumpDrawer(WidgetTester tester, {required bool admin}) async {
+/// Pumps the drawer over an empty page.
+///
+/// The sidebar block's five lists are taken as VALUES rather than as provider overrides, because
+/// Riverpod 3 does not export the `Override` type and a helper cannot declare a parameter holding
+/// them. Every one of them is supplied on every pump, empty by default: the real providers throw
+/// without a hub, and Riverpod would retry that on a timer the test then outlives.
+Future<void> _pumpDrawer(
+  WidgetTester tester, {
+  required bool admin,
+  List<PinnedItem> pins = const [],
+  List<SmartPlaylist> smart = const [],
+  List<Playlist> playlists = const [],
+  List<LibrarySummary> libraries = const [],
+  List<LibrarySummary> shared = const [],
+}) async {
   // Tall enough that the whole list is laid out: a `ListView` builds what fits, and a row that was
   // never built is indistinguishable from a row that is missing.
   tester.view.physicalSize = const Size(600, 1600);
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
 
-  await tester.pumpWidget(_drawerApp(admin: admin));
+  await tester.pumpWidget(
+    ProviderScope(
+      overrides: [
+        translationsProvider.overrideWithValue(translations),
+        isAdminProvider.overrideWith((ref) => admin),
+        viewerProvider.overrideWith((ref) => _viewer),
+        pinsProvider.overrideWith((ref) => pins),
+        smartPlaylistsProvider.overrideWith((ref) => smart),
+        playlistsProvider.overrideWith((ref) => playlists),
+        myLibrariesProvider.overrideWith((ref) => libraries),
+        sharedLibrariesProvider.overrideWith((ref) => shared),
+      ],
+      child: const MaterialApp(
+        home: Scaffold(drawer: NavDrawer(), body: SizedBox.shrink()),
+      ),
+    ),
+  );
   tester.state<ScaffoldState>(find.byType(Scaffold)).openDrawer();
   // Fixed frames rather than `pumpAndSettle`: this app's player ticks twice a second, and a settle
   // in a suite that ever mounts it never returns.
@@ -322,27 +464,16 @@ Future<void> _pumpDrawer(WidgetTester tester, {required bool admin}) async {
   await tester.pump(const Duration(milliseconds: 400));
 }
 
-Widget _drawerApp({required bool admin}) => ProviderScope(
-  overrides: [
-    translationsProvider.overrideWithValue(translations),
-    isAdminProvider.overrideWith((ref) => admin),
-  ],
-  child: const MaterialApp(
-    home: Scaffold(drawer: NavDrawer(), body: SizedBox.shrink()),
-  ),
-);
+/// The listener's own things, as the drawer draws them.
+List<String> _entityRows(WidgetTester tester) => tester
+    .widgetList<NavDrawerEntityRow>(find.byType(NavDrawerEntityRow))
+    .map((row) => row.name)
+    .toList();
 
 Widget _app(Widget home) => ProviderScope(
   overrides: [
     translationsProvider.overrideWithValue(translations),
-    viewerProvider.overrideWith(
-      (ref) => const UserProfile(
-        createdAt: 0,
-        displayName: 'Kanin',
-        handle: 'kanin',
-        id: 'kanin-id',
-      ),
-    ),
+    viewerProvider.overrideWith((ref) => _viewer),
   ],
   child: MaterialApp(home: home),
 );

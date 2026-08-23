@@ -17,6 +17,7 @@ import '../features/libraries/libraries_routes.dart';
 import '../features/library/library_screen.dart';
 import '../features/manager/manager_routes.dart';
 import '../features/nav/insights_tab.dart';
+import '../features/nav/nav_routes.dart';
 import '../features/nav/nav_tabs.dart';
 import '../features/playlists/playlists_routes.dart';
 import '../features/search/search_screen.dart';
@@ -49,6 +50,7 @@ List<RouteBase> _sharedRoutes() => [
   ...managerRoutes(),
   ...adminRoutes(),
   ...insightsTabRoutes(),
+  ...navRoutes(),
 ];
 
 /// The app's routes.
@@ -88,7 +90,11 @@ GoRouter buildRouter() {
       if (!auth.isSignedIn) {
         return AuthRoutes.isAuthScreen(location) ? null : AuthRoutes.signIn;
       }
-      return onGate ? NavTab.home.path : null;
+      if (onGate) return NavTab.home.path;
+      // A link somebody shared speaks the web client's URL vocabulary, not this one's. Translating
+      // it here rather than registering a second route table means every screen stays reachable by
+      // one path and the App Link picks up whatever gets added later for free.
+      return webLocationToTabLocation(state.uri);
     },
     routes: [
       // The bare root, which nothing inside the app links to and the platform can still hand us:
@@ -182,6 +188,74 @@ GoRouter buildRouter() {
     ],
   );
 }
+
+/// The web client's shareable path shapes, minus the `/app/…` ones this handles wholesale.
+///
+/// `shareUrl()` in the web client drops the `/app` prefix from every copied link — "the prefix is an
+/// internal routing detail and it is the noisiest part of the URL" — and serves the short form from
+/// redirect stubs under `src/routes/_authed/{artists,albums,playlists,genres,labels,tracks,smart}/`,
+/// plus `u/` for a profile. So `chordia.dev/albums/{id}` is the form people actually paste.
+///
+/// None of these collide with a tab root ([NavTab.path]), which is what makes the translation below
+/// unambiguous. `library` is deliberately absent for that reason: it is this client's Library TAB
+/// and the web's server directory, two different pages wearing one word.
+const _webShortLinkSections = {
+  'albums',
+  'artists',
+  'genres',
+  'labels',
+  'playlists',
+  'smart',
+  'tracks',
+  'u',
+};
+
+/// The handful of web paths whose destination here is a TAB rather than a screen inside one.
+const _webTabAliases = <String, String>{
+  // `/app` itself.
+  '': '/home',
+  'search': '/search',
+  'insights': '/insights',
+  // The web's Library tab is the server directory it labels `nav.allLibraries`; this client spells
+  // that `libraries` and gives the word "Library" to its collections hub instead.
+  'library': '/home/libraries',
+};
+
+/// Translates a link written in the web client's URL vocabulary into this client's, or null when
+/// the location is already one of ours.
+///
+/// Every shareable Chordia destination is a `/app/…` path or one of the short forms above, while
+/// every path here is prefixed by the tab it is being read in — so the two clients share no URL
+/// vocabulary at all, and an App Link with no translation opens the app onto GoRouter's error page.
+/// That is strictly worse than having no App Link, which at least opens the browser onto the page.
+///
+/// The Home tab receives everything that is not a tab of its own. It is the tab a cold launch is
+/// already standing in, so a shared link never throws away a stack the listener was reading.
+@visibleForTesting
+String? webLocationToTabLocation(Uri uri) {
+  final segments = uri.pathSegments;
+  if (segments.isEmpty) return null;
+
+  final List<String> rest;
+  if (segments.first == 'app') {
+    rest = segments.sublist(1);
+  } else if (_webShortLinkSections.contains(segments.first)) {
+    rest = segments;
+  } else {
+    return null;
+  }
+
+  if (rest.length <= 1) {
+    final alias = _webTabAliases[rest.isEmpty ? '' : rest.first];
+    if (alias != null) return _withQuery(alias, uri);
+  }
+  return _withQuery('${NavTab.home.path}/${rest.join('/')}', uri);
+}
+
+/// Carries a link's query string across the rewrite. Nothing in the route table reads one today,
+/// and dropping it silently is the sort of thing that is only noticed once something does.
+String _withQuery(String path, Uri uri) =>
+    uri.hasQuery ? '$path?${uri.query}' : path;
 
 /// Re-runs the router's redirect when sign-in state changes.
 ///

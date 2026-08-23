@@ -1,10 +1,13 @@
+import 'package:chordia_api/chordia_api.dart';
 import 'package:flutter/material.dart';
 
 import '../../../data/art/art_cache.dart';
 import '../../../widgets/cover_art.dart';
 import '../../../widgets/surface.dart';
 import '../../../widgets/tokens.dart';
+import '../../catalog/catalog_routes.dart';
 import '../../catalog/widgets/album_grid.dart';
+import '../data/discovery_nav.dart';
 import 'rail.dart';
 
 /// One card on a home shelf: artwork over a name and, usually, a second line.
@@ -60,6 +63,59 @@ class EntityCard extends StatelessWidget {
       ),
     );
   }
+}
+
+/// One "Jump back in" entry: an album, an artist or a playlist the listener has played.
+///
+/// A widget rather than an [EntityCard] built at each call site, because the shelf and the "See
+/// all" page show the same entry and the kind→shape→destination mapping is the whole content of
+/// the card. The web keeps it in one place too (`components/discovery/cards.tsx` `RecentCard`).
+class RecentCard extends StatelessWidget {
+  const RecentCard({required this.item, super.key});
+
+  final RecentItem item;
+
+  @override
+  Widget build(BuildContext context) => EntityCard(
+    imageUrl: item.imageUrl,
+    title: item.name,
+    subtitle: item.subtitle,
+    // Round is the one signal that separates a person from a record at a glance.
+    shape: item.kind == RecentKind.artist
+        ? BoxShape.circle
+        : BoxShape.rectangle,
+    fallbackIcon: switch (item.kind) {
+      RecentKind.artist => Icons.person_rounded,
+      RecentKind.playlist => Icons.queue_music_rounded,
+      RecentKind.album => Icons.album_rounded,
+    },
+    onTap: () => switch (item.kind) {
+      RecentKind.album => context.goToAlbum(item.id),
+      RecentKind.artist => context.goToArtist(item.id),
+      RecentKind.playlist => context.goToPlaylist(item.id),
+    },
+  );
+}
+
+/// One "Made for you" mix.
+///
+/// It opens the MIX, not the artist radio its seed would generate. Those are two Hub endpoints
+/// answering with two track lists under two titles — the Hub's own words are that a mix "draws
+/// inward (the seed plus artists the caller already plays)" while radio draws outward and never
+/// ends — and this card pointing at the second one is what made the shelf's headline row lie.
+class MixCard extends StatelessWidget {
+  const MixCard({required this.mix, super.key});
+
+  final DailyMix mix;
+
+  @override
+  Widget build(BuildContext context) => EntityCard(
+    imageUrl: mix.imageUrl,
+    title: mix.title,
+    subtitle: mix.subtitle,
+    fallbackIcon: Icons.radio_rounded,
+    onTap: () => context.goToDailyMix(mix.seedArtistId),
+  );
 }
 
 /// A pinned entity as a compact pill: small artwork and a name, no second line.

@@ -34,6 +34,14 @@ void main() {
     'playlists/pl-1',
     'friends',
     'u/kanin',
+    'albums/al-1/stats',
+    'artists/ar-1/stats',
+    'tracks/tr-1/stats',
+    // A daily mix is its own destination, and pointedly not `radio/artist/{id}`: the Hub weaves the
+    // two from different endpoints under different titles.
+    'daily-mix/mx-1',
+    'jump-back-in',
+    'made-for-you',
     'radio/artist/ar-1',
     'radio/track/tr-1',
     'radio/album/al-1',
@@ -55,6 +63,12 @@ void main() {
     'libraries/lib-1',
     'libraries/lib-1/overrides',
     'smart/new',
+    // The sidebar block the nav drawer grew. These are screens the Library tab used to push
+    // imperatively; the drawer sits above every branch navigator and can only push a route.
+    'liked',
+    'downloads',
+    'smart/sp-1',
+    'library/lib-1',
   ];
 
   late GoRouter router;
@@ -92,6 +106,111 @@ void main() {
     // everything, which is the shape a routing test usually rots into.
     expect(resolves('/home/nothing-here/at-all'), isFalse);
     expect(resolves('/home/radio'), isFalse);
+  });
+
+  group('a link somebody shared from the web client', () {
+    /// The paths a copied Chordia link actually carries.
+    ///
+    /// The long form is what `/app/...` pages are; the short form is what the web's `shareUrl()`
+    /// writes, having dropped the `/app` prefix — both are served, so both arrive. Keep this list
+    /// in step with the App Link filter in `android/app/src/main/AndroidManifest.xml`: a path
+    /// registered there and missing here is one nobody checks can be opened.
+    const shared = [
+      '/app',
+      '/app/albums/al-1',
+      '/app/artists/ar-1',
+      '/app/artists/ar-1/discography',
+      '/app/albums/al-1/stats',
+      '/app/artists/ar-1/stats',
+      '/app/tracks/tr-1/stats',
+      '/app/tracks/tr-1',
+      '/app/playlists/pl-1',
+      '/app/smart/sp-1',
+      '/app/genres',
+      '/app/genres/shoegaze',
+      '/app/labels',
+      '/app/labels/lb-1',
+      '/app/u/kanin',
+      '/app/daily-mix/mx-1',
+      '/app/radio/artist/ar-1',
+      '/app/jump-back-in',
+      '/app/made-for-you',
+      '/app/liked',
+      '/app/downloads',
+      '/app/friends',
+      '/app/settings',
+      '/app/manager',
+      '/app/search',
+      '/app/insights',
+      '/app/library',
+      '/app/library/lib-1',
+      // The short forms, exactly as `shareUrl()` emits them.
+      '/albums/al-1',
+      '/artists/ar-1',
+      '/tracks/tr-1',
+      '/playlists/pl-1',
+      '/genres/shoegaze',
+      '/labels/lb-1',
+      '/smart/sp-1',
+      '/u/kanin',
+    ];
+
+    test('lands on the screen it names rather than on the error page', () {
+      // The whole point of registering an App Link. Opening the app onto GoRouter's error page is
+      // strictly worse than letting the browser have the link, so every path the manifest claims
+      // has to translate into one this router knows.
+      final dead = <String>[];
+      for (final link in shared) {
+        final translated = webLocationToTabLocation(Uri.parse(link));
+        if (translated == null || !resolves(translated)) dead.add(link);
+      }
+      expect(dead, isEmpty, reason: 'these shared links open onto nothing');
+    });
+
+    test('keeps its query string', () {
+      // `/app/badges?kind=` is the web's badge deep link. Its screen is still owed here, so this
+      // asserts the translation only — but the query is what the destination is FOR, and dropping
+      // it silently is the sort of thing only noticed once something reads one.
+      expect(
+        webLocationToTabLocation(Uri.parse('/app/badges?kind=super-sonic')),
+        '/home/badges?kind=super-sonic',
+      );
+    });
+
+    test('a path of this client\'s own is left alone', () {
+      // The rewrite runs on every navigation, so anything it touches that it should not is a loop
+      // or a wrong destination on an ordinary tap.
+      for (final location in [
+        '/home',
+        '/search',
+        '/library',
+        '/insights',
+        '/home/albums/al-1',
+        '/library/liked',
+        '/sign-in',
+        '/',
+      ]) {
+        expect(
+          webLocationToTabLocation(Uri.parse(location)),
+          isNull,
+          reason: location,
+        );
+      }
+    });
+
+    test('the web\'s two "library" pages do not collide', () {
+      // The web's Library tab is the server directory; this client's is its collections hub. The
+      // short-link set deliberately excludes `library` so `/library/lib-1` stays the tab's own.
+      expect(
+        webLocationToTabLocation(Uri.parse('/app/library')),
+        '/home/libraries',
+      );
+      expect(
+        webLocationToTabLocation(Uri.parse('/app/library/lib-1')),
+        '/home/library/lib-1',
+      );
+      expect(webLocationToTabLocation(Uri.parse('/library/lib-1')), isNull);
+    });
   });
 
   group('a station kind off the URL', () {

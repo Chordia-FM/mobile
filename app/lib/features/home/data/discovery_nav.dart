@@ -3,6 +3,7 @@ import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../library/playlist_detail_screen.dart';
+import '../see_all_screens.dart';
 import '../station_screen.dart';
 import 'station.dart';
 
@@ -35,6 +36,22 @@ List<RouteBase> discoveryRoutes() => [
     ),
   ),
   GoRoute(
+    // A mix is its own destination, not the station its seed would generate — see [DailyMixScreen].
+    // The web spells this route the same way (`/app/daily-mix/{mixId}`), which is what lets a
+    // shared link resolve here.
+    path: 'daily-mix/:mixId',
+    builder: (context, state) =>
+        DailyMixScreen(mixId: state.pathParameters['mixId']!),
+  ),
+  GoRoute(
+    path: 'jump-back-in',
+    builder: (context, state) => const JumpBackInScreen(),
+  ),
+  GoRoute(
+    path: 'made-for-you',
+    builder: (context, state) => const MadeForYouScreen(),
+  ),
+  GoRoute(
     path: 'playlists/:playlistId',
     builder: (context, state) =>
         PlaylistDetailScreen(playlistId: state.pathParameters['playlistId']!),
@@ -49,6 +66,16 @@ List<RouteBase> discoveryRoutes() => [
 /// under `/home`, or opening it throws the user into another tab and loses the stack they were in.
 extension DiscoveryNavigation on BuildContext {
   void goToPlaylist(String playlistId) => _pushInTab('playlists/$playlistId');
+
+  /// One daily mix. The id is its seed artist's, which is the mix's stable identity Hub-side —
+  /// the same parameter the web's `/app/daily-mix/$mixId` carries.
+  void goToDailyMix(String mixId) => _pushInTab('daily-mix/$mixId');
+
+  /// The full "Jump back in" list, behind the hero's "See all".
+  void goToJumpBackIn() => _pushInTab('jump-back-in');
+
+  /// The full "Made for you" list, behind that rail's "See all".
+  void goToMadeForYou() => _pushInTab('made-for-you');
 
   /// A station seeded by any entity. The seed kind travels in the path because the Hub builds a
   /// station from any of five kinds, and only the kind says how to read the id.

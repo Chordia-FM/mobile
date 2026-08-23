@@ -10,6 +10,7 @@ import 'package:chordia_mobile/data/hub.dart';
 import 'package:chordia_mobile/features/home/data/daypart.dart';
 import 'package:chordia_mobile/features/home/data/home_feed.dart';
 import 'package:chordia_mobile/features/home/data/hub_cache.dart';
+import 'package:chordia_mobile/features/home/data/see_all.dart';
 import 'package:chordia_mobile/features/home/home_screen.dart';
 import 'package:chordia_mobile/i18n/keys.g.dart';
 import 'package:chordia_mobile/i18n/translations.dart';
@@ -63,7 +64,6 @@ void main() {
       // rather than pairwise, so inserting a rail in the wrong place fails here and not in review.
       expect(feed.rails, [
         HomeRail.quickAccess,
-        HomeRail.jumpBackIn,
         HomeRail.madeForYou,
         HomeRail.recentlyAdded,
         HomeRail.recommended,
@@ -72,6 +72,26 @@ void main() {
         HomeRail.trendingArtists,
         HomeRail.friendsListening,
       ]);
+    });
+
+    test('recent listening is the hero, not a rail', () {
+      // Where the web puts it, and why the web has no "Jump back in" shelf below the hero either.
+      // Listing it in both places is what demoted this page's focal point to an ordinary row.
+      final feed = HomeFeed(recent: [recentAlbum()], libraries: [library()]);
+
+      expect(feed.rails, isEmpty);
+      // Still a page worth painting, so the cache paints it and no empty state claims otherwise.
+      expect(feed.isEmpty, isFalse);
+      expect(feed.needsLibrary, isFalse);
+    });
+
+    test('the onboarding hero waits for silence from every rail, not just one', () {
+      // Each rail is fetched independently and a failed one falls back to the cache, so the
+      // directory call alone timing out must not hang a "pair a library" card over a page of music.
+      expect(const HomeFeed().needsLibrary, isTrue);
+      expect(HomeFeed(libraries: [library()]).needsLibrary, isFalse);
+      expect(HomeFeed(mixes: [mix()]).needsLibrary, isFalse);
+      expect(HomeFeed(recent: [recentAlbum()]).needsLibrary, isFalse);
     });
 
     test('a rail with nothing in it is dropped, not left blank', () {
@@ -129,6 +149,102 @@ void main() {
       expect(
         find.text(translations(DiscoveryKeys.shelfFriendsListening)),
         findsNothing,
+      );
+    });
+  });
+
+  group('the hero', () {
+    Future<void> pump(WidgetTester tester, FakeHomeSource source) async {
+      tester.view.physicalSize = const Size(1200, 3000);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        _app(
+          source: source,
+          cache: MemoryHubCache(),
+          artDirectory: artDirectory,
+        ),
+      );
+      await tester.pump();
+    }
+
+    testWidgets('a fresh account is offered the pairing flow, not a shrug', (
+      tester,
+    ) async {
+      // What this page used to do with nothing on it was print one sentence with nothing to press.
+      // The web hands the same person a card straight into `/library/setup`.
+      await pump(tester, FakeHomeSource());
+
+      expect(find.text(translations(DiscoveryKeys.heroOnboardTitle)), findsOne);
+      expect(find.text(translations(DiscoveryKeys.heroOnboardCta)), findsOne);
+    });
+
+    testWidgets('a paired account with no history is offered its top mix', (
+      tester,
+    ) async {
+      await pump(
+        tester,
+        FakeHomeSource(librariesValue: [library()], mixesValue: [mix()]),
+      );
+
+      expect(find.text(translations(DiscoveryKeys.heroStartTitle)), findsOne);
+      expect(find.text('Daily Mix 1'), findsWidgets);
+      expect(
+        find.text(translations(DiscoveryKeys.heroOnboardTitle)),
+        findsNothing,
+      );
+    });
+
+    testWidgets('listening history is the focal point, not one more shelf', (
+      tester,
+    ) async {
+      await pump(
+        tester,
+        FakeHomeSource(
+          librariesValue: [library()],
+          recentValue: [recentAlbum()],
+        ),
+      );
+
+      expect(find.text(translations(DiscoveryKeys.heroResumeTitle)), findsOne);
+      expect(find.text('Heard it'), findsOne);
+      // And NOT also a rail underneath: the web says so at the top of `HomeHero.tsx` — "There is
+      // deliberately no separate 'Jump back in' rail downstream".
+      expect(
+        find.text(translations(DiscoveryKeys.shelfJumpBackIn)),
+        findsNothing,
+      );
+    });
+  });
+
+  group('"See all"', () {
+    test('the pages ask for more than the shelves they came from', () async {
+      // The rail is capped at what a thumb can reach; the page behind "See all" is not. Asserting
+      // the ASK rather than the answer is the point — a page that renders twelve items because it
+      // requested twelve looks identical to one that requested fifty and got twelve.
+      final source = FakeHomeSource();
+      final container = ProviderContainer(
+        overrides: [
+          activeHubProvider.overrideWithValue(hub),
+          homeSourceProvider.overrideWithValue(source),
+          hubCacheProvider.overrideWithValue(MemoryHubCache()),
+        ],
+      );
+      addTearDown(container.dispose);
+      // Listened to before being awaited: both are auto-disposed, and a bare read of `.future`
+      // tears the provider down before the request it started has answered.
+      container
+        ..listen(jumpBackInPageProvider, (_, _) {})
+        ..listen(madeForYouPageProvider, (_, _) {});
+
+      await container.read(jumpBackInPageProvider.future);
+      await container.read(madeForYouPageProvider.future);
+
+      expect(source.asked['jumpBackIn'], jumpBackInPageLength);
+      expect(source.asked['dailyMixes'], madeForYouPageLength);
+      expect(
+        jumpBackInPageLength,
+        greaterThan(HubHomeSource.railLengthDefault),
       );
     });
   });
@@ -300,6 +416,7 @@ class FakeHomeSource implements HomeSource {
     this.pinsValue = const [],
     this.recentValue = const [],
     this.mixesValue = const [],
+    this.librariesValue = const [],
     this.recentlyAddedValue = const [],
     this.friendsValue = const [],
     this.trendingValue = const Trending(albums: [], artists: [], tracks: []),
@@ -313,6 +430,7 @@ class FakeHomeSource implements HomeSource {
   final List<PinnedItem> pinsValue;
   final List<RecentItem> recentValue;
   final List<DailyMix> mixesValue;
+  final List<LibrarySummary> librariesValue;
   final List<BrowseAlbum> recentlyAddedValue;
   final List<FriendNowPlaying> friendsValue;
   final Trending trendingValue;
@@ -330,11 +448,25 @@ class FakeHomeSource implements HomeSource {
   @override
   Future<List<PinnedItem>> pins() => _answer(pinsValue);
 
-  @override
-  Future<List<RecentItem>> jumpBackIn() => _answer(recentValue);
+  /// [limit] is recorded rather than applied: what these pages ASK for is the assertion — the
+  /// shelf's twelve against the "See all" page's fifty — and truncating here would let the page
+  /// look right while requesting the shelf's length.
+  final asked = <String, int?>{};
 
   @override
-  Future<List<DailyMix>> dailyMixes() => _answer(mixesValue);
+  Future<List<RecentItem>> jumpBackIn({int? limit}) {
+    asked['jumpBackIn'] = limit;
+    return _answer(recentValue);
+  }
+
+  @override
+  Future<List<DailyMix>> dailyMixes({int? limit}) {
+    asked['dailyMixes'] = limit;
+    return _answer(mixesValue);
+  }
+
+  @override
+  Future<List<LibrarySummary>> libraries() => _answer(librariesValue);
 
   @override
   Future<List<BrowseAlbum>> recentlyAdded() => _answer(recentlyAddedValue);
@@ -374,6 +506,15 @@ DailyMix mix() => const DailyMix(
 
 PinnedItem pin() =>
     const PinnedItem(id: 'pinned', kind: PinKind.album, name: 'Pinned album');
+
+LibrarySummary library() => const LibrarySummary(
+  createdAt: 0,
+  id: 'lib-1',
+  name: 'The shelf',
+  ownerId: 'kanin-id',
+  serverId: 'srv-1',
+  trackCount: 900,
+);
 
 RecentItem recentAlbum() =>
     const RecentItem(id: 'recent', kind: RecentKind.album, name: 'Heard it');

@@ -1,24 +1,37 @@
+import 'package:chordia_api/chordia_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../data/art/art_cache.dart';
 import '../../i18n/keys.g.dart';
 import '../../i18n/translations_provider.dart';
+import '../../widgets/cover_art.dart';
+import '../../widgets/tokens.dart';
 import '../admin/admin_routes.dart';
 import '../admin/data/admin_providers.dart';
 import '../catalog/catalog_routes.dart';
+import '../home/data/discovery_nav.dart';
+import '../library/data/library_providers.dart';
 import '../manager/manager_routes.dart';
 import '../player/eq_screen.dart';
 import '../settings/settings_routes.dart';
 import '../social/social_routes.dart';
+import 'account_menu.dart';
 
 /// The phone's full navigation, ported from the web's `src/components/app/MobileNavDrawer.tsx`.
 ///
-/// The web hosts `<Sidebar variant="drawer" />` at the top of this sheet and a block of extra
-/// destinations below a rule. Everything in that sidebar block — pins, playlists, smart playlists,
-/// liked, downloads, libraries — is already the Library tab on this client, so the only sidebar row
-/// with nowhere else to live is the Manager, which sits above the rule where the web puts it.
-/// Below the rule is the web's list, in the web's order, with the web's labels.
+/// The web hosts `<Sidebar variant="drawer" />` in this sheet and a block of extra destinations
+/// beside it, and the phone's tab bar is only four entries *because* of that — `MobileTabBar.tsx`
+/// says so: "Everything the rail carries (pins, playlists, smart playlists, libraries, and their
+/// context menus) lives in that drawer."
+///
+/// So it lives here too, in [_SidebarBlock]. It was left out once on the grounds that the Library
+/// tab already holds the same things, which is true and is not the same claim: reaching a named
+/// playlist from Home cost a tab switch, a list and three taps, where the web costs a hamburger and
+/// a name. The one divergence from the web's layout is the ORDER — the web puts the sidebar above
+/// its destination list and this puts it below, so the rows people already know stay where they
+/// have always been.
 ///
 /// One deliberate omission: the web's **keyboard shortcuts** entry. It opens a modal listing chords
 /// a phone has no way to type, and this client has no keybind layer at all to open.
@@ -39,16 +52,21 @@ class NavDrawer extends ConsumerWidget {
           padding: const EdgeInsets.symmetric(vertical: 8),
           children: [
             // The web puts a close button exactly where the hamburger that opened the drawer was,
-            // so the control the listener just pressed is the one that dismisses it.
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4),
-                child: IconButton(
-                  icon: const Icon(Icons.close),
-                  tooltip: t(CommonKeys.navCloseMenu),
-                  onPressed: () => _close(context),
-                ),
+            // so the control the listener just pressed is the one that dismisses it. The avatar
+            // opposite it is the web's top-bar `UserMenu`, which this client has no top bar of its
+            // own to carry — see [NavAccountButton].
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    tooltip: t(CommonKeys.navCloseMenu),
+                    onPressed: () => _close(context),
+                  ),
+                  const Spacer(),
+                  const NavAccountButton(),
+                ],
               ),
             ),
             NavDrawerRow(
@@ -95,11 +113,144 @@ class NavDrawer extends ConsumerWidget {
                 label: t(AdminKeys.title),
                 onSelected: (context) => context.goToAdmin(),
               ),
+            const _SidebarBlock(),
           ],
         ),
       ),
     );
   }
+}
+
+/// The web's `<Sidebar variant="drawer" />`: the listener's own things, one tap from every page.
+///
+/// Everything here is READ, never blocking: each list paints when it arrives and is simply absent
+/// until then. A drawer that waits for five requests before it can be used is a drawer nobody opens
+/// twice, and none of these sections mean anything as a spinner.
+class _SidebarBlock extends ConsumerWidget {
+  const _SidebarBlock();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = ref.t;
+    final pins = ref.watch(pinsProvider).value ?? const <PinnedItem>[];
+    final smart = ref.watch(smartPlaylistsProvider).value ?? const [];
+    final playlists = ref.watch(playlistsProvider).value ?? const <Playlist>[];
+    final libraries = ref.watch(myLibrariesProvider).value ?? const [];
+    final shared = ref.watch(sharedLibrariesProvider).value ?? const [];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Divider(indent: 16, endIndent: 16),
+        // The web's system rows. Search is one too, but on this client it is a tab.
+        NavDrawerRow(
+          icon: Icons.favorite_outline,
+          label: t(LibraryKeys.likedSongs),
+          onSelected: (context) => _pushInTab(context, 'liked'),
+        ),
+        NavDrawerRow(
+          icon: Icons.download_outlined,
+          label: t(LibraryKeys.downloadsNavLabel),
+          onSelected: (context) => _pushInTab(context, 'downloads'),
+        ),
+        if (pins.isNotEmpty) ...[
+          _SidebarHeading(label: t(LibraryKeys.sidebarPinned)),
+          for (final pin in pins)
+            NavDrawerEntityRow(
+              name: pin.name,
+              imageUrl: pin.imageUrl,
+              round: pin.kind == PinKind.artist || pin.kind == PinKind.radio,
+              fallbackIcon: switch (pin.kind) {
+                PinKind.album => Icons.album_rounded,
+                PinKind.artist => Icons.person_rounded,
+                PinKind.playlist => Icons.queue_music_rounded,
+                PinKind.radio => Icons.radio_rounded,
+              },
+              onSelected: (context) => switch (pin.kind) {
+                PinKind.album => context.goToAlbum(pin.id),
+                PinKind.artist => context.goToArtist(pin.id),
+                PinKind.playlist => context.goToPlaylist(pin.id),
+                PinKind.radio => context.goToArtistRadio(pin.id),
+              },
+            ),
+        ],
+        if (smart.isNotEmpty || playlists.isNotEmpty) ...[
+          _SidebarHeading(label: t(LibraryKeys.sidebarPlaylists)),
+          // Smart first, then hand-built — the web's order. A smart playlist wears the same
+          // artwork and the same row as a hand-built one there, because it IS a playlist, one that
+          // maintains itself.
+          for (final playlist in smart)
+            NavDrawerEntityRow(
+              name: playlist.name,
+              imageUrl: playlist.coverUrl,
+              fallbackIcon: Icons.auto_awesome_rounded,
+              onSelected: (context) =>
+                  _pushInTab(context, 'smart/${playlist.id}'),
+            ),
+          for (final playlist in playlists)
+            NavDrawerEntityRow(
+              name: playlist.name,
+              imageUrl: playlist.coverUrl,
+              fallbackIcon: Icons.queue_music_rounded,
+              onSelected: (context) => context.goToPlaylist(playlist.id),
+            ),
+        ],
+        if (libraries.isNotEmpty) ...[
+          _SidebarHeading(label: t(LibraryKeys.sidebarYourLibrary)),
+          for (final library in libraries)
+            _LibraryRow(library: library, owned: true),
+        ],
+        // Under its own heading rather than mixed in above: these are somebody else's, and the
+        // distinction decides what you can do with them. Omitted entirely when nobody has shared
+        // anything, so an account that has never been granted access never sees a section asking
+        // about it.
+        if (shared.isNotEmpty) ...[
+          _SidebarHeading(label: t(LibraryKeys.sidebarSharedWithYou)),
+          for (final library in shared)
+            _LibraryRow(library: library, owned: false),
+        ],
+      ],
+    );
+  }
+}
+
+/// A library row: the web sends it to the library's MUSIC, with managing one level in from there.
+class _LibraryRow extends StatelessWidget {
+  const _LibraryRow({required this.library, required this.owned});
+
+  final LibrarySummary library;
+  final bool owned;
+
+  @override
+  Widget build(BuildContext context) => NavDrawerRow(
+    icon: Icons.dns_outlined,
+    label: library.name,
+    // `owned` rides in `extra` rather than being re-derived: the row that linked here already
+    // knows, and the screen would otherwise have to ask the directory again to draw its first
+    // frame. See `nav_routes.dart`.
+    onSelected: (context) =>
+        _pushInTab(context, 'library/${library.id}', extra: owned),
+  );
+}
+
+/// A section label inside the sidebar block — the web's `text-xs uppercase tracking-wide`.
+class _SidebarHeading extends StatelessWidget {
+  const _SidebarHeading({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+    child: Text(
+      label.toUpperCase(),
+      style: ChordiaType.xs.copyWith(
+        fontWeight: ChordiaType.semibold,
+        letterSpacing: 0.8,
+        color: Theme.of(context).colorScheme.onSurfaceVariant,
+      ),
+    ),
+  );
 }
 
 /// One destination in [NavDrawer].
@@ -130,15 +281,58 @@ class NavDrawerRow extends StatelessWidget {
   );
 }
 
+/// One of the listener's own things in [NavDrawer]: artwork and a name.
+///
+/// Its own widget rather than a [NavDrawerRow] with a picture, so the drawer's list of DESTINATIONS
+/// and its list of CONTENT stay separable — a test can assert the first is exactly the web's without
+/// the second, which is somebody's own library, walking into the assertion.
+@visibleForTesting
+class NavDrawerEntityRow extends StatelessWidget {
+  const NavDrawerEntityRow({
+    required this.name,
+    required this.onSelected,
+    super.key,
+    this.imageUrl,
+    this.round = false,
+    this.fallbackIcon = Icons.album_rounded,
+  });
+
+  final String name;
+  final String? imageUrl;
+
+  /// Circular artwork for the kinds that stand for a person or a station.
+  final bool round;
+  final IconData fallbackIcon;
+  final void Function(BuildContext context) onSelected;
+
+  @override
+  Widget build(BuildContext context) => ListTile(
+    leading: CoverArt(
+      sha256: artHashOf(imageUrl),
+      // The web's sidebar rows are `size-9`.
+      size: 36,
+      shape: round ? BoxShape.circle : BoxShape.rectangle,
+      fallbackIcon: fallbackIcon,
+      fallbackInitial: round ? name : null,
+      semanticLabel: name,
+    ),
+    title: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis),
+    onTap: () {
+      _close(context);
+      onSelected(context);
+    },
+  );
+}
+
 void _close(BuildContext context) => Scaffold.maybeOf(context)?.closeDrawer();
 
 /// Pushes onto the CURRENT tab's stack, which is what every navigation extension in this app does:
 /// the first path segment is the tab, and a destination that ignored it would either miss the route
 /// table or throw the listener into a different tab mid-flow.
-void _pushInTab(BuildContext context, String suffix) {
+void _pushInTab(BuildContext context, String suffix, {Object? extra}) {
   final segments = GoRouterState.of(context).uri.pathSegments;
   if (segments.isEmpty) return;
-  GoRouter.of(context).push('/${segments.first}/$suffix');
+  GoRouter.of(context).push('/${segments.first}/$suffix', extra: extra);
 }
 
 /// Hands the shell's drawer to anything under it, so a screen with an `AppBar` of its own can open

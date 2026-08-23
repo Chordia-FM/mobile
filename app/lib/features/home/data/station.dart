@@ -24,6 +24,22 @@ final stationProvider = FutureProvider.autoDispose.family<Station, StationSeed>(
   retry: _noAutoRetry,
 );
 
+/// One daily mix, opened as a destination of its own.
+///
+/// A mix is NOT the artist radio its seed would generate: the Hub draws a mix inward (the seed plus
+/// artists the listener already plays, finite) and a radio outward (endless). They are two
+/// endpoints answering with two track lists under two titles, so the "Made for you" card has to
+/// come here rather than to [stationProvider].
+///
+/// Auto-disposed for the same reason [stationProvider] is: the mix is woven per day and per
+/// listener, so a copy held from an earlier visit is stale by construction.
+final dailyMixProvider = FutureProvider.autoDispose
+    .family<DailyMixDetail, String>(
+      (ref, seedArtistId) =>
+          ref.watch(catalogApiProvider).dailyMix(seedArtistId),
+      retry: _noAutoRetry,
+    );
+
 /// Narrows a URL segment to a station kind.
 ///
 /// A path parameter is an arbitrary string until something proves otherwise, and
