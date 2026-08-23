@@ -18,6 +18,7 @@ import '../devices/device_picker_sheet.dart';
 import '../catalog/widgets/entity_menu.dart';
 import '../lyrics/data/lyrics_providers.dart';
 import '../lyrics/lyrics_screen.dart';
+import 'now_playing_detail.dart';
 import 'play_context_nav.dart';
 import 'player_badges.dart';
 import 'player_menu.dart';
@@ -124,7 +125,14 @@ class _FullPlayerScreenState extends ConsumerState<FullPlayerScreen> {
   }
 }
 
-/// The artwork, the credits and the transport.
+/// The artwork, the credits, the transport — and everything the web keeps below the fold.
+///
+/// **This scrolls**, which it did not before. `ExpandedPlayer.tsx:259` puts the whole now-playing
+/// tab inside the sheet's scrolling body and hangs `<NowPlayingPanel …/>` off the bottom of it
+/// (:392-402), so the web phone player continues past the transport into the album, the play
+/// count, a card per credited artist and the file-quality readout. Mobile's was a fixed `Column`
+/// with the artwork in an `Expanded`: there was no below-the-fold region for any of that to live
+/// in, so none of it existed on the phone.
 class _NowPlaying extends StatelessWidget {
   const _NowPlaying({required this.snapshot});
 
@@ -136,84 +144,91 @@ class _NowPlaying extends StatelessWidget {
     final track = snapshot.current;
     if (track == null) return const SizedBox.shrink();
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Column(
-        children: [
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 20),
-              child: Center(
-                child: LayoutBuilder(
-                  builder: (context, constraints) => CoverArt(
-                    sha256: artHashOf(track.coverUrl),
-                    size: math.min(constraints.maxWidth, constraints.maxHeight),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
+    return ListView(
+      // `space-y-5 pb-6` on the web's now-playing column, inside the body's `px-5`.
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+      children: [
+        // The artwork is the drag handle, exactly as `{...drag.scrollHandleProps}` makes it on the
+        // web (ExpandedPlayer.tsx:263). Once this tab scrolls, the scrollable wins every vertical
+        // drag from the ancestor detector — so without a handle, making the player scroll would
+        // have silently cost it its throw-away gesture.
+        _DismissDragHandle(
+          child: Center(
+            child: LayoutBuilder(
+              builder: (context, constraints) => CoverArt(
+                sha256: artHashOf(track.coverUrl),
+                // `aspect-square w-full max-w-[min(78vw,26rem)]`: as wide as the column allows,
+                // capped at 78% of the viewport and again at 26rem.
+                size: math.min(
+                  constraints.maxWidth,
+                  math.min(MediaQuery.sizeOf(context).width * 0.78, 416),
                 ),
+                borderRadius: BorderRadius.circular(16),
               ),
             ),
           ),
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Flexible(
-                          child: Text(
-                            track.title,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.headlineSmall?.copyWith(
-                              fontWeight: FontWeight.w700,
-                            ),
+        ),
+        const SizedBox(height: 20),
+        Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          track.title,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
-                        PlayerTrackBadges(track: track),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    // Each credited artist its own link, exactly as in a track row: the guest on a
-                    // feature is the one thing a listener most often wants to open from here, and a
-                    // joined string threw that away.
-                    ArtistLinks(
-                      artists: playerArtistRefs(track.artists),
-                      fallbackName: track.artist,
-                      fallbackId: track.artistId,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
                       ),
-                      linkStyle: theme.textTheme.titleMedium?.copyWith(
-                        color: theme.colorScheme.onSurface,
-                      ),
+                      PlayerTrackBadges(track: track),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  // Each credited artist its own link, exactly as in a track row: the guest on a
+                  // feature is the one thing a listener most often wants to open from here, and a
+                  // joined string threw that away.
+                  ArtistLinks(
+                    artists: playerArtistRefs(track.artists),
+                    fallbackName: track.artist,
+                    fallbackId: track.artistId,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
                     ),
-                  ],
-                ),
+                    linkStyle: theme.textTheme.titleMedium?.copyWith(
+                      color: theme.colorScheme.onSurface,
+                    ),
+                  ),
+                ],
               ),
-              // The heart the player never had. It sits where the web puts it — beside the title,
-              // not behind a menu — because it is the one action a listener takes mid-song.
-              LikeButton(trackId: track.id),
-            ],
-          ),
-          const SizedBox(height: 12),
-          const _Scrubber(),
-          const SizedBox(height: 4),
-          _Transport(
-            playing: snapshot.playing,
-            buffering: snapshot.buffering,
-            shuffle: snapshot.shuffle,
-            repeat: snapshot.repeat,
-          ),
-          // What tier is actually sounding, and a warning when the connection or the adapter has
-          // taken it down from what was chosen. The controller computed both from the first day
-          // and nothing on screen ever said so.
-          const QualityButton(),
-          const SizedBox(height: 4),
-        ],
-      ),
+            ),
+            // The heart the player never had. It sits where the web puts it — beside the title,
+            // not behind a menu — because it is the one action a listener takes mid-song.
+            LikeButton(trackId: track.id),
+          ],
+        ),
+        const SizedBox(height: 12),
+        const _Scrubber(),
+        const SizedBox(height: 4),
+        _Transport(
+          playing: snapshot.playing,
+          buffering: snapshot.buffering,
+          shuffle: snapshot.shuffle,
+          repeat: snapshot.repeat,
+        ),
+        // What tier is actually sounding, and a warning when the connection or the adapter has
+        // taken it down from what was chosen. The controller computed both from the first day
+        // and nothing on screen ever said so.
+        const QualityButton(),
+        const SizedBox(height: 20),
+        NowPlayingDetail(track: track),
+      ],
     );
   }
 }
@@ -807,6 +822,59 @@ class _DragToDismissState extends State<_DragToDismiss>
   Widget build(BuildContext context) => GestureDetector(
     onVerticalDragUpdate: _onUpdate,
     onVerticalDragEnd: _onEnd,
-    child: Transform.translate(offset: Offset(0, _offset), child: widget.child),
+    child: Transform.translate(
+      offset: Offset(0, _offset),
+      child: _DismissDrag(
+        onUpdate: _onUpdate,
+        onEnd: _onEnd,
+        child: widget.child,
+      ),
+    ),
   );
+}
+
+/// The dismiss gesture, offered to anything inside the player that should act as its handle.
+///
+/// The detector above is an ANCESTOR of the tabs, so a scrollable tab beats it in the gesture
+/// arena — which is what makes the queue and the lyrics scroll instead of throwing the player away.
+/// Once the now-playing tab scrolls too, something inside it has to opt back in, and the web picks
+/// the same thing: the artwork (`drag.scrollHandleProps`, ExpandedPlayer.tsx:263).
+class _DismissDrag extends InheritedWidget {
+  const _DismissDrag({
+    required this.onUpdate,
+    required this.onEnd,
+    required super.child,
+  });
+
+  final ValueChanged<DragUpdateDetails> onUpdate;
+  final ValueChanged<DragEndDetails> onEnd;
+
+  static _DismissDrag? maybeOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<_DismissDrag>();
+
+  /// The callbacks are the state's own methods and never change identity, so a dependent has
+  /// nothing to rebuild for.
+  @override
+  bool updateShouldNotify(_DismissDrag oldWidget) => false;
+}
+
+/// Makes its child a place the player can be dragged away from.
+///
+/// Deeper in the hit test than the enclosing scrollable, so it wins the vertical drag — a drag that
+/// starts on the artwork dismisses, and one that starts anywhere else scrolls.
+class _DismissDragHandle extends StatelessWidget {
+  const _DismissDragHandle({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final drag = _DismissDrag.maybeOf(context);
+    if (drag == null) return child;
+    return GestureDetector(
+      onVerticalDragUpdate: drag.onUpdate,
+      onVerticalDragEnd: drag.onEnd,
+      child: child,
+    );
+  }
 }

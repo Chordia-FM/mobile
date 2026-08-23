@@ -108,6 +108,23 @@ class LyricsBody extends ConsumerWidget {
   }
 }
 
+/// The size lyrics are set at, from `LyricsView.tsx:219`.
+///
+/// The web wraps the whole lyric block in `font-bold text-3xl leading-snug tracking-tight
+/// md:text-4xl`. `md:` is the desktop step, so a phone renders the base: `text-3xl` is 30px,
+/// `leading-snug` is 1.375, and `tracking-tight` is -0.025em, which at 30px is -0.75.
+///
+/// Not a detail. This view was set at `titleMedium` — 16sp, the same as a track row's subtitle —
+/// and type size is the entire read of a lyrics surface: at body size the same words are a
+/// paragraph of text that happens to be in the player, and at 30/700 they are a lyrics screen.
+/// Colour is deliberately absent, because it is the one thing that varies per line.
+const _lyricType = TextStyle(
+  fontSize: 30,
+  height: 1.375,
+  fontWeight: FontWeight.w700,
+  letterSpacing: -0.75,
+);
+
 /// Lyrics with no timing: a page of text, scrolled by hand.
 class _PlainLyrics extends StatelessWidget {
   const _PlainLyrics({required this.lines});
@@ -117,13 +134,15 @@ class _PlainLyrics extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final style = theme.textTheme.titleMedium?.copyWith(
-      color: theme.colorScheme.onSurface,
-      height: 1.6,
+    // `text-foreground/90` (LyricsView.tsx:229). Nothing is active in an untimed document, so
+    // every line sits at the same strength rather than one being picked out of the others.
+    final style = _lyricType.copyWith(
+      color: theme.colorScheme.onSurface.withValues(alpha: 0.9),
     );
     return ListView.builder(
       padding: const EdgeInsets.fromLTRB(24, 0, 24, 40),
       itemCount: lines.length,
+      // `space-y-3`: 12px between lines, which is half of 12 on each of two neighbours.
       itemBuilder: (context, i) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 6),
         child: Text(lines[i].text, style: style),
@@ -250,20 +269,22 @@ class _SyncedLyricsState extends ConsumerState<_SyncedLyrics> {
                 key: _keys[i],
                 onTap: () => _seekToLine(i),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  padding: const EdgeInsets.symmetric(vertical: 6),
                   child: AnimatedDefaultTextStyle(
-                    duration: const Duration(milliseconds: 200),
-                    style:
-                        theme.textTheme.titleMedium?.copyWith(
-                          height: 1.5,
-                          color: isActive
-                              ? theme.colorScheme.onSurface
-                              : theme.colorScheme.onSurfaceVariant,
-                          fontWeight: isActive
-                              ? FontWeight.w700
-                              : FontWeight.w500,
-                        ) ??
-                        const TextStyle(),
+                    // `transition-colors duration-300` (LyricsView.tsx:224). Colour is the only
+                    // thing that moves between the two states — the weight is 700 throughout, so
+                    // a line does not reflow as it becomes current.
+                    duration: const Duration(milliseconds: 300),
+                    style: _lyricType.copyWith(
+                      color: isActive
+                          ? theme.colorScheme.onSurface
+                          // `text-muted-foreground/50` (:230). The lines around the one being
+                          // sung recede hard, which is what makes the current line findable
+                          // without reading any of them.
+                          : theme.colorScheme.onSurfaceVariant.withValues(
+                              alpha: 0.5,
+                            ),
+                    ),
                     child: Text(widget.lines[i].text),
                   ),
                 ),

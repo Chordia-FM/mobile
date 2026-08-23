@@ -10,6 +10,9 @@ import '../../data/playback/adaptive.dart';
 import '../../data/playback/quality.dart';
 import '../../i18n/keys.g.dart';
 import '../../i18n/translations_provider.dart';
+import '../settings/data/settings_controller.dart';
+import '../settings/data/settings_patch.dart';
+import '../settings/widgets/settings_list.dart' show applySettingsPatch;
 
 /// What is playing, and the one thing the listener can do about it.
 ///
@@ -66,7 +69,7 @@ class QualityButton extends ConsumerWidget {
                 : ChordiaColors.mutedForeground,
           ),
           label: Text(
-            t(_labelKeyOf(status.playing)),
+            t(qualityLabelKeyOf(status.playing)),
             style: TextStyle(
               color: limited
                   ? context.surfaces.accent
@@ -79,11 +82,20 @@ class QualityButton extends ConsumerWidget {
   }
 }
 
-/// What tier is streaming, what was asked for, and why they differ.
+/// What tier is streaming, what was asked for, and the choice between the four.
 ///
-/// Read-only about the *choice*: the tier lives in the account's settings and changing it there is
-/// the settings screen's job. The one thing this sheet can do is undo an automatic downgrade, and
-/// it is here rather than there because this is where somebody notices one.
+/// The web opens `QualityModal` from the expanded player's `…` (ExpandedPlayer.tsx:224-227) and
+/// every row in it is a radio that writes the setting on the spot (QualityModal.tsx:58-68) — two
+/// taps from the player to change tier. This sheet used to render the same four tiers inert, on
+/// the reasoning that the account's tier belongs to the settings screen. That reasoning does not
+/// survive contact with [applySettingsPatch]: it is the *same* call the settings screen makes, it
+/// persists to the account, and it is optimistic, so the row moves under the finger. The
+/// capability was there and only the call site was missing.
+///
+/// Two different facts share these rows, and they are drawn in two different columns because they
+/// disagree often enough to matter: the radio is what you CHOSE (settings, optimistic), and the
+/// trailing meter is what is actually ARRIVING. The web splits the same pair across `QualityModal`
+/// and the `FileQuality` card; on a phone there is one sheet, so they sit side by side.
 class QualitySheet extends ConsumerWidget {
   const QualitySheet({super.key});
 
@@ -92,13 +104,21 @@ class QualitySheet extends ConsumerWidget {
     final t = ref.t;
     final theme = Theme.of(context);
     final control = ref.watch(qualityControlProvider);
+    // The settings document, not `status.chosen`: `SettingsController.patch` updates this
+    // optimistically and only invalidates the playback-side read after the Hub answers, so a radio
+    // driven by the status would sit still for the length of a round trip after being tapped.
+    final chosen = ref
+        .watch(settingsControllerProvider)
+        .value
+        ?.streamingQuality;
 
     return SafeArea(
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: context.surfaces.paneRaised,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-        ),
+      // A `Material`, not a painted box: the tier rows are now tappable, and a plain decoration
+      // between a row and the nearest Material is where its ink splash goes to die — Flutter
+      // asserts on exactly that arrangement.
+      child: Material(
+        color: context.surfaces.paneRaised,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
         child: ValueListenableBuilder<QualityStatus>(
           valueListenable: control.status,
           builder: (context, status, _) => Column(
@@ -114,9 +134,15 @@ class QualitySheet extends ConsumerWidget {
                   ),
                 ),
               ),
-              _Explanation(status: status),
+              QualityNote(status: status),
               for (final profile in qualityLadder)
-                _TierRow(profile: profile, status: status),
+                _TierRow(
+                  profile: profile,
+                  status: status,
+                  // Before the settings read lands there is still a defensible answer: the tier
+                  // the adaptive service was built with. It is the same document, one read older.
+                  chosen: chosen ?? status.chosen,
+                ),
               if (status.restorable)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
@@ -141,10 +167,22 @@ class QualitySheet extends ConsumerWidget {
 }
 
 /// The one line that says why what is playing is not what was chosen.
-class _Explanation extends ConsumerWidget {
-  const _Explanation({required this.status});
+///
+/// Public, and shared by the sheet and the file-quality card on the now-playing tab: the web draws
+/// the same sentence in `NowPlayingPanel.tsx:349-375` and calls it "the one line in the card
+/// telling the listener they are not hearing what they picked". Two surfaces wording that
+/// differently would be worse than either of them alone.
+class QualityNote extends ConsumerWidget {
+  const QualityNote({
+    required this.status,
+    super.key,
+    this.padding = const EdgeInsets.fromLTRB(20, 4, 20, 12),
+  });
 
   final QualityStatus status;
+
+  /// The sheet insets it to its own gutter; a card already has one.
+  final EdgeInsetsGeometry padding;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -158,18 +196,18 @@ class _Explanation extends ConsumerWidget {
       QualityStatus(fixed: true) => t(PlayerKeys.qualityFixedLocal),
       QualityStatus(limit: QualityLimit.adaptive) => t(
         PlayerKeys.qualityReducedAdaptive,
-        {'selected': t(_labelKeyOf(status.ceiling))},
+        {'selected': t(qualityLabelKeyOf(status.ceiling))},
       ),
       QualityStatus(limit: QualityLimit.network) => t(
         PlayerKeys.qualityReducedNetwork,
-        {'selected': t(_labelKeyOf(status.chosen))},
+        {'selected': t(qualityLabelKeyOf(status.chosen))},
       ),
       _ => null,
     };
     if (message == null) return const SizedBox(height: 8);
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
+      padding: padding,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -195,47 +233,53 @@ class _Explanation extends ConsumerWidget {
   }
 }
 
+/// One tier, as a choice.
 class _TierRow extends ConsumerWidget {
-  const _TierRow({required this.profile, required this.status});
+  const _TierRow({
+    required this.profile,
+    required this.status,
+    required this.chosen,
+  });
 
   final QualityProfile profile;
   final QualityStatus status;
+
+  /// The tier in the listener's settings — what the radio reflects and what a tap writes.
+  final QualityProfile chosen;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = ref.t;
     final theme = Theme.of(context);
     final playing = profile == status.playing && !status.fixed;
-    final chosen = profile == status.chosen;
+    final selected = profile == chosen;
 
     return ListTile(
-      // Nothing here is tappable: this sheet reports, and the account's tier is set in settings.
-      // A row that looks like a choice but silently only lasts until the next launch is worse than
-      // a row that plainly does not move.
-      enabled: false,
-      leading: Icon(
-        playing ? Icons.graphic_eq_rounded : Icons.circle_outlined,
-        color: playing
-            ? context.surfaces.accent
-            : ChordiaColors.mutedForeground.withValues(alpha: 0.5),
-        size: 20,
-      ),
-      title: Row(
-        children: [
-          Flexible(
-            child: Text(
-              t(_labelKeyOf(profile)),
-              style: theme.textTheme.bodyLarge?.copyWith(
-                color: ChordiaColors.foreground,
-                fontWeight: playing ? FontWeight.w700 : FontWeight.w500,
+      selected: selected,
+      onTap: selected
+          ? null
+          : () => unawaited(
+              applySettingsPatch(
+                context,
+                ref,
+                SettingsPatch(streamingQuality: profile),
               ),
             ),
-          ),
-          if (chosen) ...[
-            const SizedBox(width: 8),
-            _Chip(label: t(PlayerKeys.qualityYourSetting)),
-          ],
-        ],
+      leading: Icon(
+        selected
+            ? Icons.radio_button_checked_rounded
+            : Icons.radio_button_off_rounded,
+        color: selected
+            ? context.surfaces.accent
+            : ChordiaColors.mutedForeground.withValues(alpha: 0.7),
+        size: 22,
+      ),
+      title: Text(
+        t(qualityLabelKeyOf(profile)),
+        style: theme.textTheme.bodyLarge?.copyWith(
+          color: ChordiaColors.foreground,
+          fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+        ),
       ),
       subtitle: Text(
         t(_descKeyOf(profile)),
@@ -243,33 +287,25 @@ class _TierRow extends ConsumerWidget {
           color: ChordiaColors.mutedForeground,
         ),
       ),
+      // The meter marks the tier the bytes NOW SOUNDING were fetched at, which is not always the
+      // one chosen — that divergence is the whole reason this sheet exists, and putting it in the
+      // radio's own column would have made the two claims look like one.
+      trailing: playing
+          ? Semantics(
+              label: t(PlayerKeys.qualityPlayingAt),
+              child: Icon(
+                Icons.graphic_eq_rounded,
+                size: 20,
+                color: context.surfaces.accent,
+              ),
+            )
+          : null,
     );
   }
 }
 
-class _Chip extends StatelessWidget {
-  const _Chip({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-    decoration: BoxDecoration(
-      color: context.surfaces.accent.withValues(alpha: 0.16),
-      borderRadius: BorderRadius.circular(999),
-    ),
-    child: Text(
-      label,
-      style: Theme.of(
-        context,
-      ).textTheme.labelSmall?.copyWith(color: context.surfaces.accent),
-    ),
-  );
-}
-
 /// The settings screen's tier names, reused so the two surfaces cannot drift apart.
-String _labelKeyOf(QualityProfile profile) => switch (profile) {
+String qualityLabelKeyOf(QualityProfile profile) => switch (profile) {
   QualityProfile.original => SettingsKeys.qualityLosslessLabel,
   QualityProfile.high => SettingsKeys.qualityHighLabel,
   QualityProfile.normal => SettingsKeys.qualityNormalLabel,
