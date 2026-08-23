@@ -15,16 +15,18 @@ import 'package:chordia_sync/chordia_sync.dart'
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../app/providers.dart' show activeHubProvider;
+import '../../../app/providers.dart' show activeHubProvider, hubClientProvider;
 import '../../../i18n/keys.g.dart';
 import '../../../i18n/translations_provider.dart';
 import '../../downloads/downloads_api.dart';
 import '../../downloads/widgets/download_controls.dart';
+import '../../insights/entity_stats_screen.dart' show showEntityStats;
 import '../../library/data/library_providers.dart' show pinsProvider;
 import '../../library/liked_screen.dart';
 import '../../library/library_detail_screen.dart';
 import '../../library/playlist_detail_screen.dart';
 import '../../library/smart_playlist_screen.dart';
+import '../../manager/manager_routes.dart' show ManagerNavigation;
 import '../../playlists/add_to_playlist_sheet.dart';
 import '../catalog_routes.dart';
 import '../data/catalog_api.dart';
@@ -59,8 +61,20 @@ abstract interface class MenuNav {
   void openScreen(WidgetBuilder screen);
 }
 
+/// The Manager destinations, which only a menu raised inside a tab can reach.
+///
+/// Separate from [MenuNav] rather than another pair of methods on it, because the two navs are not
+/// equally able: `managerRoutes()` is spread under each tab's root and addressed relative to the
+/// tab in the current location, while a menu raised from the player sits on a root-navigator route
+/// that has no `GoRouterState` above it. A nav that cannot honour these simply does not implement
+/// them, and the rows are absent rather than throwing when tapped.
+abstract interface class DiscoverNav {
+  void goToDiscoverArtist(String artistMbid);
+  void goToReleaseGroup(String releaseGroupMbid);
+}
+
 /// The default: navigate from the page the menu was opened over.
-class PageMenuNav implements MenuNav {
+class PageMenuNav implements MenuNav, DiscoverNav {
   const PageMenuNav(this.page);
 
   final BuildContext page;
@@ -96,6 +110,16 @@ class PageMenuNav implements MenuNav {
   }
 
   @override
+  void goToDiscoverArtist(String artistMbid) {
+    if (page.mounted) page.goToDiscoverArtist(artistMbid);
+  }
+
+  @override
+  void goToReleaseGroup(String releaseGroupMbid) {
+    if (page.mounted) page.goToReleaseGroup(releaseGroupMbid);
+  }
+
+  @override
   void openScreen(WidgetBuilder screen) {
     if (page.mounted) {
       Navigator.of(page).push(MaterialPageRoute<void>(builder: screen));
@@ -116,6 +140,7 @@ class MenuHost {
       messenger = ScaffoldMessenger.maybeOf(page),
       player = ref.read(catalogPlayerActionsProvider),
       liked = ref.read(likedTrackIdsProvider.notifier),
+      hidden = ref.read(hiddenTrackIdsProvider.notifier),
       // The CONTAINER, not the queue itself: building the download manager pulls in the database,
       // the storage budget and a foreground service, and a menu that merely offers Download must
       // not stand all of that up to draw a row.
@@ -130,6 +155,7 @@ class MenuHost {
   final ScaffoldMessengerState? messenger;
   final CatalogPlayerActions? player;
   final LikedTracksController liked;
+  final HiddenTracksController hidden;
 
   /// Where this hub's public web client lives, for the share sheet. Null when the hub never said.
   final Uri? frontend;
@@ -295,6 +321,67 @@ MenuAction _shareAction(
   onSelect: () => host.share(path: path, title: title),
 );
 
+/// "Open in Discover" — this entity in the Manager, with its owned/missing state.
+///
+/// Null when there is no MusicBrainz id to go to. The web falls back to a name search
+/// (`/app/manager/discover?q=…`), which is why it can offer the row on a track; the phone's
+/// Manager takes no query, so a fallback would land the reader on an empty search field and call
+/// that an answer.
+MenuAction? _discoverAction(
+  MenuHost host, {
+  String? artistMbid,
+  String? albumMbid,
+}) {
+  // Bound by pattern rather than tested with `is`: the row's callback is a closure, and a
+  // promotion does not survive into one.
+  if (host.nav case final DiscoverNav nav) {
+    final mbid = albumMbid ?? artistMbid;
+    if (mbid == null || mbid.isEmpty) return null;
+
+    return MenuAction(
+      id: 'open-in-discover',
+      label: host.t(ManagerKeys.discoverOpenIn),
+      icon: Icons.travel_explore_rounded,
+      onSelect: () => albumMbid != null && albumMbid.isNotEmpty
+          ? nav.goToReleaseGroup(albumMbid)
+          : nav.goToDiscoverArtist(mbid),
+    );
+  }
+  return null;
+}
+
+/// How this artist, album or track sits in the reader's own listening.
+///
+/// Pushed on the page the menu was opened over rather than through [MenuNav], because that is what
+/// `showEntityStats` already does and it is the same page a chart row pushes from.
+MenuAction _statsAction(
+  MenuHost host, {
+  required EntityKind kind,
+  required String id,
+  required String name,
+}) => MenuAction(
+  id: 'stats',
+  label: host.t(InsightsKeys.entityTitle),
+  icon: Icons.show_chart_rounded,
+  onSelect: () async {
+    if (!host.page.mounted) return;
+    await showEntityStats(host.page, kind: kind, id: id, name: name);
+  },
+);
+
+/// Correcting what the catalog says about this entity.
+///
+/// Gated on the host, exactly as the web gates it: the correction form is a surface the page owns,
+/// and a row that offers to report a wrong title and then opens nothing is worse than no row. It is
+/// deliberately NOT owner-gated — what the form lets you DO with a correction depends on what you
+/// own, and that is the form's decision, not the menu's.
+MenuAction _reportAction(MenuHost host, VoidCallback onReport) => MenuAction(
+  id: 'report',
+  label: host.t(CatalogKeys.reportAction),
+  icon: Icons.flag_outlined,
+  onSelect: onReport,
+);
+
 /// The queue's `StationKind`, which is a separate type from the API's — `chordia_sync` cannot
 /// depend on `chordia_api`. Matched on the wire value, which is the definition of both.
 sync.StationKind? _queueStationKind(StationKind kind) =>
@@ -307,12 +394,18 @@ sync.StationKind? _queueStationKind(StationKind kind) =>
 /// Kept as a named opener because half the app calls it: the row, the track page, the liked list,
 /// a playlist and the downloads screen all raise the same sheet, and every one of them means "this
 /// song's menu".
+/// Every option [trackMenu] takes is forwarded, so a list that can reorder or correct a row does
+/// not have to reach for `showEntityMenu` to say so — that is how a playlist row ended up with the
+/// reordering in a Material popup and the rest of the menu behind a "More" tap.
 Future<void> showTrackMenu(
   BuildContext context,
   WidgetRef ref,
   BrowseTrack track, {
   VoidCallback? onPlay,
   VoidCallback? onRemove,
+  VoidCallback? onMoveUp,
+  VoidCallback? onMoveDown,
+  VoidCallback? onReport,
   String? removeLabel,
 }) => showEntityMenu(
   context,
@@ -322,6 +415,9 @@ Future<void> showTrackMenu(
     track,
     onPlay: onPlay,
     onRemove: onRemove,
+    onMoveUp: onMoveUp,
+    onMoveDown: onMoveDown,
+    onReport: onReport,
     removeLabel: removeLabel,
   ),
 );
@@ -330,7 +426,8 @@ Future<void> showTrackMenu(
 ///
 /// [onPlay] is supplied by lists that know what "play this row" means for them (the whole album
 /// from here, not the one track). [onMoveUp] / [onMoveDown] give a playlist editor reordering
-/// without drag, and [onRemove] the row's removal — all absent unless the host can honour them.
+/// without drag, [onRemove] the row's removal and [onReport] the metadata-correction form — all
+/// absent unless the host can honour them.
 EntityMenu trackMenu(
   BuildContext page,
   WidgetRef ref,
@@ -340,11 +437,13 @@ EntityMenu trackMenu(
   VoidCallback? onRemove,
   VoidCallback? onMoveUp,
   VoidCallback? onMoveDown,
+  VoidCallback? onReport,
   String? removeLabel,
 }) {
   final host = MenuHost(page, ref, nav);
   final t = host.t;
   final liked = ref.watch(likedTrackIdsProvider).value?.contains(track.id);
+  final hidden = ref.watch(hiddenTrackIdsProvider).value?.contains(track.id);
 
   return EntityMenu(
     target: MenuTarget(
@@ -386,6 +485,7 @@ EntityMenu trackMenu(
         id: 'collect',
         items: [
           _likeAction(host, track.id, liked: liked),
+          _hideAction(host, track.id, hidden: hidden),
           MenuAction(
             id: 'add-to-playlist',
             label: t(PlaylistsKeys.addToPlaylist),
@@ -439,6 +539,10 @@ EntityMenu trackMenu(
         ],
       ),
       MenuSection(
+        id: 'report',
+        items: [if (onReport != null) _reportAction(host, onReport)],
+      ),
+      MenuSection(
         id: 'danger',
         items: [
           if (onRemove != null)
@@ -477,6 +581,79 @@ MenuAction _likeAction(
   },
 );
 
+/// Which tracks the listener has hidden.
+///
+/// One set for the whole app, for the same reason the liked set is one: a hidden track is dimmed
+/// wherever it is listed and skipped when a list is played, so every row asks the same question and
+/// asking the Hub per row would be a request per track. Not auto-disposed — it outlives any screen.
+///
+/// Read through [HubClient] rather than `CatalogApi`: hiding is a `/v1/me` concern and the catalog
+/// interface does not carry it.
+final hiddenTrackIdsProvider =
+    AsyncNotifierProvider<HiddenTracksController, Set<String>>(
+      HiddenTracksController.new,
+    );
+
+class HiddenTracksController extends AsyncNotifier<Set<String>> {
+  @override
+  Future<Set<String>> build() async {
+    final hub = ref.watch(hubClientProvider);
+    if (hub == null) return const {};
+    return (await hub.hiddenTracks()).toSet();
+  }
+
+  bool isHidden(String trackId) => state.value?.contains(trackId) ?? false;
+
+  /// Flips one track's hidden state, showing the new state before the Hub has confirmed it.
+  ///
+  /// Reverts on failure and rethrows, like the liked set: a row that stays dimmed after a failed
+  /// write is a lie the next launch quietly corrects.
+  Future<void> toggle(String trackId) async {
+    final before = state.value;
+    final hub = ref.read(hubClientProvider);
+    if (before == null || hub == null) return;
+
+    final hidden = before.contains(trackId);
+    final after = {...before};
+    if (hidden) {
+      after.remove(trackId);
+    } else {
+      after.add(trackId);
+    }
+    state = AsyncData(after);
+
+    try {
+      await (hidden ? hub.unhideTrack(trackId) : hub.hideTrack(trackId));
+    } on Object {
+      state = AsyncData(before);
+      rethrow;
+    }
+  }
+}
+
+MenuAction _hideAction(
+  MenuHost host,
+  String trackId, {
+  required bool? hidden,
+}) => MenuAction(
+  id: 'hide',
+  label: host.t(
+    hidden ?? false ? LibraryKeys.hiddenUnhide : LibraryKeys.hiddenHide,
+  ),
+  icon: hidden ?? false
+      ? Icons.visibility_off_rounded
+      : Icons.visibility_off_outlined,
+  // Same rule as the heart: until the hidden set has loaded there is no state to flip.
+  enabled: hidden != null && host.api != null,
+  onSelect: () async {
+    try {
+      await host.hidden.toggle(trackId);
+    } on Object {
+      host.snack(host.t(ErrorsKeys.changeFailed));
+    }
+  },
+);
+
 // ── 2. an album card ───────────────────────────────────────────────────────────────────────────
 
 /// An album with only what a card carries.
@@ -488,6 +665,7 @@ class AlbumLike {
     this.artist,
     this.artistId,
     this.coverUrl,
+    this.mbid,
   });
 
   final String id;
@@ -495,6 +673,11 @@ class AlbumLike {
   final String? artist;
   final String? artistId;
   final String? coverUrl;
+
+  /// MusicBrainz release-group id, for "Open in Discover". `BrowseAlbum.mbid` has carried it all
+  /// along; a card that builds one of these from a browse row should pass it through, or the menu
+  /// silently drops the only precise route into the Manager.
+  final String? mbid;
 }
 
 /// The menu of an album CARD. A card has no track list, so Play and Add to queue fetch one.
@@ -577,6 +760,7 @@ EntityMenu albumMenu(
               onSelect: () => host.nav.goToArtist(artistId),
             ),
           _shareAction(host, path: '/albums/${album.id}', title: album.title),
+          ?_discoverAction(host, albumMbid: album.mbid),
         ],
       ),
     ],
@@ -591,6 +775,7 @@ EntityMenu albumDetailMenu(
   WidgetRef ref,
   AlbumDetail album, {
   MenuNav? nav,
+  VoidCallback? onReport,
 }) {
   final host = MenuHost(page, ref, nav);
   final t = host.t;
@@ -668,8 +853,19 @@ EntityMenu albumDetailMenu(
               icon: Icons.person_outline_rounded,
               onSelect: () => host.nav.goToArtist(artistId),
             ),
+          _statsAction(
+            host,
+            kind: EntityKind.album,
+            id: album.id,
+            name: album.title,
+          ),
           _shareAction(host, path: '/albums/${album.id}', title: album.title),
+          ?_discoverAction(host, albumMbid: album.mbid),
         ],
+      ),
+      MenuSection(
+        id: 'report',
+        items: [if (onReport != null) _reportAction(host, onReport)],
       ),
     ],
   );
@@ -679,11 +875,20 @@ EntityMenu albumDetailMenu(
 
 @immutable
 class ArtistLike {
-  const ArtistLike({required this.id, required this.name, this.imageUrl});
+  const ArtistLike({
+    required this.id,
+    required this.name,
+    this.imageUrl,
+    this.mbid,
+  });
 
   final String id;
   final String name;
   final String? imageUrl;
+
+  /// MusicBrainz artist id, for "Open in Discover" — same trap as [AlbumLike.mbid]: pass it if the
+  /// row you built this from has one.
+  final String? mbid;
 }
 
 /// The menu of an artist CARD or row: what can be offered without their page loaded.
@@ -750,6 +955,7 @@ EntityMenu artistMenu(
             onSelect: () => host.nav.goToArtist(artist.id),
           ),
           _shareAction(host, path: '/artists/${artist.id}', title: artist.name),
+          ?_discoverAction(host, artistMbid: artist.mbid),
         ],
       ),
     ],
@@ -763,6 +969,7 @@ EntityMenu artistDetailMenu(
   WidgetRef ref,
   ArtistDetail artist, {
   MenuNav? nav,
+  VoidCallback? onReport,
 }) {
   final host = MenuHost(page, ref, nav);
   final t = host.t;
@@ -813,8 +1020,19 @@ EntityMenu artistDetailMenu(
             icon: Icons.library_music_outlined,
             onSelect: () => host.nav.goToArtistDiscography(artist.id),
           ),
+          _statsAction(
+            host,
+            kind: EntityKind.artist,
+            id: artist.id,
+            name: artist.name,
+          ),
           _shareAction(host, path: '/artists/${artist.id}', title: artist.name),
+          ?_discoverAction(host, artistMbid: artist.mbid),
         ],
+      ),
+      MenuSection(
+        id: 'report',
+        items: [if (onReport != null) _reportAction(host, onReport)],
       ),
     ],
   );
@@ -840,11 +1058,36 @@ class PlaylistLike {
   final List<BrowseTrack>? tracks;
 }
 
+/// A playlist's actions — ONE definition for the card, the library row and the playlist page's ⋮.
+///
+/// The callbacks carry the surfaces only a host can open: the edit sheets and the two destructive
+/// confirmations all need a context that outlives this menu, and the page is the only caller that
+/// knows whether the reader owns the playlist or merely collaborates on it. A card passes none of
+/// them and loses nothing it could have honoured; the page passes them all and stops being a second
+/// menu that disagrees with the first.
 EntityMenu playlistMenu(
   BuildContext page,
   WidgetRef ref,
   PlaylistLike playlist, {
   MenuNav? nav,
+
+  /// Owner only: the name/description/visibility sheet.
+  VoidCallback? onEditDetails,
+
+  /// Owner only: the cover picker.
+  VoidCallback? onEditCover,
+
+  /// Owner or collaborator: who else can edit this.
+  VoidCallback? onCollaborators,
+
+  /// Editors only: enter the page's drag-reorder mode. Move up/down on a row works without it.
+  VoidCallback? onReorder,
+
+  /// Owner only, destructive.
+  VoidCallback? onDelete,
+
+  /// Collaborator only: leave a playlist somebody else owns.
+  VoidCallback? onLeave,
 }) {
   final host = MenuHost(page, ref, nav);
   final t = host.t;
@@ -867,6 +1110,39 @@ EntityMenu playlistMenu(
       imageUrl: playlist.coverUrl,
     ),
     sections: [
+      MenuSection(
+        id: 'owner',
+        items: [
+          if (onEditDetails != null)
+            MenuAction(
+              id: 'edit-details',
+              label: t(PlaylistsKeys.editTitle),
+              icon: Icons.edit_outlined,
+              onSelect: onEditDetails,
+            ),
+          if (onEditCover != null)
+            MenuAction(
+              id: 'edit-cover',
+              label: t(PlaylistsKeys.editChoosePhoto),
+              icon: Icons.image_outlined,
+              onSelect: onEditCover,
+            ),
+          if (onCollaborators != null)
+            MenuAction(
+              id: 'collaborators',
+              label: t(PlaylistsKeys.collaboratorsManage),
+              icon: Icons.group_outlined,
+              onSelect: onCollaborators,
+            ),
+          if (onReorder != null)
+            MenuAction(
+              id: 'reorder',
+              label: t(PlaylistsKeys.reorderStart),
+              icon: Icons.swap_vert_rounded,
+              onSelect: onReorder,
+            ),
+        ],
+      ),
       MenuSection(
         id: 'play',
         items: [
@@ -933,6 +1209,29 @@ EntityMenu playlistMenu(
           ),
         ],
       ),
+      MenuSection(
+        id: 'danger',
+        items: [
+          if (onDelete != null)
+            MenuAction(
+              id: 'delete',
+              label: t(PlaylistsKeys.deleteTitle),
+              icon: Icons.delete_outline_rounded,
+              destructive: true,
+              onSelect: onDelete,
+            ),
+          // Not the owner: leaving is the only way out, and offering "Delete" to somebody who
+          // cannot delete is worse than not offering it.
+          if (onLeave != null)
+            MenuAction(
+              id: 'leave',
+              label: t(PlaylistsKeys.leaveTitle),
+              icon: Icons.logout_rounded,
+              destructive: true,
+              onSelect: onLeave,
+            ),
+        ],
+      ),
     ],
   );
 }
@@ -940,11 +1239,24 @@ EntityMenu playlistMenu(
 // ── 7. a smart playlist ────────────────────────────────────────────────────────────────────────
 
 /// At parity with a regular playlist, minus manual ordering — the order is the rules' answer.
+///
+/// What it adds is the pair only it has: a snapshot that can be rebuilt on demand, and a rule set
+/// that can be edited. Both arrive as callbacks for the reason the playlist's do — only the host
+/// knows whether the sheet they open is the reader's to open.
 EntityMenu smartPlaylistMenu(
   BuildContext page,
   WidgetRef ref,
   PlaylistLike playlist, {
   MenuNav? nav,
+
+  /// Owner only: the rules-and-details sheet.
+  VoidCallback? onEdit,
+
+  /// Owner only: rebuild the snapshot now.
+  VoidCallback? onRefresh,
+
+  /// Owner only, destructive.
+  VoidCallback? onDelete,
 }) {
   final host = MenuHost(page, ref, nav);
   final t = host.t;
@@ -974,6 +1286,25 @@ EntityMenu smartPlaylistMenu(
       imageUrl: playlist.coverUrl,
     ),
     sections: [
+      MenuSection(
+        id: 'owner',
+        items: [
+          if (onEdit != null)
+            MenuAction(
+              id: 'edit',
+              label: t(PlaylistsKeys.smartEditTitle),
+              icon: Icons.edit_outlined,
+              onSelect: onEdit,
+            ),
+          if (onRefresh != null)
+            MenuAction(
+              id: 'refresh',
+              label: t(PlaylistsKeys.smartRefreshAction),
+              icon: Icons.refresh_rounded,
+              onSelect: onRefresh,
+            ),
+        ],
+      ),
       MenuSection(
         id: 'play',
         items: [
@@ -1005,6 +1336,26 @@ EntityMenu smartPlaylistMenu(
             kind: PinKind.playlist,
             id: playlist.id,
           ),
+          // A snapshot is a track list like any other, so it downloads like one — the same two
+          // shapes the regular playlist uses: the loaded page's rows go straight to the download
+          // tile, and a card fetches them first.
+          if (known != null && known.isNotEmpty)
+            MenuAction.custom(
+              id: 'download',
+              builder: (context, close) => DownloadMenuTile(
+                tracks: known,
+                label: t(LibraryKeys.downloadsActionDownloadPlaylist),
+                onDone: close,
+              ),
+            )
+          else
+            MenuAction(
+              id: 'download',
+              label: t(LibraryKeys.downloadsActionDownloadPlaylist),
+              icon: Icons.download_for_offline_outlined,
+              enabled: api != null && known?.isEmpty != true,
+              onSelect: () async => host.save(await tracks()),
+            ),
         ],
       ),
       MenuSection(
@@ -1023,6 +1374,19 @@ EntityMenu smartPlaylistMenu(
             path: '/smart/${playlist.id}',
             title: playlist.name,
           ),
+        ],
+      ),
+      MenuSection(
+        id: 'danger',
+        items: [
+          if (onDelete != null)
+            MenuAction(
+              id: 'delete',
+              label: t(PlaylistsKeys.deleteTitle),
+              icon: Icons.delete_outline_rounded,
+              destructive: true,
+              onSelect: onDelete,
+            ),
         ],
       ),
     ],
@@ -1203,6 +1567,12 @@ EntityMenu mixMenu(
 
 // ── 11. a library ──────────────────────────────────────────────────────────────────────────────
 
+/// A library's actions, for its card and for the player's "playing from".
+///
+/// [onShare] is the grant flow — handing a friend access to this library — and is a different thing
+/// from the `share` row, which copies a link to it. [onMoveUp] / [onMoveDown] are the whole reason
+/// the web moved reordering in here: it used to be hover-only icon buttons, so a touch reader had
+/// no route to it at all.
 EntityMenu libraryMenu(
   BuildContext page,
   WidgetRef ref, {
@@ -1210,6 +1580,11 @@ EntityMenu libraryMenu(
   required String name,
   bool owned = false,
   MenuNav? nav,
+  VoidCallback? onManage,
+  VoidCallback? onShare,
+  VoidCallback? onMoveUp,
+  VoidCallback? onMoveDown,
+  VoidCallback? onRemove,
 }) {
   final host = MenuHost(page, ref, nav);
   final t = host.t;
@@ -1232,7 +1607,53 @@ EntityMenu libraryMenu(
               (_) => LibraryDetailScreen(libraryId: libraryId, owned: owned),
             ),
           ),
+          if (onManage != null)
+            MenuAction(
+              id: 'edit',
+              label: t(CommonKeys.actionsEdit),
+              icon: Icons.tune_rounded,
+              onSelect: onManage,
+            ),
           _shareAction(host, path: '/library/$libraryId', title: name),
+        ],
+      ),
+      MenuSection(
+        id: 'owner',
+        items: [
+          if (onShare != null)
+            MenuAction(
+              id: 'share-with-friend',
+              label: t(LibraryKeys.cardShareTitle),
+              icon: Icons.person_add_alt_rounded,
+              onSelect: onShare,
+            ),
+          if (onMoveUp != null)
+            MenuAction(
+              id: 'move-up',
+              label: t(LibraryKeys.cardMoveUp),
+              icon: Icons.arrow_upward_rounded,
+              onSelect: onMoveUp,
+            ),
+          if (onMoveDown != null)
+            MenuAction(
+              id: 'move-down',
+              label: t(LibraryKeys.cardMoveDown),
+              icon: Icons.arrow_downward_rounded,
+              onSelect: onMoveDown,
+            ),
+        ],
+      ),
+      MenuSection(
+        id: 'danger',
+        items: [
+          if (onRemove != null)
+            MenuAction(
+              id: 'remove',
+              label: t(CommonKeys.actionsRemove),
+              icon: Icons.delete_outline_rounded,
+              destructive: true,
+              onSelect: onRemove,
+            ),
         ],
       ),
     ],
