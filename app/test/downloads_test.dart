@@ -65,6 +65,11 @@ void main() {
     for (var round = 0; round < rounds; round++) {
       if (await reached()) return;
       await pumpEventQueue(times: 10);
+      // Draining microtasks is not enough on its own: the queue writes real files, and that
+      // progress happens off the Dart event loop. Without a moment of real time each round, a
+      // machine busy running the rest of the suite can exhaust the whole budget before two
+      // downloads have opened — which is a slow disk, not a queue that ignored its limit.
+      await Future<void>.delayed(const Duration(milliseconds: 1));
     }
     fail('the download queue never reached the state the test was waiting for');
   }

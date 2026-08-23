@@ -58,7 +58,8 @@ void main() {
       expect(
         hub!.frontendUrl,
         Uri.parse('https://chordia.dev'),
-        reason: 'browser sign-in sends people here; without it the button refuses',
+        reason:
+            'browser sign-in sends people here; without it the button refuses',
       );
       expect(
         hub.name,
