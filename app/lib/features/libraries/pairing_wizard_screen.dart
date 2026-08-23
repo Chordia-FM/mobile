@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../i18n/keys.g.dart';
 import '../../i18n/translations_provider.dart';
+import '../catalog/widgets/list_row.dart';
 import '../library/data/formatting.dart';
 import '../library/data/library_providers.dart';
 import '../library/widgets/library_states.dart';
@@ -212,7 +213,7 @@ class _PairingWizardScreenState extends ConsumerState<PairingWizardScreen> {
     ),
     const SizedBox(height: 16),
     Card(
-      child: ListTile(
+      child: ListRow(
         title: Text(t(LibraryKeys.pairingTrustFingerprint)),
         // Grouped hex, which is the form a fingerprint is printed in everywhere else — a
         // sixty-four character run is unreadable and therefore uncheckable.

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/art/art_cache.dart';
 import '../../i18n/keys.g.dart';
 import '../../i18n/translations_provider.dart';
+import '../catalog/widgets/list_row.dart';
 import '../../widgets/cover_art.dart';
 import '../library/data/library_providers.dart';
 import '../library/widgets/library_states.dart';
@@ -116,8 +117,8 @@ class _AddToPlaylistSheetState extends ConsumerState<_AddToPlaylistSheet> {
                   ),
                 ),
               ),
-              ListTile(
-                leading: const Icon(Icons.add_rounded),
+              ListRow(
+                leading: const Icon(Icons.add_rounded, size: 20),
                 title: Text(t(PlaylistsKeys.newKey)),
                 // Typing a name that matches nothing and then tapping this makes exactly that
                 // playlist, rather than opening an empty form the person fills in twice.
@@ -153,20 +154,16 @@ class _AddToPlaylistSheetState extends ConsumerState<_AddToPlaylistSheet> {
       itemBuilder: (context, index) {
         final playlist = rows[index];
         final autoCovers = playlist.autoCoverUrls ?? const <String>[];
-        return ListTile(
+        return ListRow(
           leading: CoverArt(
             sha256: artHashOf(
               playlist.coverUrl ??
                   (autoCovers.isEmpty ? null : autoCovers.first),
             ),
-            size: 44,
+            size: 40,
             fallbackIcon: Icons.queue_music_rounded,
           ),
-          title: Text(
-            playlist.name,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
+          title: Text(playlist.name),
           subtitle: Text(
             t(PlaylistsKeys.songCount, {'count': playlist.trackCount}),
           ),

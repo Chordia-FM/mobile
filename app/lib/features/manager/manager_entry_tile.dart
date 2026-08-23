@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../i18n/keys.g.dart';
 import '../../i18n/translations_provider.dart';
+import '../catalog/widgets/list_row.dart';
 import 'manager_routes.dart';
 
 /// The row that opens the Manager, ready to drop into any list of destinations.
@@ -16,11 +17,11 @@ class ManagerEntryTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = ref.t;
-    return ListTile(
+    return ListRow(
       leading: const Icon(Icons.donut_large_rounded),
       title: Text(t(ManagerKeys.nav)),
       subtitle: Text(t(ManagerKeys.subtitle)),
-      trailing: const Icon(Icons.chevron_right_rounded),
+      trailing: listRowChevron,
       onTap: context.goToManager,
     );
   }

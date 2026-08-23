@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../i18n/keys.g.dart';
 import '../../i18n/translations_provider.dart';
+import '../catalog/widgets/list_row.dart';
 import '../library/data/library_providers.dart';
 import '../library/library_detail_screen.dart';
 import '../library/widgets/library_states.dart';
@@ -145,8 +146,9 @@ class LibraryCard extends ConsumerWidget {
     final online = server.value?.endpoint.online;
     final counts = ref.watch(libraryCoverageProvider).value?[library.id];
 
-    return ListTile(
+    return ListRow(
       leading: CircleAvatar(
+        radius: 20,
         backgroundColor: theme.colorScheme.surfaceContainerHigh,
         // The icon its owner chose, not one picked by whether the viewer owns it: the whole point
         // of the icon is that this library is recognisable at a glance, and it has to be the same
@@ -213,15 +215,15 @@ class LibraryCard extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            ListTile(
+            ListRow(
               title: Text(library.name),
               subtitle: Text(
                 t(LibraryKeys.cardTrackCount, {'count': library.trackCount}),
               ),
             ),
             const Divider(height: 1),
-            ListTile(
-              leading: const Icon(Icons.folder_open_rounded),
+            ListRow(
+              leading: const Icon(Icons.folder_open_rounded, size: 20),
               title: Text(t(CommonKeys.actionsOpen)),
               onTap: () {
                 Navigator.of(sheetContext).pop();
@@ -235,8 +237,8 @@ class LibraryCard extends ConsumerWidget {
                 );
               },
             ),
-            ListTile(
-              leading: const Icon(Icons.settings_outlined),
+            ListRow(
+              leading: const Icon(Icons.settings_outlined, size: 20),
               title: Text(t(LibraryKeys.manageTitle)),
               onTap: () {
                 Navigator.of(sheetContext).pop();
@@ -251,11 +253,9 @@ class LibraryCard extends ConsumerWidget {
               },
             ),
             if (owned)
-              ListTile(
-                leading: Icon(
-                  Icons.delete_outline_rounded,
-                  color: Theme.of(sheetContext).colorScheme.error,
-                ),
+              ListRow(
+                destructive: true,
+                leading: const Icon(Icons.delete_outline_rounded, size: 20),
                 title: Text(t(LibraryKeys.editRemoveTitle)),
                 subtitle: Text(t(LibraryKeys.editRemoveHelp)),
                 onTap: () {

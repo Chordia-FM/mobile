@@ -9,7 +9,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/art/art_cache.dart';
 import '../../i18n/keys.g.dart';
 import '../../i18n/translations_provider.dart';
+import '../../widgets/cover_art.dart';
+import '../../widgets/tokens.dart';
 import '../catalog/widgets/entity_menu.dart';
+import '../social/social_routes.dart';
 import '../playlists/add_songs_sheet.dart';
 import '../playlists/collaborators_sheet.dart';
 import '../playlists/cover_sheet.dart';
@@ -103,14 +106,16 @@ class _PlaylistDetailScreenState extends ConsumerState<PlaylistDetailScreen> {
                   : t(PlaylistsKeys.reorderStart),
               onPressed: () => setState(() => _reordering = !_reordering),
             ),
-          // One button rather than a row of icons: renaming, the cover, collaborators, deleting
-          // and leaving all live behind it, which is the only shape a phone header has room for.
-          // The web client puts the same set in the playlist's own context menu.
+          // One button rather than a row of icons: renaming, the cover, collaborators, download,
+          // sharing, deleting and leaving all live behind it, which is the only shape a phone
+          // header has room for. It opens `playlistMenu` — the SAME definition the player's
+          // context nav and every playlist card use — so the page cannot offer a different set of
+          // actions than a card for the same playlist does.
           if (detail != null)
             IconButton(
               icon: const Icon(Icons.more_vert_rounded),
               tooltip: t(CommonKeys.actionsMore),
-              onPressed: () => unawaited(_openManage(detail)),
+              onPressed: () => unawaited(_openMenu(detail)),
             ),
         ],
       ),
@@ -160,6 +165,7 @@ class _PlaylistDetailScreenState extends ConsumerState<PlaylistDetailScreen> {
             title: detail.name,
             description: detail.description,
             meta: _meta(detail, t),
+            metaLeading: _OwnerLink(owner: detail.owner),
             artwork: MosaicCover(
               coverUrl: detail.coverUrl,
               autoCoverUrls: detail.autoCoverUrls,
@@ -347,8 +353,9 @@ class _PlaylistDetailScreenState extends ConsumerState<PlaylistDetailScreen> {
     final durationMs =
         detail.totalDurationMs ??
         detail.tracks.fold<int>(0, (sum, track) => sum + track.durationMs);
+    // The owner is deliberately absent here: they are a LINK, and this string is text. See
+    // [_OwnerLink], which takes the front of the same line.
     final parts = [
-      detail.owner.displayName,
       t(PlaylistsKeys.songCount, {'count': count}),
       if (durationMs > 0) totalDuration(durationMs, t),
     ];
@@ -359,21 +366,62 @@ class _PlaylistDetailScreenState extends ConsumerState<PlaylistDetailScreen> {
     return '$line\n${t(PlaylistsKeys.metaPlayableNote, {'playable': detail.tracks.length, 'count': count})}';
   }
 
-  /// Everything an owner or collaborator can do to the playlist itself, in one sheet.
+  /// Everything a viewer can do to the playlist itself.
   ///
-  /// The outcome decides what happens next, which is why the sheet reports one: a playlist that
-  /// was deleted or left has to take this page with it — there is nothing left to reload.
-  Future<void> _openManage(PlaylistDetail detail) async {
-    final outcome = await showPlaylistManageSheet(context, detail: detail);
+  /// This used to be a second, hand-written sheet, and the two disagreed: `playlistMenu` already
+  /// carried Download, Share, Play, Queue and Start radio, and none of them were reachable from
+  /// the page the playlist actually lives on. Taking a playlist offline is a core feature this
+  /// screen could not start. The page passes the callbacks only IT can honour — the edit sheets
+  /// and the two destructive confirmations, which need a context that outlives the menu — and
+  /// gets the rest for free.
+  Future<void> _openMenu(PlaylistDetail detail) async {
+    final owned = detail.owned ?? false;
+    final canEdit = detail.canEdit ?? owned;
+    await showEntityMenu(
+      context,
+      (page, menuRef) => playlistMenu(
+        page,
+        menuRef,
+        PlaylistLike(
+          id: detail.id,
+          name: detail.name,
+          coverUrl: detail.coverUrl,
+          // The loaded rows, so Download and Queue skip a round trip the page has already made.
+          tracks: detail.tracks,
+        ),
+        onEditDetails: owned ? () => unawaited(_openDetails(detail)) : null,
+        onEditCover: owned ? () => unawaited(_openCover(detail)) : null,
+        onCollaborators: canEdit
+            ? () => unawaited(_openCollaborators(detail))
+            : null,
+        // Nothing to reorder with one row, and the header already offers the mode when there is.
+        onReorder: canEdit && detail.tracks.length > 1
+            ? () => setState(() => _reordering = true)
+            : null,
+        onDelete: owned ? () => unawaited(_confirmDelete(detail)) : null,
+        // Not the owner: leaving is the only way out. Offering "Delete" to somebody who cannot
+        // delete is worse than not offering it.
+        onLeave: !owned && canEdit
+            ? () => unawaited(_confirmLeave(detail))
+            : null,
+      ),
+    );
+  }
+
+  /// Asks, deletes, and takes the page with it — a deleted playlist has nothing left to reload.
+  Future<void> _confirmDelete(PlaylistDetail detail) async {
+    if (!await confirmDeletePlaylist(context, ref, detail)) return;
     if (!mounted) return;
-    switch (outcome) {
-      case PlaylistManageOutcome.removed:
-        Navigator.of(context).pop();
-      case PlaylistManageOutcome.edited:
-        await _controller?.load();
-      case PlaylistManageOutcome.unchanged:
-        break;
-    }
+    ref.invalidate(playlistsProvider);
+    Navigator.of(context).pop();
+  }
+
+  /// The same, for a playlist somebody else owns: one you are no longer on is one you cannot read.
+  Future<void> _confirmLeave(PlaylistDetail detail) async {
+    if (!await confirmLeavePlaylist(context, ref, detail.id)) return;
+    if (!mounted) return;
+    ref.invalidate(playlistsProvider);
+    Navigator.of(context).pop();
   }
 
   /// Name, description and visibility. One PATCH, sent by the sheet itself.
@@ -429,3 +477,51 @@ class _PlaylistDetailScreenState extends ConsumerState<PlaylistDetailScreen> {
 }
 
 enum _TrackAction { moveUp, moveDown, remove, more }
+
+/// The playlist's owner, as a route to their profile rather than a word in a sentence.
+///
+/// The web puts an avatar and the display name at the head of the meta line, linking to
+/// `/app/u/$handle` (`playlists/$playlistId.tsx:425-439`). Mobile has the same route —
+/// `SocialNavigation.goToProfile` resolves `u/:handle` inside whichever tab the page is in — and
+/// was spending the pixels on plain text.
+class _OwnerLink extends StatelessWidget {
+  const _OwnerLink({required this.owner});
+
+  final PublicUser owner;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return InkWell(
+      onTap: () => context.goToProfile(owner.handle),
+      borderRadius: ChordiaRadius.smAll,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // The web's `size-6`, round.
+          CoverArt(
+            sha256: artHashOf(owner.avatarUrl),
+            size: 24,
+            shape: BoxShape.circle,
+            fallbackIcon: Icons.person_rounded,
+            fallbackInitial: owner.displayName,
+          ),
+          const SizedBox(width: 6),
+          // `font-medium text-foreground` — the owner reads a shade stronger than the counts
+          // beside them, which is what marks it as the one part of the line that goes somewhere.
+          Flexible(
+            child: Text(
+              owner.displayName,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: ChordiaType.sm.copyWith(
+                fontWeight: ChordiaType.medium,
+                color: scheme.onSurface,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

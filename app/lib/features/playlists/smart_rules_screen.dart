@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/art/art_cache.dart';
 import '../../i18n/keys.g.dart';
 import '../../i18n/translations_provider.dart';
+import '../catalog/widgets/list_row.dart';
 import '../../widgets/cover_art.dart';
 import '../library/data/formatting.dart';
 import '../library/data/library_providers.dart';
@@ -395,19 +396,10 @@ class _SmartRulesScreenState extends ConsumerState<SmartRulesScreen> {
               ),
             ),
           for (final track in preview.sample)
-            ListTile(
-              dense: true,
+            ListRow(
               leading: CoverArt(sha256: artHashOf(track.coverUrl), size: 40),
-              title: Text(
-                track.title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              subtitle: Text(
-                track.artist,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
+              title: Text(track.title),
+              subtitle: Text(track.artist),
             ),
         ],
       ],
@@ -433,7 +425,7 @@ class _SmartRulesScreenState extends ConsumerState<SmartRulesScreen> {
                 ),
               ),
               for (final field in group.fields)
-                ListTile(
+                ListRow(
                   title: Text(t(smartFieldKey(field))),
                   onTap: () => Navigator.of(sheetContext).pop(field),
                 ),

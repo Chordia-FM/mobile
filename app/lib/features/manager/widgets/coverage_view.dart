@@ -7,6 +7,7 @@ import '../../../i18n/keys.g.dart';
 import '../../../i18n/translations_provider.dart';
 import '../../../widgets/cover_art.dart';
 import '../../catalog/widgets/catalog_state.dart';
+import '../../catalog/widgets/list_row.dart';
 import '../data/coverage_format.dart';
 import '../data/manager_providers.dart';
 import '../manager_routes.dart';
@@ -102,23 +103,19 @@ class _Loaded extends ConsumerWidget {
             itemCount: rows.length,
             itemBuilder: (context, index) {
               final artist = rows[index];
-              return ListTile(
+              return ListRow(
                 leading: CoverArt(
                   sha256: artHashOf(artist.imageUrl),
-                  size: 44,
+                  size: 40,
                   shape: BoxShape.circle,
                 ),
-                title: Text(
-                  artist.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
+                title: Text(artist.name),
                 subtitle: Text(
                   t(CatalogKeys.artistCardAlbumCount, {
                     'count': artist.albumCount,
                   }),
                 ),
-                trailing: const Icon(Icons.chevron_right_rounded),
+                trailing: listRowChevron,
                 onTap: () => context.goToArtistCoverage(artist.id),
               );
             },

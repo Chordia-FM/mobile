@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/art/art_cache.dart';
 import '../../i18n/keys.g.dart';
 import '../../i18n/translations_provider.dart';
+import '../catalog/widgets/list_row.dart';
 import '../../widgets/cover_art.dart';
 import '../library/widgets/library_states.dart';
 import 'data/libraries_api.dart';
@@ -80,10 +81,10 @@ class _OverrideRow extends ConsumerWidget {
       if (summary.overrideMain) t(LibraryKeys.metadataOverridesMain),
     ].join(' · ');
 
-    return ListTile(
+    return ListRow(
       leading: CoverArt(
         sha256: artHashOf(summary.imageUrl),
-        size: 44,
+        size: 40,
         shape: summary.kind == OverrideKind.artist
             ? BoxShape.circle
             : BoxShape.rectangle,
@@ -93,7 +94,7 @@ class _OverrideRow extends ConsumerWidget {
           OverrideKind.track => Icons.music_note_rounded,
         },
       ),
-      title: Text(summary.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+      title: Text(summary.name),
       subtitle: Text(
         // The catalog's own name, present only when the override changes it — so a row shows both
         // what the library calls it and what everyone else does.
@@ -109,7 +110,6 @@ class _OverrideRow extends ConsumerWidget {
         tooltip: t(LibraryKeys.metadataOverridesReset),
         onPressed: () => unawaited(_reset(context, ref)),
       ),
-      isThreeLine: summary.originalName != null,
       onTap: () async {
         await showOverrideEditor(
           context,

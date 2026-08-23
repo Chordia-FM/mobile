@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/art/art_cache.dart';
 import '../../i18n/keys.g.dart';
 import '../../i18n/translations_provider.dart';
+import '../catalog/widgets/list_row.dart';
 import '../../widgets/cover_art.dart';
 import '../library/data/formatting.dart';
 import '../library/widgets/library_states.dart';
@@ -244,15 +245,10 @@ class _AddSongsSheetState extends ConsumerState<_AddSongsSheet> {
       final label = ref.t(
         held ? PlaylistsKeys.emptyStateAdded : PlaylistsKeys.addToPlaylist,
       );
-      return ListTile(
-        dense: true,
+      return ListRow(
         leading: CoverArt(sha256: artHashOf(track.coverUrl), size: 40),
-        title: Text(track.title, maxLines: 1, overflow: TextOverflow.ellipsis),
-        subtitle: Text(
-          track.artist,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
+        title: Text(track.title),
+        subtitle: Text(track.artist),
         trailing: IconButton(
           icon: Icon(held ? Icons.check_rounded : Icons.add_rounded),
           tooltip: label,

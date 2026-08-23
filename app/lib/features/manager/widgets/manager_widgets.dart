@@ -7,6 +7,7 @@ import '../../../i18n/keys.g.dart';
 import '../../../i18n/translations_provider.dart';
 import '../../../widgets/cover_art.dart';
 import '../../catalog/widgets/catalog_state.dart';
+import '../../catalog/widgets/list_row.dart';
 import '../data/coverage_format.dart';
 import '../data/manager_providers.dart';
 
@@ -183,13 +184,11 @@ class ReleaseGroupTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = ref.t;
-    return ListTile(
+    return ListRow(
       onTap: onTap,
-      leading: CoverArt(sha256: artHashOf(coverUrl), size: 48),
-      title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
-      subtitle: subtitle == null
-          ? null
-          : Text(subtitle!, maxLines: 1, overflow: TextOverflow.ellipsis),
+      leading: CoverArt(sha256: artHashOf(coverUrl), size: 40),
+      title: Text(title),
+      subtitle: subtitle == null ? null : Text(subtitle!),
       trailing: OwnedBadge(
         owned: owned,
         ownedLabel: t(ManagerKeys.discoverOwned),

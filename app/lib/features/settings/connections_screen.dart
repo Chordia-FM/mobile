@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../app/providers.dart';
 import '../../i18n/keys.g.dart';
 import '../../i18n/translations_provider.dart';
+import '../catalog/widgets/list_row.dart';
 import 'data/settings_messages.dart';
 import 'data/settings_providers.dart';
 import 'widgets/settings_list.dart';
@@ -52,11 +53,13 @@ class ConnectionsScreen extends ConsumerWidget {
               // Read-only: the Hub has no link or unlink endpoint of its own — Discord is a
               // sign-in method, and the only routes are the authorize/callback pair the website
               // drives. Showing the state without an action is the honest rendering of that.
-              builder: (context, value) => ListTile(
+              builder: (context, value) => ListRow(
+                gutter: 0,
                 leading: Icon(
                   value.discordLinked
                       ? Icons.link_rounded
                       : Icons.link_off_rounded,
+                  size: 20,
                   color: value.discordLinked
                       ? Theme.of(context).colorScheme.primary
                       : null,
@@ -140,9 +143,11 @@ class _LastfmRowsState extends ConsumerState<_LastfmRows> {
     final connected = widget.status.connected;
     return Column(
       children: [
-        ListTile(
+        ListRow(
+          gutter: 0,
           leading: Icon(
             connected ? Icons.link_rounded : Icons.link_off_rounded,
+            size: 20,
             color: connected ? Theme.of(context).colorScheme.primary : null,
           ),
           title: Text(t(SettingsKeys.connectionsLastfmLabel)),

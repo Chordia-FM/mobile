@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/art/art_cache.dart';
 import '../../i18n/keys.g.dart';
 import '../../i18n/translations_provider.dart';
+import '../catalog/widgets/list_row.dart';
 import '../../widgets/cover_art.dart';
 import '../libraries/library_manage_screen.dart';
 import 'data/library_providers.dart';
@@ -116,18 +117,14 @@ class LibraryDetailScreen extends ConsumerWidget {
           );
         }
         final artist = rows[index - 1];
-        return ListTile(
+        return ListRow(
           leading: CoverArt(
             sha256: artHashOf(artist.imageUrl),
-            size: 44,
+            size: 40,
             shape: BoxShape.circle,
             fallbackIcon: Icons.person_rounded,
           ),
-          title: Text(
-            artist.name,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
+          title: Text(artist.name),
           subtitle: Text(
             t(LibraryKeys.trackCount, {'count': artist.trackCount}),
           ),
@@ -237,7 +234,7 @@ class _Shares extends ConsumerWidget {
               ? [EmptyNote(message: t(LibraryKeys.shareManagerEmpty))]
               : [
                   for (final share in rows)
-                    ListTile(
+                    ListRow(
                       leading: CoverArt(
                         sha256: artHashOf(share.grantee.avatarUrl),
                         size: 40,

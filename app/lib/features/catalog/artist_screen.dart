@@ -21,6 +21,7 @@ import 'widgets/artist_row.dart';
 import 'widgets/catalog_state.dart';
 import 'widgets/entity_links.dart';
 import 'widgets/entity_menu.dart';
+import 'widgets/list_row.dart';
 import 'widgets/section.dart';
 import 'widgets/track_list.dart';
 
@@ -161,11 +162,11 @@ class _ArtistViewState extends ConsumerState<_ArtistView> {
           SliverToBoxAdapter(
             child: SectionHeader(title: t(CatalogKeys.artistPopular)),
           ),
-          SliverTrackList(
-            tracks: popular,
-            playContext: playContext,
-            showArtists: false,
-          ),
+          // The credited line stays ON here, unlike the album page's conditional suppression. An
+          // artist's popular list is exactly where "feat. someone" is the fact worth reading, and
+          // it is the only tap target the featured artist gets — the web renders `TrackList
+          // variant="list"` (ArtistView.tsx:521), which always draws `ArtistLinks`.
+          SliverTrackList(tracks: popular, playContext: playContext),
           if (artist.topTracks.length > _popularPreview)
             SliverToBoxAdapter(
               child: Align(
@@ -451,9 +452,9 @@ class _LabelRow extends ConsumerWidget {
     final releases = t(CatalogKeys.artistReleaseCount, {
       'count': label.albumCount,
     });
-    return ListTile(
-      leading: const Icon(Icons.sell_outlined),
-      title: Text(label.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+    return ListRow(
+      leading: const Icon(Icons.sell_outlined, size: 20),
+      title: Text(label.name),
       subtitle: Text(
         span == null
             ? releases

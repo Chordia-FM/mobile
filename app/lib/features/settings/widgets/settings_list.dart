@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../i18n/keys.g.dart';
 import '../../../i18n/translations_provider.dart';
+import '../../catalog/widgets/list_row.dart';
 import '../data/settings_controller.dart';
 import '../data/settings_messages.dart';
 import '../data/settings_patch.dart';
@@ -130,13 +131,17 @@ class SettingsDisclosureRow extends StatelessWidget {
     final tint = destructive
         ? theme.colorScheme.error
         : theme.colorScheme.primary;
-    return ListTile(
+    // The catalog's row, not a `ListTile`: a settings screen is the densest list in the app, and
+    // Material's 72px two-line height with its `bodyLarge`-over-`bodyMedium` scale is the single
+    // biggest place the phone stopped looking like the web client.
+    return ListRow(
       onTap: onTap,
-      leading: icon == null ? null : Icon(icon, color: tint),
-      title: Text(
-        label,
-        style: destructive ? TextStyle(color: theme.colorScheme.error) : null,
-      ),
+      enabled: onTap != null,
+      destructive: destructive,
+      // Zero, because [SettingsSection] already inset and clipped the card these sit in.
+      gutter: 0,
+      leading: icon == null ? null : Icon(icon, color: tint, size: 20),
+      title: Text(label),
       subtitle: description == null ? null : Text(description!),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
@@ -148,12 +153,9 @@ class SettingsDisclosureRow extends StatelessWidget {
                 value!,
                 textAlign: TextAlign.end,
                 overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
               ),
             ),
-          const Icon(Icons.chevron_right_rounded),
+          listRowChevron,
         ],
       ),
     );

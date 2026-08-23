@@ -486,6 +486,8 @@ abstract final class BillingKeys {
       'billing:features.dynamic_accent.locked';
   static const featuresDynamicAccentName =
       'billing:features.dynamic_accent.name';
+  static const featuresHistoryImportLocked =
+      'billing:features.history_import.locked';
   static const featuresLibrariesName = 'billing:features.libraries.name';
   static const featuresNameAccentLocked = 'billing:features.name_accent.locked';
   static const featuresNameAccentName = 'billing:features.name_accent.name';

@@ -9,8 +9,10 @@ import '../../../i18n/keys.g.dart';
 import '../../../i18n/translations_provider.dart';
 import '../../../widgets/cover_art.dart';
 import '../../catalog/widgets/catalog_state.dart';
+import '../../catalog/widgets/list_row.dart';
 import '../data/coverage_format.dart';
 import '../data/manager_providers.dart';
+import '../data/releases.dart';
 import '../manager_routes.dart';
 import 'manager_widgets.dart';
 
@@ -101,6 +103,11 @@ class _Results extends ConsumerWidget {
       return CatalogEmpty(message: t(ManagerKeys.discoverNoResults));
     }
 
+    // The same collapse the web runs over its results list (`discover/index.tsx:60-63`), and for
+    // the same reason: a search for an album returns its every edition, and eight tiles of "X
+    // (Deluxe)" push the artist the reader was looking for off the screen.
+    final releases = groupReleases(results.releaseGroups);
+
     return CustomScrollView(
       slivers: [
         if (results.artists.isNotEmpty) ...[
@@ -113,14 +120,14 @@ class _Results extends ConsumerWidget {
                 _ArtistRow(artist: results.artists[index]),
           ),
         ],
-        if (results.releaseGroups.isNotEmpty) ...[
+        if (releases.isNotEmpty) ...[
           SliverToBoxAdapter(
             child: ManagerSectionHeader(title: t(ManagerKeys.discoverReleases)),
           ),
           SliverList.builder(
-            itemCount: results.releaseGroups.length,
+            itemCount: releases.length,
             itemBuilder: (context, index) {
-              final release = results.releaseGroups[index];
+              final release = releases[index];
               return ReleaseGroupTile(
                 title: release.title,
                 owned: release.owned,
@@ -155,22 +162,20 @@ class _ArtistRow extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = ref.t;
-    return ListTile(
+    return ListRow(
       onTap: () => context.goToDiscoverArtist(artist.mbid),
       leading: CoverArt(
         sha256: artHashOf(artist.imageUrl),
-        size: 44,
+        size: 40,
         shape: BoxShape.circle,
         fallbackIcon: Icons.person_rounded,
       ),
-      title: Text(artist.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+      title: Text(artist.name),
       subtitle: Text(
         [
           artist.disambiguation,
           artist.genres?.take(2).join(', '),
         ].where((part) => part != null && part.isNotEmpty).join(' · '),
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
       ),
       trailing: OwnedBadge(
         owned: artist.owned,

@@ -8,6 +8,7 @@ import '../../../data/art/art_cache.dart';
 import '../../../i18n/keys.g.dart';
 import '../../../i18n/translations_provider.dart';
 import '../../../widgets/cover_art.dart';
+import '../data/catalog_providers.dart';
 import '../data/playback.dart';
 import '../../../widgets/surface.dart';
 import '../../../widgets/tokens.dart';
@@ -77,9 +78,80 @@ class TrackRow extends ConsumerWidget {
             )
           : null,
       durationMs: track.durationMs,
-      trailing: EntityMenuButton(
-        menu: (page, sheetRef) =>
-            trackMenu(page, sheetRef, track, onPlay: onTap),
+      // The web's phone column is `[art +] title/artist · liked · ⋮` and nothing else
+      // (TrackList.tsx:102). The duration is `hidden … sm:block` there (:798) — the note on that
+      // rule measured keeping it at ~210px of a 310px row, leaving the title unreadable — so the
+      // heart takes its place rather than sitting beside it.
+      showDuration: false,
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          LikeHeart(trackId: track.id),
+          EntityMenuButton(
+            menu: (page, sheetRef) =>
+                trackMenu(page, sheetRef, track, onPlay: onTap),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The like heart a catalog row carries, always visible.
+///
+/// The web hides Hide behind the row's `…` on a phone but keeps this one on screen
+/// (`max-sm:opacity-100`, TrackList.tsx:769): liked status is worth seeing at a glance and worth
+/// one tap, and the alternative here was a long press, a sheet and a scan of eleven rows.
+///
+/// 44px square, not `IconButton`'s 48: the web's box is `size-(--control-h-xs)`, which the coarse
+/// block collapses to 44 (`widgets/tokens.dart`, [ChordiaControl.xs]). Those four pixels are the
+/// difference between a title that ellipses at the artist's name and one that does not.
+class LikeHeart extends ConsumerWidget {
+  const LikeHeart({required this.trackId, super.key});
+
+  final String trackId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = ref.t;
+    final scheme = Theme.of(context).colorScheme;
+    // The BOOLEAN, not the set: selecting the whole set would rebuild every heart in the list on
+    // every like, and this widget sits on the most-built row in the app.
+    final liked = ref.watch(
+      likedTrackIdsProvider.select((set) => set.value?.contains(trackId)),
+    );
+
+    Future<void> toggle() async {
+      try {
+        await ref.read(likedTrackIdsProvider.notifier).toggle(trackId);
+      } on Object {
+        // The controller has already put the old state back by the time this runs; without the
+        // message the revert is indistinguishable from a tap that never registered.
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(SnackBar(content: Text(t(ErrorsKeys.changeFailed))));
+      }
+    }
+
+    return IconButton(
+      // Null until the set has loaded. A heart that reports the wrong state is worse than one
+      // that is briefly unavailable — the same call `LikeButton` makes in the player.
+      onPressed: liked == null ? null : () => unawaited(toggle()),
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints.tightFor(
+        width: ChordiaControl.xs,
+        height: ChordiaControl.xs,
+      ),
+      iconSize: 20,
+      tooltip: t(
+        (liked ?? false) ? LibraryKeys.likedRemove : LibraryKeys.likedSave,
+      ),
+      icon: Icon(
+        (liked ?? false)
+            ? Icons.favorite_rounded
+            : Icons.favorite_border_rounded,
+        color: (liked ?? false) ? scheme.primary : scheme.onSurfaceVariant,
       ),
     );
   }
@@ -118,6 +190,7 @@ class TrackRowLayout extends StatelessWidget {
     this.active = false,
     this.hidden = false,
     this.dense = false,
+    this.showDuration = true,
   });
 
   final String title;
@@ -148,6 +221,14 @@ class TrackRowLayout extends StatelessWidget {
   final bool hidden;
 
   final bool dense;
+
+  /// Whether the duration takes its cell.
+  ///
+  /// The web's is `hidden … sm:block` (TrackList.tsx:798) — a phone never shows it. It stays on
+  /// here for the rows that carry nothing in the actions cell, where the pixels are free and the
+  /// runtime is the only fact a downloads or queue row has left to say; a row that gains the like
+  /// heart gives it up, exactly as the web's phone column does.
+  final bool showDuration;
 
   /// The web's `size-10` cover.
   static const coverSize = 40.0;
@@ -213,14 +294,16 @@ class TrackRowLayout extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(width: 8),
-          Text(
-            formatTrackLength(durationMs),
-            style: ChordiaType.sm.copyWith(
-              color: muted,
-              fontFeatures: ChordiaType.tabular,
+          if (showDuration) ...[
+            const SizedBox(width: 8),
+            Text(
+              formatTrackLength(durationMs),
+              style: ChordiaType.sm.copyWith(
+                color: muted,
+                fontFeatures: ChordiaType.tabular,
+              ),
             ),
-          ),
+          ],
           ?trailing,
         ],
       ),

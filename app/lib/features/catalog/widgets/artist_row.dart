@@ -11,7 +11,7 @@ import '../../../widgets/cover_art.dart';
 import '../catalog_routes.dart';
 import 'album_grid.dart';
 import 'entity_menu.dart';
-import 'section.dart';
+import 'list_row.dart';
 
 /// One artist as a list row: round portrait, name, and how much of them there is.
 ///
@@ -26,22 +26,21 @@ class ArtistRow extends ConsumerWidget {
   final String? subtitle;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) => ListTile(
-    contentPadding: const EdgeInsets.symmetric(horizontal: catalogGutter),
+  Widget build(BuildContext context, WidgetRef ref) => ListRow(
+    // The catalog row, not a `ListTile`: this sits directly above a `TrackRow` on a search-results
+    // screen, and Material's 72px two-line height beside the web's row is the mismatch in one view.
     leading: CoverArt(
       sha256: artHashOf(artist.imageUrl),
-      size: 48,
+      size: 40,
       shape: BoxShape.circle,
       fallbackIcon: Icons.person_rounded,
       fallbackInitial: artist.name,
       semanticLabel: artist.name,
     ),
-    title: Text(artist.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+    title: Text(artist.name),
     subtitle: Text(
       subtitle ??
           ref.t(CatalogKeys.artistCardAlbumCount, {'count': artist.albumCount}),
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
     ),
     onTap: () => context.goToArtist(artist.id),
     onLongPress: () => unawaited(

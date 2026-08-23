@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/art/art_cache.dart';
 import '../../i18n/keys.g.dart';
 import '../../i18n/translations_provider.dart';
+import '../catalog/widgets/list_row.dart';
 import '../../widgets/cover_art.dart';
 import '../libraries/libraries_home_screen.dart';
 import '../nav/nav_drawer.dart';
@@ -132,21 +133,12 @@ class _Entry extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return ListTile(
-      leading: Icon(icon, color: theme.colorScheme.primary),
+    return ListRow(
+      leading: Icon(icon, size: 20, color: theme.colorScheme.primary),
       title: Text(label),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
-        children: [
-          if (trailing != null)
-            Text(
-              trailing!,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-          const Icon(Icons.chevron_right_rounded),
-        ],
+        children: [if (trailing != null) Text(trailing!), listRowChevron],
       ),
       onTap: onTap,
     );
@@ -270,13 +262,13 @@ class _PinTile extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            ListTile(
+            ListRow(
               title: Text(pin.name),
               subtitle: Text(t(LibraryKeys.sidebarPinned)),
             ),
             const Divider(height: 1),
-            ListTile(
-              leading: const Icon(Icons.arrow_upward_rounded),
+            ListRow(
+              leading: const Icon(Icons.arrow_upward_rounded, size: 20),
               title: Text(t(CommonKeys.actionsMoveUp)),
               enabled: index > 0,
               onTap: () {
@@ -284,8 +276,8 @@ class _PinTile extends ConsumerWidget {
                 unawaited(movePin(context, ref, from: index, to: index - 1));
               },
             ),
-            ListTile(
-              leading: const Icon(Icons.arrow_downward_rounded),
+            ListRow(
+              leading: const Icon(Icons.arrow_downward_rounded, size: 20),
               title: Text(t(CommonKeys.actionsMoveDown)),
               enabled: index < count - 1,
               onTap: () {
@@ -293,8 +285,8 @@ class _PinTile extends ConsumerWidget {
                 unawaited(movePin(context, ref, from: index, to: index + 1));
               },
             ),
-            ListTile(
-              leading: const Icon(Icons.push_pin_outlined),
+            ListRow(
+              leading: const Icon(Icons.push_pin_outlined, size: 20),
               title: Text(t(CommonKeys.actionsUnpin)),
               onTap: () {
                 Navigator.of(sheetContext).pop();

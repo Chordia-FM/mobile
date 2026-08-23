@@ -154,6 +154,7 @@ class CollectionHeader extends StatelessWidget {
     required this.artwork,
     super.key,
     this.description,
+    this.metaLeading,
     this.onEditTitle,
     this.onEditArtwork,
   });
@@ -169,6 +170,14 @@ class CollectionHeader extends StatelessWidget {
 
   /// The description, or the smart playlist's rules in the slot a description would take.
   final String? description;
+
+  /// What sits in FRONT of [meta] on the same line, for the one fact that is not text.
+  ///
+  /// A playlist's owner: the web's meta line opens with an avatar and a name linking to
+  /// `/app/u/$handle` (`playlists/$playlistId.tsx:425-439`), then joins the counts after it with a
+  /// `·`. Folding the owner into the joined string, as this page used to, spends the same pixels
+  /// and throws the route away.
+  final Widget? metaLeading;
 
   /// The title IS the edit affordance where there is one — no pencil, matching the web client.
   final VoidCallback? onEditTitle;
@@ -240,10 +249,24 @@ class CollectionHeader extends StatelessWidget {
             ),
           ],
           const SizedBox(height: 12),
-          Text(
-            meta,
+          // `flex flex-wrap items-center gap-x-2 gap-y-1.5`: the owner and the counts are one
+          // line that wraps rather than two stacked ones, and the `·` between them belongs to
+          // this layout rather than to the joined string.
+          DefaultTextStyle.merge(
             // The meta line is `text-sm`, one size up from the eyebrow above it.
             style: ChordiaType.sm.copyWith(color: scheme.onSurfaceVariant),
+            child: Wrap(
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 8,
+              runSpacing: 6,
+              children: [
+                if (metaLeading case final leading?) ...[
+                  leading,
+                  const Text('·'),
+                ],
+                Text(meta),
+              ],
+            ),
           ),
         ],
       ),

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/art/art_cache.dart';
 import '../../i18n/keys.g.dart';
 import '../../i18n/translations_provider.dart';
+import '../catalog/widgets/list_row.dart';
 import '../../widgets/cover_art.dart';
 import '../library/data/library_providers.dart';
 import '../library/widgets/library_states.dart';
@@ -128,7 +129,7 @@ class _ShareSheetState extends ConsumerState<_ShareSheet> {
       itemCount: rows.length,
       itemBuilder: (context, index) {
         final friend = rows[index];
-        return ListTile(
+        return ListRow(
           leading: CoverArt(
             sha256: artHashOf(friend.avatarUrl),
             size: 40,
@@ -243,7 +244,7 @@ class _ShareRowState extends ConsumerState<ShareRow> {
     final t = ref.t;
     final share = widget.share;
 
-    return ListTile(
+    return ListRow(
       leading: CoverArt(
         sha256: artHashOf(share.grantee.avatarUrl),
         size: 40,

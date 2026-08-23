@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/art/art_cache.dart';
 import '../../i18n/keys.g.dart';
 import '../../i18n/translations_provider.dart';
+import '../catalog/widgets/list_row.dart';
 import '../../widgets/cover_art.dart';
 import '../library/widgets/library_states.dart';
 import 'data/playlists_providers.dart';
@@ -72,11 +73,11 @@ class _CoverSheetState extends ConsumerState<_CoverSheet> {
           // Absent, not disabled, while the app carries no gallery plugin: a row that cannot work
           // teaches nothing except that the app is broken. See `coverPhotoPickerProvider`.
           if (picker != null)
-            ListTile(
-              leading: const Icon(Icons.photo_library_outlined),
+            ListRow(
+              leading: const Icon(Icons.photo_library_outlined, size: 20),
               title: Text(t(PlaylistsKeys.editUploadPhoto)),
               enabled: !_busy,
-              onTap: _busy ? null : () => _upload(picker),
+              onTap: () => _upload(picker),
             ),
           if (options.isEmpty)
             EmptyNote(message: t(PlaylistsKeys.empty))

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../i18n/keys.g.dart';
 import '../../i18n/translations_provider.dart';
+import '../catalog/widgets/list_row.dart';
 import '../playlists/create_playlist_sheet.dart';
 import '../playlists/data/smart_model.dart';
 import '../playlists/smart_rules_screen.dart';
@@ -141,15 +142,15 @@ class PlaylistRow extends ConsumerWidget {
         t(PlaylistsKeys.collaboratorsCollaborative),
     ].join(' · ');
 
-    return ListTile(
+    return ListRow(
       leading: MosaicCover(
         coverUrl: playlist.coverUrl,
         autoCoverUrls: playlist.autoCoverUrls,
-        size: 48,
+        size: 40,
         semanticLabel: playlist.name,
       ),
-      title: Text(playlist.name, maxLines: 1, overflow: TextOverflow.ellipsis),
-      subtitle: Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis),
+      title: Text(playlist.name),
+      subtitle: Text(subtitle),
       onTap: () => Navigator.of(context).push(
         MaterialPageRoute<void>(
           builder: (context) => PlaylistDetailScreen(playlistId: playlist.id),
@@ -167,14 +168,14 @@ class SmartPlaylistRow extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = ref.t;
-    return ListTile(
+    return ListRow(
       leading: MosaicCover(
         coverUrl: playlist.coverUrl,
         autoCoverUrls: playlist.autoCoverUrls,
-        size: 48,
+        size: 40,
         semanticLabel: playlist.name,
       ),
-      title: Text(playlist.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+      title: Text(playlist.name),
       // `track_count` is the size of the last SNAPSHOT, not of the rules — a smart playlist that
       // has never been resolved honestly has none to report.
       subtitle: Text(

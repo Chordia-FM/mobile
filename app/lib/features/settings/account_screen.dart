@@ -6,6 +6,7 @@ import '../../app/providers.dart';
 import '../../data/art/art_cache.dart';
 import '../../i18n/keys.g.dart';
 import '../../i18n/translations_provider.dart';
+import '../catalog/widgets/list_row.dart';
 import '../../widgets/cover_art.dart';
 import '../social/widgets/user_identity.dart';
 import 'data/image_picking.dart';
@@ -283,6 +284,19 @@ class _ProfileSectionState extends ConsumerState<_ProfileSection> {
       ..invalidate(myPublicProfileProvider(handle));
   }
 
+  /// Whether this account may keep an avatar that moves.
+  ///
+  /// A missing `entitlements` block is a Hub older than the field, and `billingEnabled == false`
+  /// is a Hub with no payment provider at all — both unlock everything, so neither may produce a
+  /// lock (`Entitlements.billingEnabled`).
+  bool get _canAnimate {
+    final entitlements = widget.profile.entitlements;
+    if (entitlements == null || entitlements.billingEnabled == false) {
+      return true;
+    }
+    return entitlements.features?.contains(Feature.animatedAvatar) ?? false;
+  }
+
   /// Picks an image, uploads it, and points the named field at the hash that comes back.
   ///
   /// [apply] receives the hash because the two fields spell it differently: a banner takes the
@@ -292,13 +306,17 @@ class _ProfileSectionState extends ConsumerState<_ProfileSection> {
     required int maxWidth,
     required UpdateProfile Function(String hash) apply,
     required void Function(bool busy) setBusy,
+    bool allowAnimated = false,
   }) async {
     final api = ref.read(accountApiProvider);
     if (api == null) return;
     final t = ref.read(translationsProvider).call;
     final PickedImage? picked;
     try {
-      picked = await ref.read(imagePickerProvider)(maxWidth: maxWidth);
+      picked = await ref.read(imagePickerProvider)(
+        maxWidth: maxWidth,
+        allowAnimated: allowAnimated,
+      );
     } on Object catch (error) {
       if (!mounted) return;
       showSettingsMessage(context, describeSettingsError(error, t));
@@ -371,6 +389,13 @@ class _ProfileSectionState extends ConsumerState<_ProfileSection> {
           busy: _photoBusy,
           onChange: () => _pickAndApply(
             maxWidth: 512,
+            // The animated-avatar entitlement, honoured on the way IN rather than trusted after
+            // the fact: the picker's own resize flattens a GIF to its first frame before the
+            // bytes ever reach Dart, so a subscriber's animated avatar was being destroyed on
+            // this device no matter what the Hub was willing to store. The server enforces the
+            // entitlement either way — a wrong answer here costs a needless re-encode, never a
+            // bypass. A Hub with no payment provider unlocks everything.
+            allowAnimated: _canAnimate,
             apply: (hash) => UpdateProfile(avatarUrl: '/v1/images/$hash'),
             setBusy: (busy) => _photoBusy = busy,
           ),
@@ -858,7 +883,8 @@ class _EmailSectionState extends ConsumerState<_EmailSection> {
     return SettingsSection(
       title: t(SettingsKeys.accountEmailTitle),
       children: [
-        ListTile(
+        ListRow(
+          gutter: 0,
           title: Text(account.email ?? t(SettingsKeys.accountNoEmail)),
           subtitle: Text(
             t(

@@ -10,6 +10,7 @@ import 'catalog_routes.dart';
 import 'data/catalog_api.dart';
 import 'data/catalog_providers.dart';
 import 'widgets/catalog_state.dart';
+import 'widgets/list_row.dart';
 
 /// Browse by label.
 class LabelsScreen extends ConsumerWidget {
@@ -33,18 +34,14 @@ class LabelsScreen extends ConsumerWidget {
                 itemCount: value.length,
                 itemBuilder: (context, index) {
                   final label = value[index];
-                  return ListTile(
+                  return ListRow(
                     leading: CoverArt(
                       sha256: artHashOf(label.logoUrl),
-                      size: 44,
+                      size: 40,
                       fallbackIcon: Icons.sell_outlined,
                       semanticLabel: label.name,
                     ),
-                    title: Text(
-                      label.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                    title: Text(label.name),
                     subtitle: Text(
                       t(CatalogKeys.albumCount, {'count': label.albumCount}),
                     ),

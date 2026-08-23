@@ -10,6 +10,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../i18n/keys.g.dart';
 import '../../i18n/translations_provider.dart';
+import '../catalog/widgets/list_row.dart';
 import 'data/settings_messages.dart';
 import 'data/settings_providers.dart';
 import 'data/settings_values.dart';
@@ -104,10 +105,25 @@ class _ImportSection extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final t = ref.t;
     final jobs = ref.watch(importJobsProvider);
+    final entitlements = ref.watch(myProfileProvider).value?.entitlements;
+    // A Hub with no payment provider unlocks everything, and its users must never meet a lock.
+    // An absent block is a Hub older than the field, which is the same answer.
+    final locked =
+        entitlements != null &&
+        entitlements.billingEnabled != false &&
+        !(entitlements.features ?? const <Feature>[]).contains(
+          Feature.historyImport,
+        );
+
     return SettingsSection(
       title: t(SettingsKeys.importTitle),
       description: t(SettingsKeys.importBody),
       children: [
+        // The web wraps this whole block in `PlanGate feature="history_import"`
+        // (`ImportSection.tsx:63`), whose whole argument is that hiding a paid feature means
+        // nobody discovers it. The phone was showing the job list with nothing saying the feature
+        // is paid at all, so a free account read "No imports yet" as a bug rather than a plan.
+        if (locked) SettingsNote(t(BillingKeys.featuresHistoryImportLocked)),
         // Starting an import uploads the export file as `application/octet-stream`, and this
         // client speaks JSON bodies only — see `ImportEndpoints` in `chordia_api`, which models
         // the read half for exactly this reason. Until the transport grows a byte-body path, the
@@ -117,7 +133,7 @@ class _ImportSection extends ConsumerWidget {
           value: jobs,
           onRetry: () => ref.invalidate(importJobsProvider),
           builder: (context, rows) => rows.isEmpty
-              ? ListTile(title: Text(t(SettingsKeys.importEmpty)))
+              ? ListRow(gutter: 0, title: Text(t(SettingsKeys.importEmpty)))
               : Column(
                   children: [for (final job in rows) _ImportRow(job: job)],
                 ),
@@ -143,7 +159,8 @@ class _ImportRow extends ConsumerWidget {
         job.status == ImportJobStatus.running ||
         job.status == ImportJobStatus.pending;
 
-    return ListTile(
+    return ListRow(
+      gutter: 0,
       title: Text('${job.source.wire} · $started'),
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -172,7 +189,6 @@ class _ImportRow extends ConsumerWidget {
             ),
         ],
       ),
-      isThreeLine: true,
       // `total_rows` is 0 until parsing finishes, which is exactly when an indeterminate bar is
       // the truthful one — a 0% bar claims progress nobody has measured yet.
       trailing: running

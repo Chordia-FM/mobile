@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../i18n/keys.g.dart';
 import '../../i18n/translations_provider.dart';
+import '../catalog/widgets/list_row.dart';
 import '../library/data/formatting.dart';
 import '../library/data/library_providers.dart';
 import '../library/widgets/library_states.dart';
@@ -144,13 +145,14 @@ class _LibraryManageScreenState extends ConsumerState<LibraryManageScreen> {
     final endpoint = server.value?.endpoint;
     final theme = Theme.of(context);
 
-    return ListTile(
+    return ListRow(
       leading: Icon(
         endpoint == null
             ? Icons.cloud_queue_rounded
             : endpoint.online
             ? Icons.cloud_done_rounded
             : Icons.cloud_off_rounded,
+        size: 20,
         color: (endpoint?.online ?? false)
             ? theme.colorScheme.primary
             : theme.colorScheme.onSurfaceVariant,
@@ -167,11 +169,11 @@ class _LibraryManageScreenState extends ConsumerState<LibraryManageScreen> {
     );
   }
 
-  Widget _rename(LibrarySummary summary, Translate t) => ListTile(
-    leading: const Icon(Icons.drive_file_rename_outline_rounded),
+  Widget _rename(LibrarySummary summary, Translate t) => ListRow(
+    leading: const Icon(Icons.drive_file_rename_outline_rounded, size: 20),
     title: Text(t(LibraryKeys.manageNameLabel)),
     subtitle: Text(summary.name),
-    trailing: const Icon(Icons.chevron_right_rounded),
+    trailing: listRowChevron,
     onTap: () => _renameDialog(summary, t),
   );
 
@@ -179,13 +181,13 @@ class _LibraryManageScreenState extends ConsumerState<LibraryManageScreen> {
   ///
   /// Stored as a slug (or `emoji:` plus a literal emoji), which is what makes it the SAME icon on
   /// the web client — the column holds a name both clients agree on, never a drawing.
-  Widget _icon(LibrarySummary summary, Translate t) => ListTile(
+  Widget _icon(LibrarySummary summary, Translate t) => ListRow(
     leading: LibraryIcon(
       icon: summary.icon,
       color: Theme.of(context).colorScheme.onSurfaceVariant,
     ),
     title: Text(t(LibraryKeys.editIconLabel)),
-    trailing: const Icon(Icons.chevron_right_rounded),
+    trailing: listRowChevron,
     onTap: () => unawaited(_pickIcon(summary, t)),
   );
 
@@ -207,11 +209,9 @@ class _LibraryManageScreenState extends ConsumerState<LibraryManageScreen> {
 
   /// Removing the library from the Hub. Last, and on its own, because it is the one action here
   /// that cannot be undone by doing it again.
-  Widget _remove(LibrarySummary summary, Translate t) => ListTile(
-    leading: Icon(
-      Icons.delete_outline_rounded,
-      color: Theme.of(context).colorScheme.error,
-    ),
+  Widget _remove(LibrarySummary summary, Translate t) => ListRow(
+    destructive: true,
+    leading: const Icon(Icons.delete_outline_rounded, size: 20),
     title: Text(t(LibraryKeys.editRemoveTitle)),
     subtitle: Text(t(LibraryKeys.editRemoveHelp)),
     onTap: () => unawaited(_removeLibrary(summary)),
@@ -322,15 +322,15 @@ class _LibraryManageScreenState extends ConsumerState<LibraryManageScreen> {
     final overrides = ref.watch(libraryOverridesProvider(widget.libraryId));
     final count = overrides.value?.length;
 
-    return ListTile(
-      leading: const Icon(Icons.edit_note_rounded),
+    return ListRow(
+      leading: const Icon(Icons.edit_note_rounded, size: 20),
       title: Text(t(LibraryKeys.manageOpenOverrides)),
       subtitle: Text(
         count == null
             ? t(LibraryKeys.listLoading)
             : t(LibraryKeys.metadataOverridesTitle, {'count': count}),
       ),
-      trailing: const Icon(Icons.chevron_right_rounded),
+      trailing: listRowChevron,
       onTap: () => Navigator.of(context).push(
         MaterialPageRoute<void>(
           builder: (_) => OverridesScreen(libraryId: widget.libraryId),

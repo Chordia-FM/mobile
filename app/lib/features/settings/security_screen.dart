@@ -8,6 +8,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import '../../app/providers.dart';
 import '../../i18n/keys.g.dart';
 import '../../i18n/translations_provider.dart';
+import '../catalog/widgets/list_row.dart';
 import 'data/settings_messages.dart';
 import 'data/settings_providers.dart';
 import 'data/settings_values.dart';
@@ -335,10 +336,11 @@ class _TwoFactorSectionState extends ConsumerState<_TwoFactorSection> {
   }
 
   List<Widget> _off(Translate t, TwoFactorController controller) => [
-    ListTile(
+    ListRow(
+      gutter: 0,
       title: Text(t(SettingsKeys.twoFactorStatusOff)),
       subtitle: Text(t(SettingsKeys.twoFactorAddHint)),
-      leading: const Icon(Icons.shield_outlined),
+      leading: const Icon(Icons.shield_outlined, size: 20),
     ),
     Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -376,7 +378,8 @@ class _TwoFactorSectionState extends ConsumerState<_TwoFactorSection> {
       ),
       // Offered for anyone whose authenticator is on this same phone, where there is no second
       // screen to point a camera at.
-      ListTile(
+      ListRow(
+        gutter: 0,
         title: Text(
           t(SettingsKeys.twoFactorSecretManual, {'secret': setup.secret}),
         ),
@@ -443,11 +446,13 @@ class _TwoFactorSectionState extends ConsumerState<_TwoFactorSection> {
   }
 
   List<Widget> _on(Translate t, TwoFactorController controller) => [
-    ListTile(
+    ListRow(
+      gutter: 0,
       title: Text(t(SettingsKeys.twoFactorStatusOn)),
       subtitle: Text(t(SettingsKeys.twoFactorEnabledHint)),
       leading: Icon(
         Icons.shield_rounded,
+        size: 20,
         color: Theme.of(context).colorScheme.primary,
       ),
     ),
@@ -580,9 +585,12 @@ class _SessionRow extends ConsumerWidget {
     String when(int epochMillis) =>
         format.format(DateTime.fromMillisecondsSinceEpoch(epochMillis));
 
-    return ListTile(
+    return ListRow(
+      gutter: 0,
+      subtitleMaxLines: 3,
       leading: Icon(
         session.current ? Icons.smartphone_rounded : Icons.devices_rounded,
+        size: 20,
         color: session.current ? Theme.of(context).colorScheme.primary : null,
       ),
       title: Text(
@@ -600,7 +608,6 @@ class _SessionRow extends ConsumerWidget {
           t(SettingsKeys.sessionsSignedIn, {'date': when(session.createdAt)}),
         ].join('\n'),
       ),
-      isThreeLine: true,
       // The session making this request cannot revoke itself here: that is signing out, and it
       // lives under Account where it does the local cleanup too.
       trailing: session.current
