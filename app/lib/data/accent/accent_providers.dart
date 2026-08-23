@@ -12,7 +12,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/providers.dart';
 import '../../app/theme.dart';
+import 'accent_canvas.dart';
 import 'accent_engine.dart';
+import 'accent_fill.dart';
 import 'accent_palette.dart';
 import 'artwork_color.dart';
 
@@ -90,6 +92,25 @@ final accentSurfacesProvider = Provider<ChordiaSurfaces>((ref) {
 });
 
 /// The app's theme. Rebuilds when the account's accent changes, and at no other time.
-final chordiaThemeProvider = Provider<ThemeData>(
-  (ref) => buildChordiaTheme(ref.watch(accentSurfacesProvider)),
-);
+///
+/// The two additions here are where the accent that MOVES reaches the app, and both are shaped by
+/// the same constraint: they hand the tree a widget that subscribes, never a colour that would have
+/// to be republished. A colour on the theme can only move by rebuilding every widget that ever
+/// called `Theme.of`, seven times a second (see `accent_scope.dart`); a builder on the theme is
+/// installed once and each element it produces listens for itself.
+final chordiaThemeProvider = Provider<ThemeData>((ref) {
+  final base = buildChordiaTheme(ref.watch(accentSurfacesProvider));
+  return base.copyWith(
+    // The web's `:where([class~="bg-primary"])` rule, which is a blanket precisely so that nobody
+    // has to remember it: every button in the app is a solid accent surface and every one of them
+    // now follows the live accent, gradient included.
+    filledButtonTheme: FilledButtonThemeData(
+      style: (base.filledButtonTheme.style ?? const ButtonStyle()).copyWith(
+        backgroundBuilder: accentFillBackground,
+      ),
+    ),
+    // `.pane-canvas`: the ambient wash, under every page. See `accent_canvas.dart` for why a
+    // background ends up hanging off the transitions theme.
+    pageTransitionsTheme: const AccentCanvasPageTransitions(),
+  );
+});

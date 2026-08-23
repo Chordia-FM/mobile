@@ -30,6 +30,19 @@ import 'oklab.dart';
 /// the handful of roles `ColorScheme` happens to have names for. `--pane-raised`,
 /// `--surface-strong`, `--line` and `--ambient-cool` have no Material equivalent, and a widget
 /// that hard-codes one of them is the bug this whole file exists to fix.
+/// `--ambient-cool`: a companion hue for the page's ambient wash.
+///
+/// Still accent-derived, so the canvas re-tints with the account's colour, but pulled toward
+/// `--neon-blue` so the page reads as lit from two sides rather than washed in one colour.
+///
+/// A free function as well as a token because the two callers want it at different moments. The
+/// token is the RESTING derivation, baked into the theme; `accent_canvas.dart` re-derives it per
+/// frame while a mode is actually moving the accent, which is what the browser gets for nothing —
+/// `--ambient-cool` is a `color-mix` off `--primary`, so repainting `--primary` moves the wash
+/// within the same frame.
+Color ambientCoolFor(Color accent) =>
+    mixOklab(accent, 0.45, oklch(0.79, 0.10, 210));
+
 @immutable
 class ChordiaSurfaces extends ThemeExtension<ChordiaSurfaces> {
   const ChordiaSurfaces._({
@@ -89,10 +102,7 @@ class ChordiaSurfaces extends ThemeExtension<ChordiaSurfaces> {
       // `mixSrgb`, because CSS mixes with `transparent` in PREMULTIPLIED alpha: the result is the
       // accent at 18% opacity, not the accent darkened toward black.
       line: accent.withValues(alpha: 0.18),
-      // A companion hue for the ambient wash — still accent-derived, so the canvas re-tints, but
-      // pulled toward `--neon-blue` so the page reads as lit from two sides.
-      ambientCool:
-          gradientEnd ?? mixOklab(accent, 0.45, oklch(0.79, 0.10, 210)),
+      ambientCool: gradientEnd ?? ambientCoolFor(accent),
     );
   }
 
