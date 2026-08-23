@@ -588,21 +588,31 @@ class HubsController extends AsyncNotifier<HubRegistrySnapshot> {
     }
 
     // First launch: put the build's own hub in the list so somebody who just installed the app is
-    // looking at a server rather than an empty picker. Deliberately not probed — a network call on
-    // the launch path delays the first frame, and an unreachable server is something sign-in will
-    // say plainly a moment later. The host stands in as the name until a probe learns the real one.
+    // looking at a server rather than an empty picker.
+    //
+    // PROBED, exactly like one somebody adds by hand. A hub record is not just an address — it
+    // carries the instance's name, whether Discord sign-in is offered, and the website address the
+    // browser hand-off sends people to. Seeding a bare URL produces a hub that looks present and
+    // then cannot do half of what the picker implies, which is worse than an empty picker.
     final url = Uri.tryParse(ref.watch(appConfigProvider).defaultHubUrl);
     if (url == null || url.host.isEmpty) {
       return snapshot;
     }
-    return registry.add(
-      Hub(
-        id: Hub.idFor(url),
-        url: url,
-        name: url.host,
-        addedAt: DateTime.now().millisecondsSinceEpoch,
-      ),
-    );
+    try {
+      final probed = await ref.read(hubProbeProvider).probe(url.toString());
+      return await registry.add(
+        Hub.discovered(
+          url: probed.url,
+          info: probed.info,
+          addedAt: DateTime.now().millisecondsSinceEpoch,
+        ),
+      );
+    } on Object {
+      // Offline on a first launch, or a hub that is simply down. Nothing is stored: a half-formed
+      // record would be indistinguishable from a real one and would keep the app from ever
+      // learning the rest, whereas an empty picker invites the one action that fixes it.
+      return snapshot;
+    }
   }
 
   /// Records a hub that answered a probe, and makes it active.
