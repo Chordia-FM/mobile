@@ -23,7 +23,7 @@ import 'tokens.dart';
 ///
 /// A 1px accent-tinted border, a 165° gradient between two accent-tinted near-blacks, and a tight
 /// drop shadow with a zero-blur inset hairline. Every number comes from that rule; see
-/// [ChordiaSurfaces] for the individual derivations.
+/// [ChordiaSchemeTokens] for the individual derivations.
 class IslandPanel extends StatelessWidget {
   const IslandPanel({
     required this.child,
@@ -128,7 +128,7 @@ class PressFill extends StatelessWidget {
   final VoidCallback? onLongPress;
   final BorderRadius borderRadius;
 
-  /// Defaults to a card's fill. Rows pass [ChordiaSurfaces.rowHighlight].
+  /// Defaults to a card's fill. Rows pass [ChordiaSchemeTokens.rowHighlight].
   final Color? fill;
 
   @override

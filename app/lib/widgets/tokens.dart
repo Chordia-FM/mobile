@@ -12,6 +12,8 @@ library;
 
 import 'package:flutter/material.dart';
 
+import '../data/accent/oklab.dart';
+
 /// The corner scale.
 ///
 /// The web declares `--radius: 0.75rem` (styles.css:79) and derives four steps from it in
@@ -66,7 +68,23 @@ abstract final class ChordiaControl {
 ///
 /// Colour is deliberately absent. These carry metrics only, so they compose with whatever the theme
 /// says the foreground is and cannot pin a colour the accent should be re-tinting.
+///
+/// The FAMILY is absent for the same reason. `buildChordiaTheme` installs [sans] on every slot of
+/// the `textTheme`, so a `Text(style: ChordiaType.sm)` inherits it from the surrounding
+/// `DefaultTextStyle` — and a title that wants the serif reaches for a `display*` slot rather than
+/// naming a font here.
 abstract final class ChordiaType {
+  /// `--font-sans` (styles.css:222-223), the face `body` is set in and therefore everything is.
+  ///
+  /// Declared in `pubspec.yaml` at 400/500/600/700 as four static instances; see
+  /// `assets/fonts/README.md` for why not the variable file.
+  static const sans = 'Manrope';
+
+  /// `.display-title` (styles.css:452-454). The web puts this on page H1s and on nothing else — 19
+  /// call sites, every one of them an `<h1>` — so it belongs on the `display*` slots and stays off
+  /// `headline*`, which the phone also uses for stat values and a now-playing title.
+  static const display = 'Fraunces';
+
   /// `text-xs` — every secondary line: an artist under a title, a year under an album.
   static const xs = TextStyle(fontSize: 12, height: 16 / 12);
 
@@ -88,6 +106,9 @@ abstract final class ChordiaType {
   /// `text-3xl` — a collection title.
   static const xl3 = TextStyle(fontSize: 30, height: 36 / 30);
 
+  /// `text-4xl` — the largest H1 the phone column ever shows (`AlbumView.tsx:225`).
+  static const xl4 = TextStyle(fontSize: 36, height: 40 / 36);
+
   static const medium = FontWeight.w500;
   static const semibold = FontWeight.w600;
   static const bold = FontWeight.w700;
@@ -96,50 +117,62 @@ abstract final class ChordiaType {
   static const tabular = [FontFeature.tabularFigures()];
 }
 
-/// The surface derivations the web writes as `color-mix(… var(--primary) N% …)`.
+/// The handful of tokens `ColorScheme` has no role for, read off the roles it does.
 ///
-/// Every one of these takes the LIVE accent off the [ColorScheme] rather than a constant, which is
-/// the whole point: styles.css:139-160 mixes a percentage of `--primary` into every surface and
-/// every border, so changing the accent re-tints the app. A hard-coded hex here would put the
-/// static-theme bug straight back.
+/// **This file does not derive colour.** `data/accent/accent_surfaces.dart` is the one derivation —
+/// it ports the whole `:root, .accent-scope` block, in OKLab, from the stylesheet's own bases — and
+/// `buildChordiaTheme` maps its output onto the [ColorScheme]. Everything below either reads one of
+/// those finished values back or applies a rule that CSS itself writes against `--primary`
+/// directly, like a percentage of the accent over transparent.
 ///
-/// `color-mix(in oklab, A p%, B)` is approximated by [Color.lerp] in sRGB. At the percentages the
-/// web actually uses (3-20%) against near-black bases the two are visually indistinguishable, and a
-/// real oklab mix would mean carrying a colour-space conversion for a difference nobody can see.
-extension ChordiaSurfaces on ColorScheme {
-  Color _mix(Color base, double amount) =>
-      Color.lerp(base, primary, amount) ?? base;
-
-  /// `--border`: `color-mix(in srgb, var(--primary) 16%, oklch(0.22 0.02 280))`.
+/// It used to derive its own, and that was the bug: [line] was a *second* 16% accent mix on top of
+/// `outline`, which is `--border` and already carries one, so the phone drew a markedly brighter,
+/// more saturated hairline than the web (#4e124d against #36163a on the default accent). The panel
+/// gradients had the same shape of error, mixing into `--pane-raised` and `--background` instead of
+/// the island's own bases. Two derivations of one token set will always drift; there is now one.
+extension ChordiaSchemeTokens on ColorScheme {
+  /// `--border`: `color-mix(in srgb, var(--primary) 16%, oklch(0.22 0.02 280))`, which
+  /// `buildChordiaTheme` puts on `outline`.
   ///
   /// A hairline that follows the chosen colour, which is what stops panel edges reading as grey
   /// furniture bolted onto a tinted app.
-  Color get line => _mix(outline, 0.16);
+  ///
+  /// Beware the name: the web has BOTH `--border` and `--line`, and this is `--border`. `--line`
+  /// (the accent at 18% alpha) is `context.surfaces.line`.
+  Color get line => outline;
 
   /// The softer edge the web writes as `border-border/60`.
-  Color get lineSoft => line.withValues(alpha: 0.6);
+  Color get lineSoft => outline.withValues(alpha: 0.6);
 
-  /// `.island-shell`'s border: `color-mix(in srgb, var(--primary) 20%, transparent)`.
+  /// `.island-shell`'s border: `color-mix(in srgb, var(--primary) 20%, transparent)`. CSS mixes
+  /// with `transparent` in premultiplied alpha, so the result is the accent at 20% opacity.
   Color get panelBorder => primary.withValues(alpha: 0.2);
 
   /// `.island-shell`'s gradient stops (styles.css:467-471): a 165° sweep between two
   /// accent-tinted near-blacks. Solid, never translucent — a content panel must not let the page
   /// through, and a blur inside a scroll container re-blurs per scrolled frame.
-  Color get panelTop => _mix(surfaceContainer, 0.06);
-  Color get panelBottom => _mix(surfaceContainerLowest, 0.05);
+  ///
+  /// The bases are the rule's own literals rather than a nearby surface role: the island is not a
+  /// tinted `--card`, it is its own two-stop pair, and substituting a role for them is what made
+  /// the phone's panel bottom about half the lightness of the web's.
+  Color get panelTop => mixOklab(primary, 0.06, oklch(0.135, 0.008, 285));
+  Color get panelBottom => mixOklab(primary, 0.05, oklch(0.095, 0.007, 285));
 
   /// `.island-shell-modal` (styles.css:661-665): one step lighter and more saturated than
   /// [panelTop]/[panelBottom], so a dialog separates from the page by being *elevated*, not by
   /// being a different material. Still opaque; see the backdrop-filter warning in that rule.
-  Color get modalTop => _mix(surfaceContainerHigh, 0.11);
-  Color get modalBottom => _mix(surfaceContainer, 0.07);
+  Color get modalTop => mixOklab(primary, 0.11, oklch(0.17, 0.013, 285));
+  Color get modalBottom => mixOklab(primary, 0.07, oklch(0.115, 0.009, 285));
 
   /// A card's press fill. The web's cards are `hover:bg-accent/40`
   /// (AlbumGrid.tsx:63, ArtistGrid.tsx:52, rail.tsx `RAIL_CARD`).
-  Color get cardHighlight => surfaceContainerHigh.withValues(alpha: 0.4);
+  ///
+  /// Tailwind's `accent` is `--accent`, the lightest of the shadcn surfaces — `paneElevated` here,
+  /// which the theme maps to `surfaceContainerHighest`. It is NOT `--card`, which is a step darker.
+  Color get cardHighlight => surfaceContainerHighest.withValues(alpha: 0.4);
 
   /// A list row's press fill: `hover:bg-accent/50` (TrackList.tsx:607).
-  Color get rowHighlight => surfaceContainerHigh.withValues(alpha: 0.5);
+  Color get rowHighlight => surfaceContainerHighest.withValues(alpha: 0.5);
 }
 
 /// The tight panel shadow from `.island-shell` (styles.css:472-474).
