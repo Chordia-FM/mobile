@@ -64,6 +64,23 @@ ThemeData buildChordiaTheme() {
       height: 64,
       labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
     ),
+    // `DropdownButton` paints its menu with `canvasColor`, not with a surface role, so without this
+    // the menu arrives in Material's default near-white and reads as a different app.
+    canvasColor: ChordiaColors.paneRaised,
+    popupMenuTheme: PopupMenuThemeData(
+      color: ChordiaColors.paneRaised,
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    ),
+    dropdownMenuTheme: DropdownMenuThemeData(
+      menuStyle: MenuStyle(
+        backgroundColor: WidgetStatePropertyAll(ChordiaColors.paneRaised),
+        surfaceTintColor: const WidgetStatePropertyAll(Colors.transparent),
+        shape: WidgetStatePropertyAll(
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      ),
+    ),
     cardTheme: CardThemeData(
       color: ChordiaColors.paneRaised,
       surfaceTintColor: Colors.transparent,

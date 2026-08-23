@@ -47,6 +47,7 @@ dev_dependencies:
   # in-memory database `chordia_db`'s own tests use. The app itself never opens one directly — it
   # goes through `package:chordia_db/open.dart`.
   drift: ^2.34.0
+  flutter_launcher_icons: ^0.14.4
   flutter_lints: ^6.0.0
   flutter_test:
     sdk: flutter
@@ -57,3 +58,20 @@ flutter:
   uses-material-design: true
   assets:
     - assets/i18n/
+
+# Launcher icons, generated with `dart run flutter_launcher_icons` and COMMITTED. Regenerate only
+# when the mark changes; see assets/brand/README.md for where these come from.
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: assets/brand/icon.png
+  # Android 8+ composites these two and animates them independently. The foreground is the UNPADDED
+  # render: this tool insets it 16% to make the safe zone itself, and feeding it the maskable file —
+  # which already carries 10% padding of its own — would stack the two and leave the mark at roughly
+  # half the icon, visibly smaller than everything else in the launcher.
+  adaptive_icon_background: "#040208"
+  adaptive_icon_foreground: assets/brand/icon.png
+  # The monochrome layer Android 13+ tints for themed icons. Same artwork: the system takes the
+  # alpha and discards the colour, so a flat silhouette is what it actually renders.
+  adaptive_icon_monochrome: assets/brand/icon.png
+  remove_alpha_ios: true
