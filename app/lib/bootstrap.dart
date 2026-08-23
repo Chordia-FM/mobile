@@ -15,7 +15,10 @@ import 'app/providers.dart';
 import 'app/theme.dart';
 import 'data/mesh/providers.dart';
 import 'data/playback/adaptive.dart';
+import 'data/playback/ports.dart';
+import 'features/catalog/data/playback.dart';
 import 'features/downloads/downloads_api.dart';
+import 'features/library/data/library_providers.dart';
 import 'i18n/keys.g.dart';
 import 'i18n/translations.dart';
 import 'i18n/translations_provider.dart';
@@ -60,6 +63,19 @@ Future<void> bootstrap(AppConfig config) async {
       deviceIdProvider.overrideWithValue(deviceId),
       audioCacheDirectoryProvider.overrideWithValue(
         Directory('${cacheRoot.path}${Platform.pathSeparator}audio'),
+      ),
+      // The two ports the catalog and library features declare and deliberately do not fill in.
+      // They default to null so those features build and test without a player; this is the one
+      // place that hands them the real one. Without these lines every Play button, every pinned
+      // album and every radio tile renders disabled or inert.
+      catalogPlayerActionsProvider.overrideWith(
+        (ref) => PlayerActionsAdapter(ref.watch(playerActionsProvider)),
+      ),
+      nowPlayingTrackIdProvider.overrideWith(
+        (ref) => ref.watch(currentTrackProvider.select((track) => track?.id)),
+      ),
+      libraryHandoffProvider.overrideWith(
+        (ref) => AppLibraryHandoff(ref.watch(playerActionsProvider)),
       ),
     ],
   );

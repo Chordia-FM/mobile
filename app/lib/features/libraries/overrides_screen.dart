@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:chordia_api/chordia_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,6 +9,7 @@ import '../../i18n/keys.g.dart';
 import '../../i18n/translations_provider.dart';
 import '../../widgets/cover_art.dart';
 import '../library/widgets/library_states.dart';
+import 'data/libraries_api.dart';
 import 'data/libraries_providers.dart';
 import 'override_editor_sheet.dart';
 
@@ -98,6 +101,14 @@ class _OverrideRow extends ConsumerWidget {
             ? subtitle
             : '$subtitle\n${t(LibraryKeys.metadataOverridesWasCalled, {'name': summary.originalName})}',
       ),
+      // The whole point of this page is answering "what have I changed", and the answer people
+      // want to act on most often is "put that one back". Reaching it only by opening the editor
+      // and scrolling past every field to a text button at the bottom is the long way round.
+      trailing: IconButton(
+        icon: const Icon(Icons.settings_backup_restore_rounded),
+        tooltip: t(LibraryKeys.metadataOverridesReset),
+        onPressed: () => unawaited(_reset(context, ref)),
+      ),
       isThreeLine: summary.originalName != null,
       onTap: () async {
         await showOverrideEditor(
@@ -111,7 +122,72 @@ class _OverrideRow extends ConsumerWidget {
       },
     );
   }
+
+  Future<void> _reset(BuildContext context, WidgetRef ref) async {
+    final api = ref.read(overridesApiProvider);
+    if (api == null || !await askToClearOverride(context, ref)) return;
+    final t = ref.read(translationsProvider).call;
+    try {
+      await clearOverride(
+        api,
+        libraryId: libraryId,
+        kind: summary.kind,
+        entityId: summary.id,
+      );
+    } on Object {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(t(LibraryKeys.metadataOverridesSaveFailed))),
+        );
+      }
+      return;
+    }
+    ref.invalidate(libraryOverridesProvider(libraryId));
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(t(LibraryKeys.metadataOverridesResetDone))),
+      );
+    }
+  }
 }
+
+/// The "are you sure" every route to clearing an override goes through.
+///
+/// Shared with the editor sheet's own reset button so both spell the warning the same way: an
+/// override is the only record that the catalog was ever wrong about this entity, and clearing it
+/// cannot be undone by re-typing what you remember it saying.
+Future<bool> askToClearOverride(BuildContext context, WidgetRef ref) async {
+  final t = ref.read(translationsProvider).call;
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      content: Text(t(LibraryKeys.metadataOverridesResetConfirm)),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(dialogContext).pop(false),
+          child: Text(t(CommonKeys.actionsCancel)),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(dialogContext).pop(true),
+          child: Text(t(LibraryKeys.metadataOverridesReset)),
+        ),
+      ],
+    ),
+  );
+  return confirmed ?? false;
+}
+
+/// Clears one override, whichever kind of entity it is on.
+Future<void> clearOverride(
+  OverridesApi api, {
+  required String libraryId,
+  required OverrideKind kind,
+  required String entityId,
+}) => switch (kind) {
+  OverrideKind.artist => api.clearArtist(libraryId, entityId),
+  OverrideKind.album => api.clearAlbum(libraryId, entityId),
+  OverrideKind.track => api.clearTrack(libraryId, entityId),
+};
 
 String overrideKindKey(OverrideKind kind) => switch (kind) {
   OverrideKind.artist => LibraryKeys.metadataOverridesKindArtist,

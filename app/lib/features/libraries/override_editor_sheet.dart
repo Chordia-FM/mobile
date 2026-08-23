@@ -312,36 +312,17 @@ class _OverrideEditorState extends ConsumerState<_OverrideEditor> {
 
   Future<void> _clear() async {
     final api = ref.read(overridesApiProvider);
-    if (api == null) return;
-    final t = ref.read(translationsProvider).call;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        content: Text(t(LibraryKeys.metadataOverridesResetConfirm)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: Text(t(CommonKeys.actionsCancel)),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: Text(t(LibraryKeys.metadataOverridesReset)),
-          ),
-        ],
-      ),
-    );
-    if (!(confirmed ?? false)) return;
+    if (api == null || !await askToClearOverride(context, ref)) return;
+    if (!mounted) return;
 
     setState(() => _saving = true);
     try {
-      switch (widget.kind) {
-        case OverrideKind.artist:
-          await api.clearArtist(widget.libraryId, widget.entityId);
-        case OverrideKind.album:
-          await api.clearAlbum(widget.libraryId, widget.entityId);
-        case OverrideKind.track:
-          await api.clearTrack(widget.libraryId, widget.entityId);
-      }
+      await clearOverride(
+        api,
+        libraryId: widget.libraryId,
+        kind: widget.kind,
+        entityId: widget.entityId,
+      );
       _finish(LibraryKeys.metadataOverridesResetDone);
     } on Object {
       _fail(LibraryKeys.metadataOverridesSaveFailed);

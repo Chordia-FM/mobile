@@ -2,7 +2,16 @@ import 'package:chordia_api/chordia_api.dart';
 import 'package:chordia_mobile/app/theme.dart';
 import 'package:chordia_mobile/features/social/data/social_api.dart';
 import 'package:chordia_mobile/features/social/data/social_providers.dart';
+import 'package:chordia_mobile/features/insights/insights_routes.dart';
+import 'package:chordia_mobile/features/settings/account_screen.dart';
+import 'package:chordia_mobile/features/settings/data/image_picking.dart';
+import 'package:chordia_mobile/features/settings/data/settings_api.dart';
+import 'package:chordia_mobile/features/settings/data/settings_providers.dart';
 import 'package:chordia_mobile/features/social/friends_screen.dart';
+import 'package:chordia_mobile/features/social/profile_screen.dart';
+import 'package:chordia_mobile/features/social/social_routes.dart';
+import 'package:chordia_mobile/features/social/widgets/follow_list.dart';
+import 'package:chordia_mobile/features/social/widgets/profile_reads.dart';
 import 'package:chordia_mobile/features/social/widgets/person_row.dart';
 import 'package:chordia_mobile/features/social/widgets/user_identity.dart';
 import 'package:chordia_mobile/i18n/keys.g.dart';
@@ -12,6 +21,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 /// Loaded once, in real async: `testWidgets` runs inside a fake-async zone where an asset read
 /// never completes, so the catalogs have to be in hand before the first pump.
@@ -21,6 +32,9 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   setUpAll(() async {
+    // A profile header prints the month somebody joined; the app does this in bootstrap, and a
+    // test that renders one has to do it too.
+    await initializeDateFormatting();
     translations = await Translations.load('en', bundle: rootBundle);
   });
 
@@ -210,6 +224,241 @@ void main() {
     });
   });
 
+  group('reaching your own profile', () {
+    testWidgets('the You tab resolves a route onto it without knowing your handle', (
+      tester,
+    ) async {
+      // The one thing that made this unreachable: a session restored from the keystore carries
+      // tokens, not a profile, so no screen can link to `u/{handle}` from what it already holds.
+      // The route has to resolve the account first — which is what this asserts it does.
+      final api = FakeSocialApi();
+      await tester.pumpWidget(_routed(api, '/you/insights'));
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.byType(ProfileScreen), findsOneWidget);
+      // Their own profile, not a stranger's: the handle came from the account read.
+      expect(find.textContaining('@me'), findsWidgets);
+    });
+
+    testWidgets('somebody else\'s profile is the same page under u/:handle', (
+      tester,
+    ) async {
+      final api = FakeSocialApi();
+      await tester.pumpWidget(_routed(api, '/you/u/dee'));
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.byType(ProfileScreen), findsOneWidget);
+      expect(find.textContaining('@dee'), findsWidgets);
+    });
+  });
+
+  group('the follower and following lists', () {
+    testWidgets('load the next page under the rows already read', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(1200, 3000);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+
+      final reads = FakeProfileReads(followerCount: 5, pageSize: 3);
+      await tester.pumpWidget(
+        _panel(
+          reads,
+          const FollowList(handle: 'dee', followers: true, own: false),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text('@f0'), findsOneWidget);
+      expect(find.text('@f3'), findsNothing);
+      expect(reads.followerOffsets, [0]);
+
+      await tester.tap(find.text(translations(SocialKeys.profileLoadMore)));
+      await tester.pump();
+      await tester.pump();
+
+      // Asked for at the offset the first page ended at, and appended rather than swapped in.
+      expect(reads.followerOffsets, [0, 3]);
+      expect(find.text('@f0'), findsOneWidget);
+      expect(find.text('@f4'), findsOneWidget);
+      // Every row is in hand, so there is nothing left to offer.
+      expect(find.text(translations(SocialKeys.profileLoadMore)), findsNothing);
+    });
+
+    testWidgets('following asks the other direction of the graph', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(1200, 3000);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+
+      final reads = FakeProfileReads(followerCount: 2, pageSize: 3);
+      await tester.pumpWidget(
+        _panel(
+          reads,
+          const FollowList(handle: 'dee', followers: false, own: false),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      // Two lists, two endpoints: reading the wrong one shows a person the follows they receive
+      // under the heading for the ones they give.
+      expect(reads.followingOffsets, [0]);
+      expect(reads.followerOffsets, isEmpty);
+    });
+  });
+
+  // Editing your public profile is a settings screen, but it is the same profile these tests are
+  // about — and `settings_test.dart` belongs to another port, so the coverage lives here.
+  group('editing your public profile', () {
+    testWidgets('choosing a photo uploads the bytes and stores the hash', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(1200, 3000);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+
+      final account = FakeAccountApi();
+      _ignoreSettingsInkWarning();
+      await tester.pumpWidget(_account(account));
+      await tester.pump();
+      await tester.pump();
+
+      await tester.tap(
+        find.widgetWithText(
+          OutlinedButton,
+          translations(SettingsKeys.accountChangePhoto),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      // The raw file goes up as bytes, with the picker's own content type on it.
+      expect(account.uploaded.single, [1, 2, 3]);
+      expect(account.uploadedTypes.single, 'image/jpeg');
+      // And the avatar is pointed at what came back. An avatar takes the PATH the hash resolves
+      // to, not the bare hash — sending the wrong one of the two is a silent server-side no-op.
+      expect(account.saved.single.avatarUrl, '/v1/images/abc123');
+    });
+
+    testWidgets('a banner is stored by bare hash, not by path', (tester) async {
+      tester.view.physicalSize = const Size(1200, 3000);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+
+      final account = FakeAccountApi();
+      _ignoreSettingsInkWarning();
+      await tester.pumpWidget(_account(account));
+      await tester.pump();
+      await tester.pump();
+
+      await tester.tap(
+        find.widgetWithText(
+          OutlinedButton,
+          translations(SettingsKeys.profileChooseBanner),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      expect(account.saved.single.bannerHash, 'abc123');
+      expect(account.saved.single.avatarUrl, isNull);
+    });
+
+    testWidgets('the bio and links save together, in one PATCH', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(1200, 3000);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+
+      final account = FakeAccountApi();
+      _ignoreSettingsInkWarning();
+      await tester.pumpWidget(_account(account));
+      await tester.pump();
+      await tester.pump();
+
+      await tester.enterText(
+        find.widgetWithText(TextField, translations(SettingsKeys.profileBio)),
+        'Mostly drums.',
+      );
+      await tester.pump();
+      await tester.tap(
+        find.widgetWithText(
+          OutlinedButton,
+          translations(SettingsKeys.profileAddLink),
+        ),
+      );
+      await tester.pump();
+      await tester.enterText(
+        find.widgetWithText(
+          TextFormField,
+          translations(SettingsKeys.profileLinkUrl),
+        ),
+        'https://example.com',
+      );
+      await tester.pump();
+
+      await tester.tap(
+        find.widgetWithText(
+          FilledButton,
+          translations(SettingsKeys.accountSaveProfile),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      // The Hub takes one PATCH, so bio and links ride together — a second request would be a
+      // second chance to half-save an edit.
+      expect(account.saved, hasLength(1));
+      expect(account.saved.single.bio, 'Mostly drums.');
+      expect(account.saved.single.links?.single.kind, 'website');
+      expect(account.saved.single.links?.single.url, 'https://example.com');
+    });
+
+    testWidgets('a link that is not https holds the save', (tester) async {
+      tester.view.physicalSize = const Size(1200, 3000);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+
+      final account = FakeAccountApi();
+      _ignoreSettingsInkWarning();
+      await tester.pumpWidget(_account(account));
+      await tester.pump();
+      await tester.pump();
+
+      await tester.tap(
+        find.widgetWithText(
+          OutlinedButton,
+          translations(SettingsKeys.profileAddLink),
+        ),
+      );
+      await tester.pump();
+      await tester.enterText(
+        find.widgetWithText(
+          TextFormField,
+          translations(SettingsKeys.profileLinkUrl),
+        ),
+        'example.com',
+      );
+      await tester.pump();
+
+      // Bio, name, handle and links all ride in ONE PATCH, so one malformed row would fail the
+      // whole save and lose the rest of the edit.
+      final save = tester.widget<FilledButton>(
+        find.widgetWithText(
+          FilledButton,
+          translations(SettingsKeys.accountSaveProfile),
+        ),
+      );
+      expect(save.onPressed, isNull);
+    });
+  });
+
   group('display flair', () {
     test('reads the colour notations the Hub actually stores', () {
       expect(parseCssColor('#f0a'), const Color(0xffff00aa));
@@ -262,6 +511,195 @@ Widget _app(FakeSocialApi api) => ProviderScope(
   ],
   child: MaterialApp(theme: buildChordiaTheme(), home: const FriendsScreen()),
 );
+
+/// The You tab's route table, with nothing above it but a router.
+///
+/// The real shell is four branches deep and drags the player in with it; what is under test is
+/// whether these paths RESOLVE to the right screen, which is a property of the route table.
+Widget _routed(FakeSocialApi api, String location) => ProviderScope(
+  overrides: [
+    translationsProvider.overrideWithValue(translations),
+    socialApiProvider.overrideWithValue(api),
+    friendsPollIntervalProvider.overrideWithValue(null),
+  ],
+  child: MaterialApp.router(
+    theme: buildChordiaTheme(),
+    routerConfig: GoRouter(
+      initialLocation: location,
+      routes: [
+        GoRoute(
+          path: '/you',
+          builder: (context, state) => const Scaffold(),
+          routes: [...socialRoutes(), ...insightsRoutes()],
+        ),
+      ],
+    ),
+  ),
+);
+
+/// One profile panel, with a fake behind the reads it makes beyond the profile DTO.
+Widget _panel(FakeProfileReads reads, Widget panel) => ProviderScope(
+  overrides: [
+    translationsProvider.overrideWithValue(translations),
+    profileReadsProvider.overrideWithValue(reads),
+  ],
+  child: MaterialApp(
+    theme: buildChordiaTheme(),
+    home: Scaffold(body: SingleChildScrollView(child: panel)),
+  ),
+);
+
+/// Swallows one debug-only assertion the settings list has always raised.
+///
+/// `SettingsSection` draws its card as a `DecoratedBox` and puts `ListTile`s inside it, which
+/// Flutter warns about because the tile's ink splash paints on the nearest `Material` above that
+/// box. It fires once per row on every settings screen, predates this port, and is not what these
+/// tests are about — a widget test treats any framework error as a failure, so twenty copies of it
+/// would bury a real one.
+void _ignoreSettingsInkWarning() {
+  final previous = FlutterError.onError;
+  FlutterError.onError = (details) {
+    if (details.exceptionAsString().contains('ink splashes may be invisible')) {
+      return;
+    }
+    previous?.call(details);
+  };
+  addTearDown(() => FlutterError.onError = previous);
+}
+
+/// The Account screen with a fake Hub and a fake image picker behind it.
+Widget _account(FakeAccountApi account) => ProviderScope(
+  overrides: [
+    translationsProvider.overrideWithValue(translations),
+    accountApiProvider.overrideWithValue(account),
+    // The test binding answers every platform channel with an error, so a real picker would fail
+    // on the channel rather than on anything under test.
+    imagePickerProvider.overrideWithValue(
+      ({required int maxWidth}) async => PickedImage(
+        bytes: Uint8List.fromList([1, 2, 3]),
+        contentType: 'image/jpeg',
+      ),
+    ),
+  ],
+  child: MaterialApp(theme: buildChordiaTheme(), home: const AccountScreen()),
+);
+
+/// A [ProfileReads] with no Hub behind it, recording the offsets it was asked for.
+class FakeProfileReads implements ProfileReads {
+  FakeProfileReads({required this.followerCount, required this.pageSize});
+
+  /// How many rows each list holds, across every page.
+  final int followerCount;
+  final int pageSize;
+
+  final followerOffsets = <int>[];
+  final followingOffsets = <int>[];
+
+  FollowPage _page(int offset) {
+    final rows = (followerCount - offset).clamp(0, pageSize);
+    return FollowPage(
+      items: [
+        for (var i = 0; i < rows; i++)
+          FollowUser(
+            followsViewer: false,
+            isFriend: false,
+            user: user('f${offset + i}'),
+            viewerFollows: false,
+          ),
+      ],
+      total: followerCount,
+      nextOffset: offset + rows >= followerCount ? null : offset + rows,
+    );
+  }
+
+  @override
+  Future<FollowPage> followers(String handle, {int offset = 0}) async {
+    followerOffsets.add(offset);
+    return _page(offset);
+  }
+
+  @override
+  Future<FollowPage> following(String handle, {int offset = 0}) async {
+    followingOffsets.add(offset);
+    return _page(offset);
+  }
+
+  @override
+  Future<List<Playlist>> playlists(String handle) async => const [];
+
+  @override
+  Future<List<ProfileArtist>> followedArtists(String handle) async => const [];
+
+  @override
+  Future<void> report(String handle, String reason) async {}
+}
+
+/// An [AccountApi] with no Hub behind it, recording every write.
+class FakeAccountApi implements AccountApi {
+  final uploaded = <List<int>>[];
+  final uploadedTypes = <String>[];
+  final saved = <UpdateProfile>[];
+
+  @override
+  Future<UserProfile> profile() async => const UserProfile(
+    createdAt: 0,
+    displayName: 'Me',
+    handle: 'me',
+    id: 'me-id',
+  );
+
+  @override
+  Future<PublicProfile> publicProfile(String handle) async => PublicProfile(
+    createdAt: 0,
+    private: false,
+    recent: const [],
+    topArtists: const [],
+    topTracks: const [],
+    totalPlays: 0,
+    user: user(handle),
+    links: const [],
+  );
+
+  @override
+  Future<String> uploadImage(
+    List<int> bytes, {
+    String contentType = 'application/octet-stream',
+  }) async {
+    uploaded.add(bytes);
+    uploadedTypes.add(contentType);
+    return 'abc123';
+  }
+
+  @override
+  Future<UserProfile> updateProfile(UpdateProfile changes) async {
+    saved.add(changes);
+    return profile();
+  }
+
+  @override
+  Future<AccountInfo> account() async => const AccountInfo(
+    discordLinked: false,
+    emailVerified: true,
+    hasPassword: true,
+    totpEnabled: false,
+    email: 'me@example.com',
+  );
+
+  @override
+  Future<void> requestEmailVerification() async {}
+
+  @override
+  Future<void> requestEmailChange(String email) async {}
+
+  @override
+  Future<void> changePassword(ChangePasswordRequest request) async {}
+
+  @override
+  Future<void> requestPasswordSet() async {}
+
+  @override
+  Future<void> deleteAccount() async {}
+}
 
 PublicUser user(String handle) => PublicUser(
   displayName: handle.toUpperCase(),

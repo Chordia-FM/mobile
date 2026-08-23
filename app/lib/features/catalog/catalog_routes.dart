@@ -96,11 +96,17 @@ extension CatalogNavigation on BuildContext {
 
   void goToLabel(String labelId) => _pushInTab('labels/$labelId');
 
-  void _pushInTab(String suffix) {
-    final segments = GoRouterState.of(this).uri.pathSegments;
-    // No segment at all can only happen at "/", which the router redirects away from before any
-    // catalog screen exists to push from — but a crash there would be a poor trade for a guard.
-    if (segments.isEmpty) return;
-    GoRouter.of(this).push('/${segments.first}/$suffix');
-  }
+  void _pushInTab(String suffix) => pushInCurrentTab(this, suffix);
+}
+
+/// Pushes a tab-relative catalog path into whichever tab is showing.
+///
+/// Public because the player navigates too, and it holds a path rather than a call: "Playing from"
+/// resolves a play context to a route, and one function has to be able to push whatever came back.
+void pushInCurrentTab(BuildContext context, String suffix) {
+  final segments = GoRouterState.of(context).uri.pathSegments;
+  // No segment at all can only happen at "/", which the router redirects away from before any
+  // catalog screen exists to push from — but a crash there would be a poor trade for a guard.
+  if (segments.isEmpty) return;
+  GoRouter.of(context).push('/${segments.first}/$suffix');
 }

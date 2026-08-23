@@ -26,11 +26,49 @@ abstract interface class PlaylistApi {
   Future<void> removeCollaborator(String playlistId, String userId);
 }
 
+/// The pinned shelf and the three edits it supports.
+///
+/// Its own interface for the same reason [PlaylistApi] is one: what a test needs to say about a
+/// pin is "this add failed", and saying that through a transport would need a session and a base
+/// URL to say it. [reorder] takes the whole shelf because the Hub sets the order across every kind
+/// at once — there is no "move this one" call.
+abstract interface class PinsApi {
+  Future<List<PinnedItem>> pins();
+
+  Future<void> add(PinKind kind, String id);
+
+  Future<void> remove(PinKind kind, String id);
+
+  Future<void> reorder(List<PinnedItem> order);
+}
+
 /// The liked-songs list and the one edit it supports.
 abstract interface class LikedApi {
   Future<List<BrowseTrack>> tracks();
 
   Future<void> unlike(String trackId);
+}
+
+class HubPinsApi implements PinsApi {
+  const HubPinsApi(this._hub);
+
+  final HubClient _hub;
+
+  @override
+  Future<List<PinnedItem>> pins() => _hub.pins();
+
+  @override
+  Future<void> add(PinKind kind, String id) => _hub.addPin(kind, id);
+
+  @override
+  Future<void> remove(PinKind kind, String id) => _hub.removePin(kind, id);
+
+  @override
+  Future<void> reorder(List<PinnedItem> order) => _hub.reorderPins(
+    ReorderBody(
+      items: [for (final pin in order) PinRef(id: pin.id, kind: pin.kind.wire)],
+    ),
+  );
 }
 
 class HubPlaylistApi implements PlaylistApi {

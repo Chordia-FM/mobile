@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../data/accent/accent_providers.dart';
+import '../data/accent/accent_scope.dart';
 import '../features/update/update_sheet.dart';
 import 'router.dart';
-import 'theme.dart';
 
 class ChordiaApp extends ConsumerStatefulWidget {
   const ChordiaApp({super.key});
@@ -20,14 +21,20 @@ class _ChordiaAppState extends ConsumerState<ChordiaApp> {
   Widget build(BuildContext context) => MaterialApp.router(
     title: 'Chordia',
     debugShowCheckedModeBanner: false,
-    theme: buildChordiaTheme(),
+    // Derived from the account's accent, not frozen: every pane, card and hairline is a
+    // `color-mix` off `--primary` on the web, and this is that. Rebuilds when the accent changes
+    // and at no other time — the *moving* modes publish through `AccentScope` below instead, so a
+    // cross-fade never rebuilds the tree. See `data/accent/accent_scope.dart`.
+    theme: ref.watch(chordiaThemeProvider),
     // The app draws its own dark palette; following the system into light mode would render
     // half the surfaces unreadable until a light theme actually exists.
     themeMode: ThemeMode.dark,
     routerConfig: _router,
     // Wraps every screen rather than sitting on one, because the app is not on a store and
     // nothing else will tell somebody a newer build exists. It draws nothing until there is one.
-    builder: (context, child) =>
-        UpdateGate(child: child ?? const SizedBox.shrink()),
+    builder: (context, child) => AccentScope(
+      frame: ref.watch(accentEngineProvider).frame,
+      child: UpdateGate(child: child ?? const SizedBox.shrink()),
+    ),
   );
 }

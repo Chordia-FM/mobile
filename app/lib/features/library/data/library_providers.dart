@@ -5,6 +5,9 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/providers.dart';
+import '../../libraries/data/libraries_api.dart';
+import '../../libraries/data/libraries_providers.dart';
+import '../../playlists/data/playlists_providers.dart';
 import 'library_api.dart';
 
 // The database and its DAOs live in `app/lib/app/providers.dart`, opened once in `bootstrap`.
@@ -51,6 +54,12 @@ final playlistApiProvider = Provider<PlaylistApi?>((ref) {
   return hub == null ? null : HubPlaylistApi(hub);
 });
 
+/// The Hub-backed pin calls, or null while there is no signed-in hub.
+final pinsApiProvider = Provider<PinsApi?>((ref) {
+  final hub = ref.watch(hubClientProvider);
+  return hub == null ? null : HubPinsApi(hub);
+});
+
 final likedApiProvider = Provider<LikedApi?>((ref) {
   final hub = ref.watch(hubClientProvider);
   return hub == null ? null : HubLikedApi(hub);
@@ -78,21 +87,47 @@ final smartPlaylistsProvider = FutureProvider<List<SmartPlaylist>>(
 
 /// One smart playlist's materialised snapshot. Auto-disposed: the rules resolve server-side on a
 /// schedule, so a snapshot held from a previous visit is stale by construction.
+///
+/// Read through [smartPlaylistsApiProvider] rather than the hub directly, so the screen that shows
+/// it and the menu that edits and deletes it are all driven by one fake in a test.
 final smartPlaylistProvider = FutureProvider.autoDispose
-    .family<SmartPlaylistDetail, String>(
-      (ref, id) => _viaHub(ref, (hub) => hub.smartPlaylist(id)),
-    );
+    .family<SmartPlaylistDetail, String>((ref, id) async {
+      final api = ref.watch(smartPlaylistsApiProvider);
+      if (api == null) {
+        throw StateError(
+          'no active hub — the library tab is behind the auth gate',
+        );
+      }
+      return api.detail(id);
+    });
 
-final pinsProvider = FutureProvider<List<PinnedItem>>(
-  (ref) => _viaHub(ref, (hub) => hub.pins()),
-);
+/// The pinned shelf, read through [pinsApiProvider] so a test can drive the shelf and its edits
+/// through one fake rather than through a transport.
+final pinsProvider = FutureProvider<List<PinnedItem>>((ref) async {
+  final api = ref.watch(pinsApiProvider);
+  if (api == null) {
+    throw StateError('no active hub — the library tab is behind the auth gate');
+  }
+  return api.pins();
+});
+
+/// Everything about a library server goes through [librariesApiProvider] rather than the hub
+/// client: one fake then drives the whole surface — the list, one library's page, its shares and
+/// whether its server is answering — which is what makes "tapping this opens that" testable.
+Future<T> _viaLibraries<T>(Ref ref, Future<T> Function(LibrariesApi api) call) {
+  final api = ref.watch(librariesApiProvider);
+  if (api == null) {
+    throw StateError('no active hub — the library tab is behind the auth gate');
+  }
+  return call(api);
+}
 
 final myLibrariesProvider = FutureProvider<List<LibrarySummary>>(
-  (ref) => _viaHub(ref, (hub) => hub.libraries()),
+  (ref) => _viaLibraries(ref, (api) => api.mine()),
 );
 
 final sharedLibrariesProvider = FutureProvider<List<LibrarySummary>>(
-  (ref) => _viaHub(ref, (hub) => hub.librariesSharedWithMe()),
+  (ref) => _viaLibraries(ref, (api) => api.sharedWithMe()),
 );
 
 /// Where a library server is reachable and whether it answered its last heartbeat.
@@ -100,17 +135,17 @@ final sharedLibrariesProvider = FutureProvider<List<LibrarySummary>>(
 /// Keyed by server id rather than library id because one paired machine can host several
 /// libraries, and resolving it once per library would ask the same question four times.
 final serverStatusProvider = FutureProvider.family<ResolvedServer, String>(
-  (ref, serverId) => _viaHub(ref, (hub) => hub.resolveServer(serverId)),
+  (ref, serverId) => _viaLibraries(ref, (api) => api.resolveServer(serverId)),
 );
 
 final libraryDetailProvider = FutureProvider.family<LibrarySummary, String>(
-  (ref, libraryId) => _viaHub(ref, (hub) => hub.libraryDetail(libraryId)),
+  (ref, libraryId) => _viaLibraries(ref, (api) => api.detail(libraryId)),
 );
 
 /// Who the owner has given access to. Only the owner may ask, so this is not read on a library
 /// that is merely shared with the viewer.
 final librarySharesProvider = FutureProvider.family<List<LibraryShare>, String>(
-  (ref, libraryId) => _viaHub(ref, (hub) => hub.libraryShares(libraryId)),
+  (ref, libraryId) => _viaLibraries(ref, (api) => api.shares(libraryId)),
 );
 
 /// Artists across every accessible library, or inside one when an id is given.

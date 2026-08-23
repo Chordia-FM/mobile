@@ -20,6 +20,13 @@ abstract interface class PlaylistsApi {
 
   Future<void> addTrack(String playlistId, String trackId);
 
+  /// Songs to offer an empty playlist. The viewer's liked songs, which is what the web client
+  /// shows before anything is typed — the fastest correct answer to "what goes in here".
+  Future<List<BrowseTrack>> likedTracks();
+
+  /// Catalog search, for the same surface once something IS typed.
+  Future<List<BrowseTrack>> searchTracks(String query);
+
   Future<List<PublicUser>> collaborators(String playlistId);
 
   /// Invites by handle. The Hub resolves it to a user, so a bad handle is a server error rather
@@ -41,6 +48,12 @@ abstract interface class PlaylistsApi {
 
 /// The rule-driven half, which has its own resource on the Hub and none of the calls above.
 abstract interface class SmartPlaylistsApi {
+  /// One saved playlist's materialised snapshot, plus the rules that produced it.
+  Future<SmartPlaylistDetail> detail(String playlistId);
+
+  /// Re-runs the rules now, and reports what changed.
+  Future<SmartRefreshResult> refresh(String playlistId);
+
   Future<SmartPlaylist> create(SmartBody body);
 
   /// A PUT: an omitted field is a CLEARED field, not an unchanged one. Callers send the whole
@@ -77,6 +90,13 @@ class HubPlaylistsApi implements PlaylistsApi {
       _hub.addPlaylistTrack(playlistId, TrackBody(trackId: trackId));
 
   @override
+  Future<List<BrowseTrack>> likedTracks() => _hub.likedTracks();
+
+  @override
+  Future<List<BrowseTrack>> searchTracks(String query) async =>
+      (await _hub.searchCatalog(query)).tracks;
+
+  @override
   Future<List<PublicUser>> collaborators(String playlistId) =>
       _hub.playlistCollaborators(playlistId);
 
@@ -107,6 +127,14 @@ class HubSmartPlaylistsApi implements SmartPlaylistsApi {
   const HubSmartPlaylistsApi(this._hub);
 
   final HubClient _hub;
+
+  @override
+  Future<SmartPlaylistDetail> detail(String playlistId) =>
+      _hub.smartPlaylist(playlistId);
+
+  @override
+  Future<SmartRefreshResult> refresh(String playlistId) =>
+      _hub.refreshSmartPlaylist(playlistId);
 
   @override
   Future<SmartPlaylist> create(SmartBody body) =>

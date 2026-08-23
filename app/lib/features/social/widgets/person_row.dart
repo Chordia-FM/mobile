@@ -9,6 +9,7 @@ import '../../../i18n/translations_provider.dart';
 import '../data/social_messages.dart';
 import '../data/social_providers.dart';
 import '../social_routes.dart';
+import 'profile_reads.dart';
 import 'user_identity.dart';
 
 /// Where the viewer stands with the person on a row.
@@ -207,6 +208,33 @@ class _PersonActionsSheet extends ConsumerWidget {
                 onTap: () => run(() => friends.sendRequest(user)),
               ),
             },
+            // Report sits directly above Block, as it does in the web's `UserActionsMenu`. The
+            // Hub answers 204 whether or not it acted on the report, so there is nothing to read
+            // back and nothing to tell the reporter beyond that it was filed.
+            ListTile(
+              leading: const Icon(Icons.flag_outlined),
+              title: Text(t(SocialKeys.modMenuReport)),
+              onTap: () async {
+                final reason = await _prompt(
+                  context,
+                  title: t(SocialKeys.modMenuReport),
+                  message: t(SocialKeys.reportPromptMessage, {
+                    'handle': user.handle,
+                  }),
+                  action: t(SocialKeys.modMenuReport),
+                  cancel: t(CommonKeys.actionsCancel),
+                );
+                if (reason == null || reason.trim().isEmpty) return;
+                await run(() async {
+                  await ref
+                      .read(profileReadsProvider)
+                      .report(user.handle, reason.trim());
+                  if (page.mounted) {
+                    showSocialMessage(page, t(SocialKeys.modMenuReported));
+                  }
+                });
+              },
+            ),
             if (tie != FriendTie.blocked)
               ListTile(
                 leading: Icon(
@@ -264,6 +292,45 @@ Future<bool> _confirm(
     ),
   );
   return answer ?? false;
+}
+
+/// A line of free text the user has to write before something is filed on their behalf.
+///
+/// The web asks for the same thing with its `prompt` dialog, and for the same reason: a report
+/// with no reason on it is one a moderator cannot act on.
+Future<String?> _prompt(
+  BuildContext context, {
+  required String title,
+  required String message,
+  required String action,
+  required String cancel,
+}) async {
+  final controller = TextEditingController();
+  final answer = await showDialog<String>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      title: Text(title),
+      content: TextField(
+        controller: controller,
+        autofocus: true,
+        maxLines: 3,
+        minLines: 1,
+        decoration: InputDecoration(hintText: message),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(dialogContext).pop(),
+          child: Text(cancel),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(dialogContext).pop(controller.text),
+          child: Text(action),
+        ),
+      ],
+    ),
+  );
+  controller.dispose();
+  return answer;
 }
 
 /// Hands a profile link to the system share sheet.

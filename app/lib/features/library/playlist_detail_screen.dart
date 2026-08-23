@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:chordia_api/chordia_api.dart';
 import 'package:chordia_sync/chordia_sync.dart';
 import 'package:flutter/material.dart';
@@ -7,7 +9,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/art/art_cache.dart';
 import '../../i18n/keys.g.dart';
 import '../../i18n/translations_provider.dart';
-import '../../widgets/cover_art.dart';
+import '../catalog/widgets/entity_menu.dart';
+import '../playlists/add_songs_sheet.dart';
+import '../playlists/collaborators_sheet.dart';
+import '../playlists/cover_sheet.dart';
+import '../playlists/playlist_manage_sheet.dart';
 import 'data/formatting.dart';
 import 'data/library_providers.dart';
 import 'data/playlist_detail_controller.dart';
@@ -97,11 +103,14 @@ class _PlaylistDetailScreenState extends ConsumerState<PlaylistDetailScreen> {
                   : t(PlaylistsKeys.reorderStart),
               onPressed: () => setState(() => _reordering = !_reordering),
             ),
-          if (detail != null && (detail.owned ?? false))
+          // One button rather than a row of icons: renaming, the cover, collaborators, deleting
+          // and leaving all live behind it, which is the only shape a phone header has room for.
+          // The web client puts the same set in the playlist's own context menu.
+          if (detail != null)
             IconButton(
-              icon: const Icon(Icons.edit_outlined),
-              tooltip: t(PlaylistsKeys.editTitle),
-              onPressed: () => _openEditor(detail),
+              icon: const Icon(Icons.more_vert_rounded),
+              tooltip: t(CommonKeys.actionsMore),
+              onPressed: () => unawaited(_openManage(detail)),
             ),
         ],
       ),
@@ -158,10 +167,10 @@ class _PlaylistDetailScreenState extends ConsumerState<PlaylistDetailScreen> {
               semanticLabel: detail.name,
             ),
             onEditTitle: (detail.owned ?? false)
-                ? () => _openEditor(detail)
+                ? () => unawaited(_openDetails(detail))
                 : null,
             onEditArtwork: (detail.owned ?? false)
-                ? () => _openCoverPicker(detail)
+                ? () => unawaited(_openCover(detail))
                 : null,
           ),
           CollectionActions(
@@ -178,7 +187,13 @@ class _PlaylistDetailScreenState extends ConsumerState<PlaylistDetailScreen> {
             extra: [
               if (canEdit)
                 OutlinedButton.icon(
-                  onPressed: () => _openCollaborators(controller, detail),
+                  onPressed: () => unawaited(_openAddSongs(detail)),
+                  icon: const Icon(Icons.playlist_add_rounded),
+                  label: Text(t(PlaylistsKeys.addToPlaylist)),
+                ),
+              if (canEdit)
+                OutlinedButton.icon(
+                  onPressed: () => unawaited(_openCollaborators(detail)),
                   icon: const Icon(Icons.group_outlined),
                   label: Text(t(PlaylistsKeys.collaboratorsManage)),
                 ),
@@ -193,11 +208,25 @@ class _PlaylistDetailScreenState extends ConsumerState<PlaylistDetailScreen> {
               ),
             ),
           const SizedBox(height: 8),
-          if (detail.tracks.isEmpty)
+          if (detail.tracks.isEmpty) ...[
             EmptyNote(
               message: t(PlaylistsKeys.empty),
               icon: Icons.queue_music_rounded,
             ),
+            // An empty playlist with nothing to press is a dead end: the only other route in is
+            // finding each song in the catalog and filing it from that song's own menu.
+            if (canEdit)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                child: Center(
+                  child: FilledButton.icon(
+                    onPressed: () => unawaited(_openAddSongs(detail)),
+                    icon: const Icon(Icons.add_rounded),
+                    label: Text(t(PlaylistsKeys.addToPlaylist)),
+                  ),
+                ),
+              ),
+          ],
         ],
       ),
       itemCount: detail.tracks.length,
@@ -223,16 +252,23 @@ class _PlaylistDetailScreenState extends ConsumerState<PlaylistDetailScreen> {
                   startIndex: index,
                   context: playContext,
                 ),
+          // A long press is the row's own route to the full track menu - queue, like, download,
+          // add to another playlist, go to artist or album, share - the same set the web client
+          // puts behind a right-click. The menu button carries the three actions that only make
+          // sense HERE, plus a way through to the rest of them.
+          onLongPress: () => unawaited(showTrackMenu(context, ref, track)),
           trailing: _reordering
               ? null
               : PopupMenuButton<_TrackAction>(
                   tooltip: t(CommonKeys.actionsMore),
-                  onSelected: (action) => _runTrackAction(
-                    controller,
-                    action,
-                    index,
-                    track,
-                    detail.tracks.length,
+                  onSelected: (action) => unawaited(
+                    _runTrackAction(
+                      controller,
+                      action,
+                      index,
+                      track,
+                      detail.tracks.length,
+                    ),
                   ),
                   itemBuilder: (context) => [
                     if (canEdit) ...[
@@ -251,6 +287,10 @@ class _PlaylistDetailScreenState extends ConsumerState<PlaylistDetailScreen> {
                         child: Text(t(PlaylistsKeys.removeFromPlaylist)),
                       ),
                     ],
+                    PopupMenuItem(
+                      value: _TrackAction.more,
+                      child: Text(t(CommonKeys.actionsMore)),
+                    ),
                   ],
                 ),
         );
@@ -274,6 +314,8 @@ class _PlaylistDetailScreenState extends ConsumerState<PlaylistDetailScreen> {
         _announceMove(track, index + 1, total);
       case _TrackAction.remove:
         await controller.removeTrack(track);
+      case _TrackAction.more:
+        if (mounted) await showTrackMenu(context, ref, track);
     }
   }
 
@@ -317,281 +359,73 @@ class _PlaylistDetailScreenState extends ConsumerState<PlaylistDetailScreen> {
     return '$line\n${t(PlaylistsKeys.metaPlayableNote, {'playable': detail.tracks.length, 'count': count})}';
   }
 
-  Future<void> _openEditor(PlaylistDetail detail) async {
-    final controller = _controller;
-    if (controller == null) return;
-    final t = ref.t;
-    final name = TextEditingController(text: detail.name);
-    final description = TextEditingController(text: detail.description ?? '');
-    var visibility = detail.visibility ?? PlaylistVisibility.private;
-
-    final saved = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      builder: (sheetContext) => Padding(
-        padding: EdgeInsets.only(
-          left: 16,
-          right: 16,
-          top: 16,
-          bottom: MediaQuery.viewInsetsOf(sheetContext).bottom + 16,
-        ),
-        child: StatefulBuilder(
-          builder: (sheetContext, setSheetState) => Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                t(PlaylistsKeys.editTitle),
-                style: Theme.of(sheetContext).textTheme.titleMedium,
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: name,
-                decoration: InputDecoration(
-                  labelText: t(PlaylistsKeys.editName),
-                ),
-                textInputAction: TextInputAction.next,
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: description,
-                minLines: 2,
-                maxLines: 4,
-                decoration: InputDecoration(
-                  labelText: t(PlaylistsKeys.editDescription),
-                  hintText: t(PlaylistsKeys.editDescriptionPlaceholder),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                t(PlaylistsKeys.editVisibilityLabel),
-                style: Theme.of(sheetContext).textTheme.labelLarge,
-              ),
-              for (final option in PlaylistVisibility.values)
-                ListTile(
-                  onTap: () => setSheetState(() => visibility = option),
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(t(_visibilityLabel(option))),
-                  subtitle: Text(t(_visibilityHint(option))),
-                  // A check rather than a radio: `RadioListTile`'s `groupValue`/`onChanged` pair
-                  // is deprecated in favour of a `RadioGroup` ancestor, and a selected-state icon
-                  // says the same thing without carrying a deprecation into a new screen.
-                  trailing: Icon(
-                    visibility == option
-                        ? Icons.radio_button_checked
-                        : Icons.radio_button_unchecked,
-                    color: visibility == option
-                        ? Theme.of(sheetContext).colorScheme.primary
-                        : null,
-                  ),
-                ),
-              const SizedBox(height: 8),
-              FilledButton(
-                onPressed: () => Navigator.of(sheetContext).pop(true),
-                child: Text(t(CommonKeys.actionsSave)),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-
-    if (saved ?? false) {
-      final trimmed = name.text.trim();
-      if (trimmed.isNotEmpty && trimmed != detail.name) {
-        await controller.rename(trimmed);
-      }
-      if (description.text.trim() != (detail.description ?? '')) {
-        await controller.setDescription(description.text);
-      }
-      if (visibility != detail.visibility) {
-        await controller.setVisibility(visibility);
-      }
-    }
-    name.dispose();
-    description.dispose();
-  }
-
-  /// Picks the playlist's face from the covers already inside it, or drops back to the mosaic.
+  /// Everything an owner or collaborator can do to the playlist itself, in one sheet.
   ///
-  /// Uploading a photo is not offered: `POST /v1/images` is a binary upload that `chordia_api`'s
-  /// JSON transport cannot send, so the choice here is between covers the Hub already holds.
-  Future<void> _openCoverPicker(PlaylistDetail detail) async {
-    final controller = _controller;
-    if (controller == null) return;
-    final t = ref.t;
-    final options = [
-      for (final url in detail.autoCoverUrls ?? const <String>[])
-        if (artHashOf(url) != null) url,
-    ];
-
-    await showModalBottomSheet<void>(
-      context: context,
-      builder: (sheetContext) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Text(
-                t(PlaylistsKeys.editChoosePhoto),
-                style: Theme.of(sheetContext).textTheme.titleMedium,
-              ),
-            ),
-            if (options.isEmpty)
-              EmptyNote(message: t(PlaylistsKeys.empty))
-            else
-              SizedBox(
-                height: 96,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  itemCount: options.length,
-                  separatorBuilder: (context, index) =>
-                      const SizedBox(width: 12),
-                  itemBuilder: (context, index) => InkWell(
-                    onTap: () {
-                      Navigator.of(sheetContext).pop();
-                      controller.setCover(options[index]);
-                    },
-                    child: CoverArt(
-                      sha256: artHashOf(options[index]),
-                      size: 80,
-                    ),
-                  ),
-                ),
-              ),
-            if (detail.coverUrl != null)
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: OutlinedButton(
-                  onPressed: () {
-                    Navigator.of(sheetContext).pop();
-                    controller.clearCover();
-                  },
-                  child: Text(t(PlaylistsKeys.editRemovePhoto)),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<void> _openCollaborators(
-    PlaylistDetailController controller,
-    PlaylistDetail detail,
-  ) async {
-    final t = ref.t;
-    await showModalBottomSheet<void>(
-      context: context,
-      builder: (sheetContext) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Text(
-                t(PlaylistsKeys.collaboratorsManage),
-                style: Theme.of(sheetContext).textTheme.titleMedium,
-              ),
-            ),
-            for (final person in detail.collaborators ?? const <PublicUser>[])
-              ListTile(
-                leading: CoverArt(
-                  sha256: artHashOf(person.avatarUrl),
-                  size: 40,
-                  shape: BoxShape.circle,
-                  fallbackIcon: Icons.person_rounded,
-                ),
-                title: Text(person.displayName),
-                subtitle: Text('@${person.handle}'),
-                trailing: IconButton(
-                  icon: const Icon(Icons.close_rounded),
-                  tooltip: t(PlaylistsKeys.collaboratorsRemoveTitle, {
-                    'name': person.displayName,
-                  }),
-                  onPressed: () {
-                    Navigator.of(sheetContext).pop();
-                    controller.removeCollaborator(person.id);
-                  },
-                ),
-              ),
-            if ((detail.collaborators ?? const []).isEmpty)
-              EmptyNote(message: t(PlaylistsKeys.collaboratorsInvitePrompt)),
-            if (detail.owned ?? false)
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: FilledButton.icon(
-                  onPressed: () {
-                    Navigator.of(sheetContext).pop();
-                    _invite(controller);
-                  },
-                  icon: const Icon(Icons.person_add_alt_1_rounded),
-                  label: Text(t(PlaylistsKeys.collaboratorsInvite)),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<void> _invite(PlaylistDetailController controller) async {
-    final t = ref.t;
-    final handle = TextEditingController();
-    final entered = await showDialog<String>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(t(PlaylistsKeys.collaboratorsInvitePrompt)),
-        content: TextField(
-          controller: handle,
-          autofocus: true,
-          decoration: const InputDecoration(prefixText: '@'),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: Text(t(CommonKeys.actionsCancel)),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(handle.text),
-            child: Text(t(CommonKeys.actionsAdd)),
-          ),
-        ],
-      ),
-    );
-    handle.dispose();
-
-    // The Hub takes a bare handle; people type the "@" they see everywhere else.
-    final cleaned = (entered ?? '').trim().replaceFirst(RegExp('^@'), '');
-    if (cleaned.isEmpty) return;
-    if (await controller.addCollaborator(cleaned) && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            ref.read(translationsProvider)(PlaylistsKeys.collaboratorsInvited, {
-              'handle': cleaned,
-            }),
-          ),
-        ),
-      );
+  /// The outcome decides what happens next, which is why the sheet reports one: a playlist that
+  /// was deleted or left has to take this page with it — there is nothing left to reload.
+  Future<void> _openManage(PlaylistDetail detail) async {
+    final outcome = await showPlaylistManageSheet(context, detail: detail);
+    if (!mounted) return;
+    switch (outcome) {
+      case PlaylistManageOutcome.removed:
+        Navigator.of(context).pop();
+      case PlaylistManageOutcome.edited:
+        await _controller?.load();
+      case PlaylistManageOutcome.unchanged:
+        break;
     }
+  }
+
+  /// Name, description and visibility. One PATCH, sent by the sheet itself.
+  Future<void> _openDetails(PlaylistDetail detail) async {
+    if (await showPlaylistDetailsSheet(context, detail: detail) && mounted) {
+      ref.invalidate(playlistsProvider);
+      await _controller?.load();
+    }
+  }
+
+  /// A photo from the device, one of the covers already inside the playlist, or back to the
+  /// generated mosaic. The upload lives in the sheet because `POST /v1/images` is the one Hub call
+  /// that posts bytes, and it belongs beside the picker rather than in four copies of it.
+  Future<void> _openCover(PlaylistDetail detail) async {
+    final changed = await showPlaylistCoverSheet(
+      context,
+      playlistId: detail.id,
+      autoCoverUrls: detail.autoCoverUrls ?? const [],
+      hasCover: detail.coverUrl != null,
+    );
+    if (changed && mounted) {
+      ref.invalidate(playlistsProvider);
+      await _controller?.load();
+    }
+  }
+
+  Future<void> _openCollaborators(PlaylistDetail detail) async {
+    final left = await showCollaboratorsSheet(
+      context,
+      playlistId: detail.id,
+      initial: detail.collaborators ?? const [],
+      owned: detail.owned ?? false,
+    );
+    if (!mounted) return;
+    ref.invalidate(playlistsProvider);
+    // Leaving a playlist is the one outcome this page cannot survive: a playlist you are no longer
+    // on is a playlist you can no longer read.
+    if (left) {
+      Navigator.of(context).pop();
+    } else {
+      await _controller?.load();
+    }
+  }
+
+  Future<void> _openAddSongs(PlaylistDetail detail) async {
+    await showAddSongsSheet(
+      context,
+      playlistId: detail.id,
+      alreadyIn: {for (final track in detail.tracks) track.id},
+    );
+    if (mounted) await _controller?.load();
   }
 }
 
-enum _TrackAction { moveUp, moveDown, remove }
-
-String _visibilityLabel(PlaylistVisibility visibility) => switch (visibility) {
-  PlaylistVisibility.private => PlaylistsKeys.editVisibilityPrivate,
-  PlaylistVisibility.unlisted => PlaylistsKeys.editVisibilityUnlisted,
-  PlaylistVisibility.public => PlaylistsKeys.editVisibilityPublic,
-};
-
-String _visibilityHint(PlaylistVisibility visibility) => switch (visibility) {
-  PlaylistVisibility.private => PlaylistsKeys.editVisibilityPrivateHint,
-  PlaylistVisibility.unlisted => PlaylistsKeys.editVisibilityUnlistedHint,
-  PlaylistVisibility.public => PlaylistsKeys.editVisibilityPublicHint,
-};
+enum _TrackAction { moveUp, moveDown, remove, more }

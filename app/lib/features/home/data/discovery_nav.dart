@@ -1,7 +1,47 @@
+import 'package:chordia_api/chordia_api.dart' show StationKind;
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../library/playlist_detail_screen.dart';
+import '../station_screen.dart';
+import 'station.dart';
+
 /// The destinations discovery links to that the catalog does not own.
+///
+/// Routes and links are declared in the same file on purpose. Every path below is built by hand
+/// from a string, so the only thing standing between "the card navigates" and "the card lands on
+/// GoRouter's error page" is that these two halves agree — and they cannot drift while they sit
+/// next to each other. They did drift once: every "Made for you" card and every radio pin pushed
+/// `radio/...` against a router that had never heard of it.
+///
+/// RELATIVE paths, like the catalog's: each tab in the shell keeps its own navigation stack, so a
+/// station opened from Search has to live under `/search` and one opened from Home under `/home`.
+///
+/// WIRING: spread into the `routes:` of each branch's root `GoRoute` in `app/router.dart`.
+List<RouteBase> discoveryRoutes() => [
+  GoRoute(
+    path: 'radio/:kind/:seedId',
+    // `:kind` arrives as an arbitrary string. Validated here rather than cast, because
+    // `StationKind.fromWire` falls back to `artist` for anything it does not know — right for a
+    // payload from a newer server, wrong for a typo'd link, where it would send the Hub looking
+    // for an artist under a genre's slug.
+    redirect: (context, state) =>
+        stationKindFromSegment(state.pathParameters['kind'] ?? '') == null
+        ? '/home'
+        : null,
+    builder: (context, state) => StationScreen(
+      kind: stationKindFromSegment(state.pathParameters['kind']!)!,
+      seedId: state.pathParameters['seedId']!,
+    ),
+  ),
+  GoRoute(
+    path: 'playlists/:playlistId',
+    builder: (context, state) =>
+        PlaylistDetailScreen(playlistId: state.pathParameters['playlistId']!),
+  ),
+];
+
+/// Opening one of those destinations from anywhere, without the caller knowing which tab it is in.
 ///
 /// Same rule as `CatalogNavigation` in `features/catalog/catalog_routes.dart`, and deliberately the
 /// same shape: the path is built from the CURRENT location's first segment, because that segment is
@@ -10,13 +50,14 @@ import 'package:go_router/go_router.dart';
 extension DiscoveryNavigation on BuildContext {
   void goToPlaylist(String playlistId) => _pushInTab('playlists/$playlistId');
 
-  /// An artist-seeded station. The seed kind travels in the path because the Hub builds a station
-  /// from any entity, and only the kind says how to read the id.
-  void goToArtistRadio(String seedArtistId) =>
-      _pushInTab('radio/artist/$seedArtistId');
+  /// A station seeded by any entity. The seed kind travels in the path because the Hub builds a
+  /// station from any of five kinds, and only the kind says how to read the id.
+  void goToStation(StationKind kind, String seed) =>
+      _pushInTab('radio/${kind.wire}/${Uri.encodeComponent(seed)}');
 
-  void goToProfile(String handle) =>
-      _pushInTab('u/${Uri.encodeComponent(handle)}');
+  /// An artist-seeded station — a daily mix, a radio pin, an artist's own radio.
+  void goToArtistRadio(String seedArtistId) =>
+      goToStation(StationKind.artist, seedArtistId);
 
   void _pushInTab(String suffix) {
     final segments = GoRouterState.of(this).uri.pathSegments;

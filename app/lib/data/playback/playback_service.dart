@@ -3,7 +3,8 @@ import 'dart:async';
 import 'package:chordia_api/chordia_api.dart';
 import 'package:chordia_player/chordia_player.dart';
 import 'package:chordia_sync/chordia_sync.dart';
-import 'package:flutter/widgets.dart';
+// Flutter has a `RepeatMode` of its own, for animations. The queue's is the one this file means.
+import 'package:flutter/widgets.dart' hide RepeatMode;
 
 import 'quality.dart';
 import 'replay_gain.dart';
@@ -35,6 +36,40 @@ typedef NowPlayingReporter = void Function(PlayerTrack track);
 /// Returns null when the library has no figure, or could not be asked. Both mean the same thing to
 /// the caller — play at unity — which is why they are not distinguished.
 typedef LoudnessReader = Future<AudioProperties?> Function(PlayerTrack track);
+
+/// What the app did about a track it could not play.
+enum PlaybackRecovery {
+  /// Trying the same track once more. A dropped connection is usually over by the second attempt.
+  retrying,
+
+  /// Given up on this track; the next one is starting.
+  skipped,
+
+  /// Given up on playback. Either there is nowhere to skip to, or every track is failing the same
+  /// way, which is what an unreachable library looks like from here.
+  stopped,
+}
+
+/// A track that would not play, and what happened next.
+///
+/// Always published, even for the retry that then succeeds. Silence with no explanation is the
+/// complaint this whole path exists to answer, and "trying again" is information — it tells the
+/// listener the app noticed, which is the difference between a slow track and a broken app.
+@immutable
+class PlaybackFailure {
+  const PlaybackFailure({
+    required this.track,
+    required this.recovery,
+    required this.cause,
+  });
+
+  final PlayerTrack track;
+  final PlaybackRecovery recovery;
+
+  /// What the engine reported, kept whole so a debug view can say more than the sentence a
+  /// listener is shown.
+  final Object cause;
+}
 
 /// The listener preferences playback consults, defaulted for the cases where there are none.
 ///
@@ -126,18 +161,56 @@ class PlaybackService with WidgetsBindingObserver {
   bool _online = true;
   bool _started = false;
 
+  final _failures = StreamController<PlaybackFailure>.broadcast();
+  final _subscriptions = <StreamSubscription<Object?>>[];
+
+  /// The queue entry a retry has already been spent on, so a track gets exactly one second chance.
+  ///
+  /// Keyed by queue id rather than track id: the same track can legitimately sit in a queue twice,
+  /// and the second copy deserves its own attempt.
+  String? _retriedQid;
+
+  /// Tracks that have failed in a row without one playing in between.
+  ///
+  /// A library that has gone away fails every track in the queue identically, and skipping through
+  /// forty of them in a second — a notification each — is worse than stopping and saying so.
+  int _consecutiveFailures = 0;
+
+  /// How many tracks may fail in a row before playback stops rather than skipping on.
+  static const maxConsecutiveFailures = 3;
+
+  /// Tracks that would not play, and what was done about them.
+  ///
+  /// A stream rather than a state field because these are events: two failures in a row are two
+  /// things the listener needs told, not one value that overwrote the other.
+  Stream<PlaybackFailure> get failures => _failures.stream;
+
   /// Installs the hooks the handler leaves for the app, and starts watching the app's lifecycle.
   void start() {
     if (_started) return;
     _started = true;
     handler.resolveSource = resolveSource;
     _online = _network().online;
+    _subscriptions
+      ..add(engine.errors.listen((error) => unawaited(_onEngineError(error))))
+      // A track that actually reaches the speakers clears the run of failures. Resetting on a
+      // track START instead would defeat the cap entirely: every failing track starts.
+      ..add(
+        engine.states.listen((state) {
+          if (state == EngineState.ready) _consecutiveFailures = 0;
+        }),
+      );
     WidgetsBinding.instance.addObserver(this);
   }
 
   Future<void> dispose() async {
     if (!_started) return;
     _started = false;
+    for (final subscription in _subscriptions) {
+      await subscription.cancel();
+    }
+    _subscriptions.clear();
+    await _failures.close();
     WidgetsBinding.instance.removeObserver(this);
   }
 
@@ -155,6 +228,9 @@ class PlaybackService with WidgetsBindingObserver {
   void onTrackStarted(PlayerTrack track) {
     _startedAt = _clock();
     _generation++;
+    // A new entry off the queue, so this one has its own retry to spend. A retry does not come
+    // through here — it reloads the engine directly — which is what keeps it to one.
+    _retriedQid = null;
     // Unity first, unconditionally. Whatever this track's correction turns out to be, the
     // preceding track's must not survive into it even for the moment the lookup takes.
     unawaited(engine.setPreampGain(1));
@@ -174,6 +250,76 @@ class PlaybackService with WidgetsBindingObserver {
   void onScrobble(PlayerTrack track, int msPlayed) {
     if (!_preferences().scrobble) return;
     unawaited(_record(track, msPlayed));
+  }
+
+  /// A track would not play.
+  ///
+  /// Three outcomes, in order of preference: try once more, move to the next track, or stop. The
+  /// one thing never done is nothing — silence behind a play button that says it is playing is the
+  /// state this exists to make impossible.
+  Future<void> _onEngineError(EngineError error) async {
+    final track = error.track ?? queue.current;
+    if (track == null) return;
+    final qid = track.qid ?? track.id;
+
+    final worthRetrying =
+        error.isTransient &&
+        _retriedQid != qid &&
+        _consecutiveFailures < maxConsecutiveFailures;
+    if (worthRetrying) {
+      _retriedQid = qid;
+      _publish(track, error.cause, PlaybackRecovery.retrying);
+      final EngineSource source;
+      try {
+        source = await resolveSource(track);
+      } on Object catch (cause) {
+        _giveUp(track, cause);
+        return;
+      }
+      // Not awaited for a result: if this fails too it arrives back here as another error, with
+      // the retry already spent, and takes the branch below.
+      await engine.load(source, autoPlay: true);
+      return;
+    }
+
+    _giveUp(track, error.cause);
+  }
+
+  /// Stops trying [track]: skip to the next one, or stop and say so.
+  void _giveUp(PlayerTrack track, Object cause) {
+    _consecutiveFailures++;
+    final stop =
+        _consecutiveFailures >= maxConsecutiveFailures ||
+        // Repeat-one would hand the same unplayable track straight back.
+        queue.repeat == RepeatMode.one ||
+        !_hasSomewhereToGo;
+    _publish(
+      track,
+      cause,
+      stop ? PlaybackRecovery.stopped : PlaybackRecovery.skipped,
+    );
+    if (stop) {
+      // The transport still reads as playing until something says otherwise, which is the stuck
+      // play button over silence.
+      unawaited(handler.pause());
+      return;
+    }
+    queue.next();
+  }
+
+  /// Whether skipping would land on a different track rather than on this one again.
+  bool get _hasSomewhereToGo {
+    if (queue.queue.length < 2) return false;
+    return queue.shuffle ||
+        queue.repeat == RepeatMode.all ||
+        queue.currentIndex + 1 < queue.queue.length;
+  }
+
+  void _publish(PlayerTrack track, Object cause, PlaybackRecovery recovery) {
+    if (_failures.isClosed) return;
+    _failures.add(
+      PlaybackFailure(track: track, recovery: recovery, cause: cause),
+    );
   }
 
   /// The network class changed.

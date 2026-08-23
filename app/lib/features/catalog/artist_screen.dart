@@ -10,6 +10,7 @@ import '../../data/art/art_cache.dart';
 import '../../i18n/keys.g.dart';
 import '../../i18n/translations_provider.dart';
 import '../../widgets/cover_art.dart';
+import '../../widgets/tokens.dart';
 import 'catalog_routes.dart';
 import 'data/catalog_api.dart';
 import 'data/catalog_providers.dart';
@@ -41,18 +42,11 @@ class ArtistScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         actions: [
-          IconButton(
-            icon: const Icon(Icons.ios_share_rounded),
-            tooltip: ref.t(CommonKeys.actionsShare),
-            onPressed: () => unawaited(
-              shareCatalogLink(
-                context,
-                ref,
-                path: '/artists/$artistId',
-                title: artist.value?.name ?? '',
-              ),
+          if (artist.value case final loaded?)
+            EntityMenuButton(
+              menu: (page, sheetRef) =>
+                  artistDetailMenu(page, sheetRef, loaded),
             ),
-          ),
         ],
       ),
       body: CatalogBody<ArtistDetail>(
@@ -135,7 +129,7 @@ class _ArtistViewState extends ConsumerState<_ArtistView> {
 
     return CustomScrollView(
       slivers: [
-        SliverToBoxAdapter(child: _ArtistHeader(artist: artist)),
+        SliverToBoxAdapter(child: ArtistHeader(artist: artist)),
         SliverToBoxAdapter(
           child: CollectionActions(
             onPlay: canPlay
@@ -154,8 +148,8 @@ class _ArtistViewState extends ConsumerState<_ArtistView> {
                   )
                 : null,
             trailing: [
-              IconButton(
-                icon: const Icon(Icons.radio_rounded),
+              RingIconButton(
+                icon: Icons.radio_rounded,
                 tooltip: t(CatalogKeys.artistRadio),
                 onPressed: hasPlayer ? () => unawaited(_startRadio()) : null,
               ),
@@ -202,7 +196,9 @@ class _ArtistViewState extends ConsumerState<_ArtistView> {
               onSeeAll: () => context.goToArtistDiscography(artist.id),
             ),
           ),
-          SliverToBoxAdapter(child: AlbumShelf(albums: mainAlbums)),
+          SliverToBoxAdapter(
+            child: AlbumShelf(albums: mainAlbums, limit: catalogShelfPreview),
+          ),
         ],
 
         if (singlesAndEps.isNotEmpty) ...[
@@ -211,7 +207,12 @@ class _ArtistViewState extends ConsumerState<_ArtistView> {
               title: t(CatalogKeys.artistDiscographyAllFilterSinglesEps),
             ),
           ),
-          SliverToBoxAdapter(child: AlbumShelf(albums: singlesAndEps)),
+          SliverToBoxAdapter(
+            child: AlbumShelf(
+              albums: singlesAndEps,
+              limit: catalogShelfPreview,
+            ),
+          ),
         ],
 
         if (featuring.isNotEmpty) ...[
@@ -222,7 +223,9 @@ class _ArtistViewState extends ConsumerState<_ArtistView> {
               }),
             ),
           ),
-          SliverToBoxAdapter(child: AlbumShelf(albums: featuring)),
+          SliverToBoxAdapter(
+            child: AlbumShelf(albums: featuring, limit: catalogShelfPreview),
+          ),
         ],
 
         // Co-listen similarity. A different relation from `related` below, which is MusicBrainz
@@ -231,7 +234,9 @@ class _ArtistViewState extends ConsumerState<_ArtistView> {
           SliverToBoxAdapter(
             child: SectionHeader(title: t(CatalogKeys.artistFansAlsoLike)),
           ),
-          SliverToBoxAdapter(child: ArtistShelf(artists: similar)),
+          SliverToBoxAdapter(
+            child: ArtistShelf(artists: similar, limit: catalogShelfPreview),
+          ),
         ],
 
         if (related.isNotEmpty) ...[
@@ -240,20 +245,18 @@ class _ArtistViewState extends ConsumerState<_ArtistView> {
               title: t(CatalogKeys.artistAliasesAndProjects),
             ),
           ),
+          // The same shelf box as every other rail on the page. The web lays the relations out as
+          // wrapping pills rather than cards, but it does so in a desktop-width flex row; below
+          // `md` that degrades to a tall stack, so this keeps the page's one shelf rhythm.
           SliverToBoxAdapter(
-            child: SizedBox(
-              height: 180,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-                itemCount: related.length,
-                itemBuilder: (context, index) => ArtistTile(
-                  artistId: related[index].id,
-                  name: related[index].name,
-                  imageUrl: related[index].imageUrl,
-                  caption: t(_relationKey(related[index].relation)),
-                  width: 130,
-                ),
+            child: CatalogShelf(
+              itemCount: related.length,
+              itemBuilder: (context, index) => ArtistTile(
+                artistId: related[index].id,
+                name: related[index].name,
+                imageUrl: related[index].imageUrl,
+                caption: t(_relationKey(related[index].relation)),
+                width: catalogCardWidth,
               ),
             ),
           ),
@@ -307,8 +310,17 @@ String _relationKey(String relation) => switch (relation) {
   _ => CatalogKeys.artistRelationRelated,
 };
 
-class _ArtistHeader extends ConsumerWidget {
-  const _ArtistHeader({required this.artist});
+/// The artist hero.
+///
+/// Ported from the web's below-`md` artist header (`components/catalog/ArtistView.tsx`): banner art
+/// across the top at half opacity and faded into the page — or, with no banner of its own, the
+/// accent mesh of `DefaultArtistBanner.tsx` filling the whole hero — then the round portrait, the
+/// name, monthly listeners, genres, the facts line, and the bio, stacked and left-aligned.
+///
+/// The order is the web's, and it is not arbitrary: what the artist is called, how many people are
+/// listening, what they play, where they are from, then who they are.
+class ArtistHeader extends ConsumerWidget {
+  const ArtistHeader({required this.artist, super.key});
 
   final ArtistDetail artist;
 
@@ -316,6 +328,10 @@ class _ArtistHeader extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final t = ref.t;
     final theme = Theme.of(context);
+    // `text-sm text-muted-foreground` on monthly listeners, `text-xs` on the facts line.
+    final muted = ChordiaType.sm.copyWith(
+      color: theme.colorScheme.onSurfaceVariant,
+    );
     final bannerHash = artHashOf(artist.bannerUrl);
     final facts = joinFacts([
       artist.beginArea ?? artist.area,
@@ -323,78 +339,87 @@ class _ArtistHeader extends ConsumerWidget {
     ]);
     final genres = artist.genres ?? const <String>[];
 
-    return Column(
-      children: [
-        if (bannerHash != null)
-          // Banner art is wide; `CoverArt` is square by contract because it also feeds the media
-          // notification. Requesting it at the viewport width and cropping vertically gets the
-          // wide framing without a second art pipeline.
-          SizedBox(
-            height: 160,
-            width: double.infinity,
-            child: ClipRect(
-              child: OverflowBox(
-                maxHeight: double.infinity,
-                child: CoverArt(
-                  sha256: bannerHash,
-                  size: MediaQuery.sizeOf(context).width,
-                  borderRadius: BorderRadius.zero,
-                ),
-              ),
+    return HeroSurface(
+      // The web's `min-h-80`.
+      minHeight: 320,
+      background: Stack(
+        fit: StackFit.expand,
+        children: [
+          // No banner art → a soft on-theme glow filling the whole hero edge to edge; with art,
+          // the banner band across the top. Either way the scrim below fades it into the page.
+          if (bannerHash == null)
+            const AccentBanner()
+          else
+            ArtistBanner(sha256: bannerHash),
+          IgnorePointer(
+            child: DecoratedBox(
+              decoration: BoxDecoration(gradient: heroScrim(theme.colorScheme)),
             ),
           ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-          child: Column(
-            children: [
-              CoverArt(
-                sha256: artHashOf(artist.imageUrl),
-                size: 132,
-                shape: BoxShape.circle,
-                fallbackIcon: Icons.person_rounded,
-                semanticLabel: artist.name,
-              ),
-              const SizedBox(height: 12),
-              Text(
-                artist.name,
-                textAlign: TextAlign.center,
-                style: theme.textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              if ((artist.monthlyListeners ?? 0) > 0) ...[
-                const SizedBox(height: 6),
-                Text(
-                  t(PlayerKeys.monthlyListeners, {
-                    'count': artist.monthlyListeners,
-                  }),
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-              if (facts.isNotEmpty) ...[
-                const SizedBox(height: 4),
-                Text(
-                  t(CatalogKeys.artistFactsJoin, {'facts': facts}),
-                  textAlign: TextAlign.center,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-              if (genres.isNotEmpty) ...[
-                const SizedBox(height: 10),
-                GenreChips(genres: genres),
-              ],
-              if (artist.bio != null) ...[
-                const SizedBox(height: 12),
-                ExpandableText(text: artist.bio!),
-              ],
-            ],
-          ),
+        ],
+      ),
+      // `px-4 pt-16 pb-6` — the top inset is what lets the banner read above the portrait.
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(
+          catalogGutter,
+          64,
+          catalogGutter,
+          24,
         ),
-      ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            CoverArt(
+              // `size-40`, round, with the web's monogram fallback: "an imageless artist reads as
+              // a tasteful monogram" rather than as a generic person glyph (`CoverArt.tsx`).
+              sha256: artHashOf(artist.imageUrl),
+              size: 160,
+              shape: BoxShape.circle,
+              fallbackIcon: Icons.person_rounded,
+              fallbackInitial: artist.name,
+              semanticLabel: artist.name,
+            ),
+            // The web's `gap-5` between the portrait and the metadata column.
+            const SizedBox(height: 20),
+            Text(
+              artist.name,
+              // `display-title font-bold text-5xl`. Big on a phone, and deliberately so: this is
+              // the one place the artist's name is the page.
+              style: theme.textTheme.displaySmall?.copyWith(
+                fontSize: 48,
+                height: 1.05,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            if ((artist.monthlyListeners ?? 0) > 0) ...[
+              const SizedBox(height: 8),
+              Text(
+                t(PlayerKeys.monthlyListeners, {
+                  'count': artist.monthlyListeners,
+                }),
+                style: muted,
+              ),
+            ],
+            if (genres.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              GenreChips(genres: genres),
+            ],
+            if (facts.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(
+                t(CatalogKeys.artistFactsJoin, {'facts': facts}),
+                style: ChordiaType.xs.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+            if (artist.bio != null) ...[
+              const SizedBox(height: 12),
+              ExpandableText(text: artist.bio!),
+            ],
+          ],
+        ),
+      ),
     );
   }
 }

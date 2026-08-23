@@ -10,6 +10,7 @@ import 'data/catalog_providers.dart';
 import 'format.dart';
 import 'widgets/album_grid.dart';
 import 'widgets/catalog_state.dart';
+import 'widgets/entity_menu.dart';
 import 'widgets/section.dart';
 
 /// One label: what it is, and everything of theirs in reach.
@@ -30,6 +31,17 @@ class LabelScreen extends ConsumerWidget {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
+        actions: [
+          EntityMenuButton(
+            menu: (page, sheetRef) => labelMenu(
+              page,
+              sheetRef,
+              labelId: labelId,
+              name: label.value?.name ?? t(CatalogKeys.labelEyebrow),
+              logoUrl: label.value?.logoUrl,
+            ),
+          ),
+        ],
       ),
       body: CatalogBody<LabelDetail>(
         value: label,

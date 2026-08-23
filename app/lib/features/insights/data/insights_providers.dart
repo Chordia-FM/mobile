@@ -110,14 +110,143 @@ class ChartRequest {
   int get hashCode => Object.hash(query, kind);
 }
 
-/// How many chart rows one page holds. A phone scrolls; it does not page a table.
+/// How many chart rows one page holds.
 const chartPageSize = 25;
 
-final topChartProvider = FutureProvider.autoDispose
-    .family<ChartPage, ChartRequest>(
+/// The chart rows read so far, and whether there are more behind them.
+@immutable
+class ChartFeed {
+  const ChartFeed({
+    required this.entries,
+    required this.kind,
+    required this.total,
+    this.loadingMore = false,
+  });
+
+  final List<ChartEntry> entries;
+
+  /// Which kind the loaded rows describe. From the answer, not the request: it is what the row
+  /// list is actually about, and it changes only when a whole new feed replaces this one.
+  final EntityKind kind;
+
+  /// Distinct entities the listener played in the window — the denominator behind "1-25 of 412",
+  /// and what says whether another page exists.
+  final int total;
+
+  final bool loadingMore;
+
+  /// Where the next page starts, or null once every row is loaded.
+  int? get nextOffset => entries.length < total ? entries.length : null;
+
+  ChartFeed copyWith({bool? loadingMore}) => ChartFeed(
+    entries: entries,
+    kind: kind,
+    total: total,
+    loadingMore: loadingMore ?? this.loadingMore,
+  );
+}
+
+/// One ranked chart, paged by hand.
+///
+/// The Hub's `offset` was always a parameter here and was never passed, which capped the chart at
+/// its first page — rank 26 and everything after it was unreachable on a phone, whatever the
+/// "1-25 of 412" line underneath claimed. A notifier rather than a family keyed by offset because
+/// "load more" appends to what is on screen; keying by offset re-renders the chart from the top on
+/// every tap.
+class ChartController extends AsyncNotifier<ChartFeed> {
+  ChartController(this.request);
+
+  final ChartRequest request;
+
+  @override
+  Future<ChartFeed> build() async {
+    final page = await ref
+        .watch(insightsApiProvider)
+        .topChart(request.query, request.kind, limit: chartPageSize);
+    return ChartFeed(entries: page.entries, kind: page.kind, total: page.total);
+  }
+
+  /// Appends the next page. Silently does nothing at the end of the chart.
+  Future<void> loadMore() async {
+    final current = state.value;
+    final next = current?.nextOffset;
+    if (current == null || next == null || current.loadingMore) return;
+    state = AsyncData(current.copyWith(loadingMore: true));
+    try {
+      final page = await ref
+          .read(insightsApiProvider)
+          .topChart(
+            request.query,
+            request.kind,
+            offset: next,
+            limit: chartPageSize,
+          );
+      state = AsyncData(
+        ChartFeed(
+          entries: [...current.entries, ...page.entries],
+          kind: page.kind,
+          // The Hub's own count each time: a scrobble can land between two pages, and the fresher
+          // denominator is the one worth printing.
+          total: page.total,
+        ),
+      );
+    } on Object {
+      // The rows already on screen are still true, so a failed page costs the page rather than the
+      // chart; the button comes back and the reader can try again.
+      state = AsyncData(current.copyWith(loadingMore: false));
+      rethrow;
+    }
+  }
+}
+
+final topChartProvider = AsyncNotifierProvider.autoDispose
+    .family<ChartController, ChartFeed, ChartRequest>(
+      ChartController.new,
+      retry: _noAutoRetry,
+    );
+
+/// One catalog entity in the caller's own numbers, at the selected period.
+@immutable
+class EntityStatsRequest {
+  const EntityStatsRequest({
+    required this.kind,
+    required this.id,
+    required this.period,
+    this.timezone,
+  });
+
+  final EntityKind kind;
+  final String id;
+  final Period period;
+  final String? timezone;
+
+  @override
+  bool operator ==(Object other) =>
+      other is EntityStatsRequest &&
+      other.kind == kind &&
+      other.id == id &&
+      other.period == period &&
+      other.timezone == timezone;
+
+  @override
+  int get hashCode => Object.hash(kind, id, period, timezone);
+}
+
+/// The caller's own figures for one artist, album or track.
+///
+/// Always about the caller — `/v1/insights/entity` takes no `user`, because "how do I play this"
+/// is a question only the asker's own history can answer — so the reader's own timezone is the
+/// right one to bucket by, unlike every report that can be about somebody else.
+final entityStatsProvider = FutureProvider.autoDispose
+    .family<EntityStats, EntityStatsRequest>(
       (ref, request) => ref
           .watch(insightsApiProvider)
-          .topChart(request.query, request.kind, limit: chartPageSize),
+          .entityStats(
+            request.kind,
+            request.id,
+            period: request.period,
+            tz: request.timezone,
+          ),
       retry: _noAutoRetry,
     );
 

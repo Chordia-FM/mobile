@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:chordia_api/chordia_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -5,8 +7,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../i18n/keys.g.dart';
 import '../../i18n/translations_provider.dart';
 import '../library/data/library_providers.dart';
+import '../library/library_detail_screen.dart';
 import '../library/widgets/library_states.dart';
 import 'data/libraries_providers.dart';
+import 'library_icons.dart';
 import 'library_manage_screen.dart';
 import 'pairing_wizard_screen.dart';
 
@@ -144,8 +148,11 @@ class LibraryCard extends ConsumerWidget {
     return ListTile(
       leading: CircleAvatar(
         backgroundColor: theme.colorScheme.surfaceContainerHigh,
-        child: Icon(
-          owned ? Icons.library_music_rounded : Icons.folder_shared_rounded,
+        // The icon its owner chose, not one picked by whether the viewer owns it: the whole point
+        // of the icon is that this library is recognisable at a glance, and it has to be the same
+        // glyph here as it is on the web client's sidebar.
+        child: LibraryIcon(
+          icon: library.icon,
           color: theme.colorScheme.onSurfaceVariant,
         ),
       ),
@@ -157,11 +164,13 @@ class LibraryCard extends ConsumerWidget {
                   '${counts.albumCount} ${t(LibraryKeys.manageCountAlbums)} · '
                   '${counts.artistCount} ${t(LibraryKeys.manageCountArtists)}',
       ),
-      // Nothing at all until the directory answers: a row that says "Offline" while the request
-      // is still in flight accuses a server that is fine.
-      trailing: online == null
-          ? null
-          : Text(
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Nothing at all until the directory answers: a row that says "Offline" while the
+          // request is still in flight accuses a server that is fine.
+          if (online != null)
+            Text(
               t(
                 online
                     ? LibraryKeys.listServerOnline
@@ -173,12 +182,138 @@ class LibraryCard extends ConsumerWidget {
                     : theme.colorScheme.onSurfaceVariant,
               ),
             ),
+          IconButton(
+            icon: const Icon(Icons.more_vert_rounded),
+            tooltip: t(CommonKeys.actionsMore),
+            onPressed: () => unawaited(_menu(context, ref)),
+          ),
+        ],
+      ),
+      // The MUSIC, not the settings. A library is only interesting as what is inside it, and the
+      // web client's library card links to `/app/library/{id}` — its artists — with editing one
+      // level in from there. Opening settings on a tap made the catalog unreachable entirely.
       onTap: () => Navigator.of(context).push(
         MaterialPageRoute<void>(
           builder: (_) =>
-              LibraryManageScreen(libraryId: library.id, owned: owned),
+              LibraryDetailScreen(libraryId: library.id, owned: owned),
+        ),
+      ),
+      onLongPress: () => unawaited(_menu(context, ref)),
+    );
+  }
+
+  /// Open, manage, and — for an owner — remove. The same three the web client's card menu offers.
+  Future<void> _menu(BuildContext context, WidgetRef ref) async {
+    final t = ref.read(translationsProvider).call;
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            ListTile(
+              title: Text(library.name),
+              subtitle: Text(
+                t(LibraryKeys.cardTrackCount, {'count': library.trackCount}),
+              ),
+            ),
+            const Divider(height: 1),
+            ListTile(
+              leading: const Icon(Icons.folder_open_rounded),
+              title: Text(t(CommonKeys.actionsOpen)),
+              onTap: () {
+                Navigator.of(sheetContext).pop();
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => LibraryDetailScreen(
+                      libraryId: library.id,
+                      owned: owned,
+                    ),
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.settings_outlined),
+              title: Text(t(LibraryKeys.manageTitle)),
+              onTap: () {
+                Navigator.of(sheetContext).pop();
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => LibraryManageScreen(
+                      libraryId: library.id,
+                      owned: owned,
+                    ),
+                  ),
+                );
+              },
+            ),
+            if (owned)
+              ListTile(
+                leading: Icon(
+                  Icons.delete_outline_rounded,
+                  color: Theme.of(sheetContext).colorScheme.error,
+                ),
+                title: Text(t(LibraryKeys.editRemoveTitle)),
+                subtitle: Text(t(LibraryKeys.editRemoveHelp)),
+                onTap: () {
+                  Navigator.of(sheetContext).pop();
+                  unawaited(confirmRemoveLibrary(context, ref, library));
+                },
+              ),
+          ],
         ),
       ),
     );
   }
+}
+
+/// Asks, then removes the library from the Hub. Answers true when it is gone.
+///
+/// The audio files are untouched — the Hub never had them — which is exactly what the confirmation
+/// says, because "delete library" reads like "delete my music" to anybody who has not been told
+/// otherwise.
+Future<bool> confirmRemoveLibrary(
+  BuildContext context,
+  WidgetRef ref,
+  LibrarySummary library,
+) async {
+  final t = ref.read(translationsProvider).call;
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      title: Text(t(LibraryKeys.editDeleteConfirmTitle)),
+      content: Text(t(LibraryKeys.editDeleteConfirmMessage)),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(dialogContext).pop(false),
+          child: Text(t(CommonKeys.actionsCancel)),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(dialogContext).pop(true),
+          child: Text(t(LibraryKeys.editDeleteConfirmConfirmLabel)),
+        ),
+      ],
+    ),
+  );
+  if (!(confirmed ?? false)) return false;
+
+  final api = ref.read(librariesApiProvider);
+  if (api == null) return false;
+  try {
+    await api.remove(library.id);
+  } on Object {
+    if (context.mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(t(LibraryKeys.editDeleteFailed))));
+    }
+    return false;
+  }
+  ref
+    ..invalidate(myLibrariesProvider)
+    ..invalidate(libraryCoverageProvider);
+  return true;
 }

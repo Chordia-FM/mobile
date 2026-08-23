@@ -1,11 +1,14 @@
+import 'dart:async';
+
 import 'package:chordia_db/chordia_db.dart';
 import 'package:chordia_sync/chordia_sync.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../app/providers.dart';
 import '../../i18n/keys.g.dart';
+import '../catalog/widgets/entity_menu.dart';
 import '../downloads/downloads_api.dart';
+import '../downloads/downloads_manager_screen.dart';
 import '../../i18n/translations_provider.dart';
 import '../../widgets/cover_art.dart';
 import 'data/downloads_grouping.dart';
@@ -28,7 +31,19 @@ class DownloadsScreen extends ConsumerWidget {
     final downloads = ref.watch(downloadedTracksProvider);
 
     return Scaffold(
-      appBar: AppBar(title: Text(t(LibraryKeys.downloadsTitle))),
+      appBar: AppBar(
+        title: Text(t(LibraryKeys.downloadsTitle)),
+        actions: [
+          // The queue and the storage budget. `DownloadsManagerScreen`'s own doc comment said it
+          // was "reachable with one line from anywhere" and nothing ever wrote the line, so what
+          // the phone was doing with the listener's data and storage was not visible at all.
+          IconButton(
+            onPressed: () => unawaited(openDownloadsManager(context)),
+            tooltip: t(LibraryKeys.downloadsActionManage),
+            icon: const Icon(Icons.tune_rounded),
+          ),
+        ],
+      ),
       body: downloads.when(
         loading: () => const ListSkeleton(),
         error: (error, stack) => ErrorRetry(
@@ -226,32 +241,21 @@ class _AlbumGroup extends ConsumerWidget {
                     startIndex: index,
                     context: playContext,
                   ),
+            // The full track menu, the same one every other list in the app opens. Removing the
+            // download is in it - `DownloadMenuTile` reads as "Remove" for a track already held,
+            // and goes through the pipeline that owns the file rather than deleting an index row
+            // and stranding the audio - and so is everything a downloaded song could not do here
+            // before: queue it, like it, file it into a playlist, open its artist.
+            onLongPress: () =>
+                unawaited(showTrackMenu(context, ref, tracks[index])),
             trailing: IconButton(
-              icon: const Icon(Icons.delete_outline_rounded),
-              tooltip: t(LibraryKeys.downloadsRemoveTooltip),
-              onPressed: () => _remove(context, ref, track.trackId),
+              icon: const Icon(Icons.more_vert_rounded),
+              tooltip: t(CommonKeys.actionsMore),
+              onPressed: () =>
+                  unawaited(showTrackMenu(context, ref, tracks[index])),
             ),
           ),
       ],
     );
-  }
-
-  Future<void> _remove(
-    BuildContext context,
-    WidgetRef ref,
-    String trackId,
-  ) async {
-    try {
-      await ref.read(downloadsDaoProvider).remove(trackId);
-    } on Object {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            ref.read(translationsProvider)(LibraryKeys.downloadsRemoveError),
-          ),
-        ),
-      );
-    }
   }
 }

@@ -2,13 +2,18 @@ import 'package:flutter/material.dart';
 
 import '../../../data/art/art_cache.dart';
 import '../../../widgets/cover_art.dart';
+import '../../../widgets/surface.dart';
+import '../../../widgets/tokens.dart';
+import '../../catalog/widgets/album_grid.dart';
 import 'rail.dart';
 
 /// One card on a home shelf: artwork over a name and, usually, a second line.
 ///
-/// Built to `AlbumCard`'s proportions (`features/catalog/widgets/album_grid.dart`) — 6px of inset,
-/// a cover measured from the slot rather than fixed, one bold line and one muted one — because a
-/// mix card and an album card sit two shelves apart on the same page.
+/// Now literally the catalog's [CatalogCard] rather than a copy built "to its proportions" — a mix
+/// card and an album card sit two shelves apart on the same page, and the copy had already drifted
+/// (6px of inset against 12, 8px under the cover against 12). The web has one card for both
+/// (`components/discovery/cards.tsx` renders the same `RAIL_CARD` block `AlbumGrid.tsx` does), so
+/// one card here is the same decision, not a shortcut.
 class EntityCard extends StatelessWidget {
   const EntityCard({
     required this.title,
@@ -36,57 +41,22 @@ class EntityCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final centred = shape == BoxShape.circle;
-    return SizedBox(
+    final round = shape == BoxShape.circle;
+    return CatalogCard(
       width: width,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(6),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: centred
-                ? CrossAxisAlignment.center
-                : CrossAxisAlignment.start,
-            children: [
-              // Measured, not fixed: the same card fills a 150px shelf slot on a phone and a wider
-              // one on a tablet without a second set of numbers.
-              Expanded(
-                child: LayoutBuilder(
-                  builder: (context, constraints) => CoverArt(
-                    sha256: artHashOf(imageUrl),
-                    size: constraints.maxWidth,
-                    shape: shape,
-                    fallbackIcon: fallbackIcon,
-                    semanticLabel: title,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: centred ? TextAlign.center : TextAlign.start,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              if (subtitle != null)
-                Text(
-                  subtitle!,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: centred ? TextAlign.center : TextAlign.start,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-            ],
-          ),
-        ),
+      centred: round,
+      onTap: onTap,
+      title: title,
+      caption: subtitle,
+      art: CoverArtSlot(
+        sha256: artHashOf(imageUrl),
+        circular: round,
+        fallbackIcon: fallbackIcon,
+        // A round card stands for a person or a station, so an imageless one gets the monogram
+        // rather than a glyph — `ArtistGrid.tsx:59` passes `fallbackInitial={a.name}` for exactly
+        // this case.
+        fallbackInitial: round ? title : null,
+        semanticLabel: title,
       ),
     );
   }
@@ -96,6 +66,9 @@ class EntityCard extends StatelessWidget {
 ///
 /// The phone has no sidebar, so this shelf is where pins live. Pills rather than cards because a
 /// row people scan for a name they already know should cost as little height as it can.
+///
+/// Shaped like the web's sidebar pin rows: `rounded-full`, a `--pane-raised` fill, an
+/// accent-tinted hairline, and the same instant fill on press that every other row here uses.
 class PinPill extends StatelessWidget {
   const PinPill({
     required this.name,
@@ -112,24 +85,28 @@ class PinPill extends StatelessWidget {
   final bool round;
   final VoidCallback onTap;
 
-  /// The pill plus its shelf padding; comfortably past a 48dp target.
+  /// The pill plus its shelf padding; comfortably past the 44px touch floor
+  /// ([ChordiaControl.sm]).
   static const shelfHeight = 68.0;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final scheme = Theme.of(context).colorScheme;
     return Padding(
-      padding: const EdgeInsets.all(6),
-      child: InkWell(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: PressFill(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: ChordiaRadius.pill,
         child: Container(
-          constraints: const BoxConstraints(maxWidth: 220),
+          constraints: const BoxConstraints(
+            maxWidth: 220,
+            minHeight: ChordiaControl.sm,
+          ),
           padding: const EdgeInsets.fromLTRB(6, 6, 16, 6),
           decoration: BoxDecoration(
-            color: theme.colorScheme.surfaceContainer,
-            borderRadius: BorderRadius.circular(28),
-            border: Border.all(color: theme.colorScheme.outline),
+            color: scheme.surfaceContainer,
+            borderRadius: ChordiaRadius.pill,
+            border: Border.all(color: scheme.line),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -138,6 +115,7 @@ class PinPill extends StatelessWidget {
                 sha256: artHashOf(imageUrl),
                 size: 44,
                 shape: round ? BoxShape.circle : BoxShape.rectangle,
+                fallbackInitial: round ? name : null,
                 semanticLabel: name,
               ),
               const SizedBox(width: 10),
@@ -146,8 +124,10 @@ class PinPill extends StatelessWidget {
                   name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
+                  // `font-semibold text-sm`, the same line a card title uses.
+                  style: ChordiaType.sm.copyWith(
+                    fontWeight: ChordiaType.semibold,
+                    color: scheme.onSurface,
                   ),
                 ),
               ),
@@ -162,7 +142,9 @@ class PinPill extends StatelessWidget {
 /// A friend and what they are playing right now.
 ///
 /// The avatar is the artwork, not the album cover: the shelf answers "who is listening", and the
-/// track is the line underneath because that is the part that changes every three minutes.
+/// track is the line underneath because that is the part that changes every three minutes. The web
+/// makes the same call in `FriendsListeningRail.tsx:102`, where the card's cover is
+/// `rounded-full` on the friend's avatar.
 class FriendCard extends StatelessWidget {
   const FriendCard({
     required this.displayName,
@@ -180,52 +162,18 @@ class FriendCard extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return SizedBox(
-      width: shelfCardWidth,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(6),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Expanded(
-                child: LayoutBuilder(
-                  builder: (context, constraints) => CoverArt(
-                    sha256: artHashOf(avatarUrl),
-                    size: constraints.maxWidth,
-                    shape: BoxShape.circle,
-                    fallbackIcon: Icons.person_rounded,
-                    semanticLabel: displayName,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                displayName,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              Text(
-                line,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => CatalogCard(
+    width: shelfCardWidth,
+    centred: true,
+    onTap: onTap,
+    title: displayName,
+    caption: line,
+    art: CoverArtSlot(
+      sha256: artHashOf(avatarUrl),
+      circular: true,
+      fallbackIcon: Icons.person_rounded,
+      fallbackInitial: displayName,
+      semanticLabel: displayName,
+    ),
+  );
 }

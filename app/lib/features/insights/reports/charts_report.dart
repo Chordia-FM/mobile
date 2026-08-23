@@ -5,7 +5,9 @@ import 'package:intl/intl.dart';
 
 import '../../../i18n/keys.g.dart';
 import '../../../i18n/translations_provider.dart';
+import '../../social/data/social_messages.dart';
 import '../data/insights_providers.dart';
+import '../entity_stats_screen.dart';
 import '../format.dart';
 import '../widgets/insights_primitives.dart';
 
@@ -151,7 +153,11 @@ class _Activity extends ConsumerWidget {
   }
 }
 
-/// One page of the listener's full ranked chart, with its rank movement.
+/// The listener's full ranked chart, one page at a time.
+///
+/// The Hub's `offset` is what makes rank 26 reachable at all. It was a parameter this screen never
+/// passed, so the chart stopped dead at 25 rows while the line above it went on claiming "1-25 of
+/// 412" — the count was right and the list was a lie.
 class _FullChart extends ConsumerWidget {
   const _FullChart({required this.request, required this.own});
 
@@ -161,10 +167,10 @@ class _FullChart extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = ref.t;
-    final page = ref.watch(topChartProvider(request));
+    final feed = ref.watch(topChartProvider(request));
 
-    return ReportBody<ChartPage>(
-      value: page,
+    return ReportBody<ChartFeed>(
+      value: feed,
       onRetry: () => ref.invalidate(topChartProvider(request)),
       builder: (context, value) => value.entries.isEmpty
           ? ReportEmpty(
@@ -177,9 +183,12 @@ class _FullChart extends ConsumerWidget {
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                   child: Text(
+                    // Counted from the rows in hand, not from the page that just landed: every
+                    // page loaded so far is still on screen, so "1-50 of 412" is the honest line
+                    // after a second page.
                     t(InsightsKeys.chartsShowing, {
-                      'from': value.offset + 1,
-                      'to': value.offset + value.entries.length,
+                      'from': 1,
+                      'to': value.entries.length,
                       'total': value.total,
                     }),
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -188,18 +197,51 @@ class _FullChart extends ConsumerWidget {
                   ),
                 ),
                 for (final entry in value.entries)
-                  _ChartRow(entry: entry, kind: value.kind),
+                  _ChartRow(entry: entry, kind: value.kind, own: own),
+                if (value.nextOffset != null)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                    child: Center(
+                      child: OutlinedButton(
+                        onPressed: value.loadingMore
+                            ? null
+                            : () => _loadMore(context, ref),
+                        child: Text(
+                          t(
+                            value.loadingMore
+                                ? CommonKeys.statesLoading
+                                : CommonKeys.actionsSeeMore,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
               ],
             ),
     );
   }
+
+  Future<void> _loadMore(BuildContext context, WidgetRef ref) async {
+    final t = ref.read(translationsProvider).call;
+    try {
+      await ref.read(topChartProvider(request).notifier).loadMore();
+    } on Object catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(describeSocialError(error, t))));
+    }
+  }
 }
 
 class _ChartRow extends ConsumerWidget {
-  const _ChartRow({required this.entry, required this.kind});
+  const _ChartRow({required this.entry, required this.kind, required this.own});
 
   final ChartEntry entry;
   final EntityKind kind;
+
+  /// Whether this chart is the reader's own. Gates the entity page — see [build].
+  final bool own;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -227,12 +269,23 @@ class _ChartRow extends ConsumerWidget {
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       ),
+      // Drilling from "what did I play" into "how do I play it" is the whole point of the entity
+      // page, and a ranked row is where that question is asked. Only the reader's own chart opens
+      // it: `/v1/insights/entity` reports on the caller, so opening it from somebody else's chart
+      // would put the reader's own numbers under that person's row.
+      onTap: !own
+          ? null
+          : () => showEntityStats(
+              context,
+              kind: kind,
+              id: entry.id,
+              name: entry.name,
+            ),
       trailing: _RankMove(rank: entry.rank, previous: entry.prevRank),
     );
   }
 }
 
-/// How far this entry moved since the previous window.
 class _RankMove extends ConsumerWidget {
   const _RankMove({required this.rank, required this.previous});
 

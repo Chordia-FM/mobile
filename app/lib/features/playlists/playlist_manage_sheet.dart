@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../i18n/keys.g.dart';
 import '../../i18n/translations_provider.dart';
 import '../library/data/library_providers.dart';
+import '../library/data/pins.dart';
 import '../library/widgets/library_states.dart';
 import 'collaborators_sheet.dart';
 import 'cover_sheet.dart';
@@ -50,6 +51,7 @@ class _ManageSheet extends ConsumerWidget {
     final t = ref.t;
     final owned = detail.owned ?? false;
     final canEdit = detail.canEdit ?? owned;
+    final pinned = isPinned(ref, PinKind.playlist, detail.id);
 
     // Every action below runs on THIS context and closes afterwards with what actually happened.
     // Closing first and opening the next surface on the page beneath would be tidier to look at
@@ -124,6 +126,24 @@ class _ManageSheet extends ConsumerWidget {
                 );
               },
             ),
+          // Pinning is offered to anybody who can see the playlist, owner or not: the pinned shelf
+          // is about what THIS reader reaches for, which is the same question for a playlist
+          // somebody shared with them. The web client's playlist menu makes the same call.
+          ListTile(
+            leading: Icon(
+              pinned ? Icons.push_pin_rounded : Icons.push_pin_outlined,
+            ),
+            title: Text(t(pinLabel(pinned))),
+            onTap: () async {
+              await togglePin(
+                context,
+                ref,
+                kind: PinKind.playlist,
+                id: detail.id,
+              );
+              close(PlaylistManageOutcome.unchanged);
+            },
+          ),
           if (owned)
             ListTile(
               leading: Icon(

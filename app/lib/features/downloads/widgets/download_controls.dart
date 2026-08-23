@@ -181,10 +181,24 @@ Future<void> saveDownloads(
   BuildContext context,
   WidgetRef ref,
   Iterable<BrowseTrack> tracks,
+) => saveDownloadsVia(
+  ScaffoldMessenger.of(context),
+  ref.read(downloadsApiProvider),
+  ref.read(translationsProvider).call,
+  tracks,
+);
+
+/// The same, for a caller that no longer has a `WidgetRef`.
+///
+/// A menu action runs after the sheet that built it has popped, so it holds the queue and the
+/// translator it read while the sheet was alive rather than reading them afterwards.
+Future<void> saveDownloadsVia(
+  ScaffoldMessengerState messenger,
+  DownloadsApi api,
+  String Function(String, [Map<String, Object?>]) t,
+  Iterable<BrowseTrack> tracks,
 ) async {
-  final t = ref.read(translationsProvider).call;
-  final messenger = ScaffoldMessenger.of(context);
-  final batch = await ref.read(downloadsApiProvider).saveAll(tracks);
+  final batch = await api.saveAll(tracks);
 
   final parts = <String>[
     if (batch.queued > 0)

@@ -5,6 +5,8 @@ import 'package:intl/intl.dart';
 
 import '../../../i18n/keys.g.dart';
 import '../../../i18n/translations_provider.dart';
+import '../../social/data/social_messages.dart';
+import '../data/insights_api.dart';
 import '../data/insights_providers.dart';
 import '../format.dart';
 import '../widgets/insights_primitives.dart';
@@ -170,6 +172,16 @@ class _Records extends ConsumerWidget {
             ),
         ],
 
+        // The tiles above land on round numbers only, and the number somebody actually has in mind
+        // is rarely one of them. The Hub can answer for any position, so this asks it.
+        _MilestoneLookup(
+          handle: handle,
+          date: date,
+          hint: records.milestones.isEmpty
+              ? 1
+              : records.milestones.last.ordinal,
+        ),
+
         _OnThisDay(handle: handle, own: own),
         const SizedBox(height: 32),
       ],
@@ -239,6 +251,133 @@ class _MilestoneTile extends StatelessWidget {
     ),
     isThreeLine: true,
   );
+}
+
+/// "What was my 4,242nd play?" - one play, by its position in the history.
+///
+/// Deliberately not a provider: it is a question asked once, on demand, whose answer belongs to
+/// this widget and nothing else. Caching it under a family key would keep every number anybody had
+/// ever typed alive for the life of the screen.
+class _MilestoneLookup extends ConsumerStatefulWidget {
+  const _MilestoneLookup({
+    required this.handle,
+    required this.date,
+    required this.hint,
+  });
+
+  final String? handle;
+  final DateFormat date;
+
+  /// The largest ordinal already on the page - a plausible placeholder, not a bound.
+  final int hint;
+
+  @override
+  ConsumerState<_MilestoneLookup> createState() => _MilestoneLookupState();
+}
+
+class _MilestoneLookupState extends ConsumerState<_MilestoneLookup> {
+  final _typed = TextEditingController();
+  bool _busy = false;
+  Milestone? _found;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    // The button is disabled on an empty field, so every keystroke has to reach it.
+    _typed.addListener(() {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _typed.dispose();
+    super.dispose();
+  }
+
+  Future<void> _look() async {
+    final n = int.tryParse(_typed.text.trim());
+    if (n == null || n < 1) return;
+    final t = ref.read(translationsProvider).call;
+    final query = ref.read(insightsQueryProvider(widget.handle));
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      final found = await ref.read(insightsApiProvider).milestone(query, n);
+      if (!mounted) return;
+      setState(() => _found = found);
+    } on Object catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _found = null;
+        // A 404 is the only expected failure - asking past the end of the history - and it is the
+        // one worth wording here. Anything else is the Hub's own sentence about what went wrong.
+        _error = error is ApiException && error.isNotFound
+            ? t(InsightsKeys.recordsMilestonesLookupOutOfRange)
+            : describeSocialError(error, t);
+      });
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = ref.t;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _typed,
+                  enabled: !_busy,
+                  keyboardType: TextInputType.number,
+                  textInputAction: TextInputAction.search,
+                  onSubmitted: (_) => _busy ? null : _look(),
+                  decoration: InputDecoration(
+                    labelText: t(InsightsKeys.recordsMilestonesLookupLabel),
+                    hintText: '${widget.hint}',
+                    errorText: _error,
+                    errorMaxLines: 2,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: OutlinedButton(
+                  onPressed: _busy || _typed.text.trim().isEmpty ? null : _look,
+                  child: Text(
+                    t(
+                      _busy
+                          ? CommonKeys.statesLoading
+                          : InsightsKeys.recordsMilestonesLookupSubmit,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (_found case final found?)
+          _MilestoneTile(
+            milestone: found,
+            label: t(InsightsKeys.recordsMilestonesOrdinal, {
+              'ordinal': found.ordinal,
+            }),
+            date: widget.date,
+          ),
+      ],
+    );
+  }
 }
 
 /// What was playing on today's date in earlier years.

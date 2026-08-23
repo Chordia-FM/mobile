@@ -10,6 +10,7 @@ import 'format.dart';
 import 'widgets/album_grid.dart';
 import 'widgets/artist_row.dart';
 import 'widgets/catalog_state.dart';
+import 'widgets/entity_menu.dart';
 import 'widgets/section.dart';
 import 'widgets/track_list.dart';
 
@@ -32,6 +33,17 @@ class GenreScreen extends ConsumerWidget {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
+        actions: [
+          EntityMenuButton(
+            menu: (page, sheetRef) => genreMenu(
+              page,
+              sheetRef,
+              slug: slug,
+              name: titleCaseGenre(genre.value?.name ?? slug),
+              tracks: genre.value?.topTracks,
+            ),
+          ),
+        ],
       ),
       body: CatalogBody<GenreDetail>(
         value: genre,

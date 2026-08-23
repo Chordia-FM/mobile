@@ -1,0 +1,1270 @@
+import 'dart:async';
+
+import 'package:chordia_api/chordia_api.dart';
+import 'package:chordia_sync/chordia_sync.dart' as sync show StationKind;
+import 'package:chordia_sync/chordia_sync.dart'
+    show
+        AlbumContext,
+        ArtistContext,
+        LibraryContext,
+        PlayContext,
+        PlaylistContext,
+        RadioContext,
+        SmartPlaylistContext,
+        StationCursor;
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../../app/providers.dart' show activeHubProvider;
+import '../../../i18n/keys.g.dart';
+import '../../../i18n/translations_provider.dart';
+import '../../downloads/downloads_api.dart';
+import '../../downloads/widgets/download_controls.dart';
+import '../../library/data/library_providers.dart' show pinsProvider;
+import '../../library/liked_screen.dart';
+import '../../library/library_detail_screen.dart';
+import '../../library/playlist_detail_screen.dart';
+import '../../library/smart_playlist_screen.dart';
+import '../../playlists/add_to_playlist_sheet.dart';
+import '../catalog_routes.dart';
+import '../data/catalog_api.dart';
+import '../data/catalog_providers.dart';
+import '../data/playback.dart';
+import 'entity_menu.dart';
+
+/// One menu definition per entity kind — the twelve the web client has, against the one mobile had.
+///
+/// Every builder here returns a description; nothing in this file draws anything. Actions are wired
+/// only where the endpoint behind them exists in this client: pins, stations, playlists, downloads
+/// and likes all do, and each was already on the wire with nothing calling it.
+
+// ── where a menu goes ──────────────────────────────────────────────────────────────────────────
+
+/// How a menu leaves for somewhere else.
+///
+/// An interface because the answer differs by WHERE the menu was opened: a menu raised from a
+/// catalog page pushes into that page's tab, while one raised from the player has to dismiss the
+/// player first — it is a root-navigator route, and `GoRouterState` does not exist above one.
+abstract interface class MenuNav {
+  void goToArtist(String artistId);
+  void goToArtistDiscography(String artistId);
+  void goToAlbum(String albumId);
+  void goToTrack(String trackId);
+  void goToGenre(String slug);
+  void goToLabel(String labelId);
+
+  /// For the collections that are screens rather than routes — playlists, the liked songs, a
+  /// library. They take plain constructor arguments and are pushed, exactly as the Library tab
+  /// pushes them.
+  void openScreen(WidgetBuilder screen);
+}
+
+/// The default: navigate from the page the menu was opened over.
+class PageMenuNav implements MenuNav {
+  const PageMenuNav(this.page);
+
+  final BuildContext page;
+
+  @override
+  void goToArtist(String artistId) {
+    if (page.mounted) page.goToArtist(artistId);
+  }
+
+  @override
+  void goToArtistDiscography(String artistId) {
+    if (page.mounted) page.goToArtistDiscography(artistId);
+  }
+
+  @override
+  void goToAlbum(String albumId) {
+    if (page.mounted) page.goToAlbum(albumId);
+  }
+
+  @override
+  void goToTrack(String trackId) {
+    if (page.mounted) page.goToTrack(trackId);
+  }
+
+  @override
+  void goToGenre(String slug) {
+    if (page.mounted) page.goToGenre(slug);
+  }
+
+  @override
+  void goToLabel(String labelId) {
+    if (page.mounted) page.goToLabel(labelId);
+  }
+
+  @override
+  void openScreen(WidgetBuilder screen) {
+    if (page.mounted) {
+      Navigator.of(page).push(MaterialPageRoute<void>(builder: screen));
+    }
+  }
+}
+
+// ── the rows a menu is built from ──────────────────────────────────────────────────────────────
+
+/// Everything an action needs that outlives the sheet it was tapped in.
+///
+/// Read once, in the builder, rather than through `ref` inside each closure: the sheet's `WidgetRef`
+/// dies with the pop, and every one of these actions runs after it.
+class MenuHost {
+  MenuHost(this.page, WidgetRef ref, MenuNav? nav)
+    : t = ref.t,
+      nav = nav ?? PageMenuNav(page),
+      messenger = ScaffoldMessenger.maybeOf(page),
+      player = ref.read(catalogPlayerActionsProvider),
+      liked = ref.read(likedTrackIdsProvider.notifier),
+      // The CONTAINER, not the queue itself: building the download manager pulls in the database,
+      // the storage budget and a foreground service, and a menu that merely offers Download must
+      // not stand all of that up to draw a row.
+      _container = ProviderScope.containerOf(page, listen: false),
+      frontend = ref.read(activeHubProvider)?.frontendUrl,
+      api = _apiOrNull(ref),
+      _invalidatePins = (() => ref.invalidate(pinsProvider));
+
+  final BuildContext page;
+  final String Function(String, [Map<String, Object?>]) t;
+  final MenuNav nav;
+  final ScaffoldMessengerState? messenger;
+  final CatalogPlayerActions? player;
+  final LikedTracksController liked;
+
+  /// Where this hub's public web client lives, for the share sheet. Null when the hub never said.
+  final Uri? frontend;
+
+  /// Null only when no hub is selected, which is not a state a signed-in session reaches — but a
+  /// menu that throws while opening would be a worse answer than one missing its Hub-backed rows.
+  final CatalogApi? api;
+
+  final void Function() _invalidatePins;
+  final ProviderContainer _container;
+
+  /// Resolved on use rather than in the constructor, for the reason the constructor gives: the
+  /// download manager is expensive to stand up, and most menus never reach this row.
+  DownloadsApi get downloads => _container.read(downloadsApiProvider);
+
+  void snack(String message) {
+    final messenger = this.messenger;
+    if (messenger == null || !messenger.mounted) return;
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  /// Replaces the queue with [tracks], attributing the session to [context].
+  void play(List<BrowseTrack> tracks, PlayContext context) {
+    if (tracks.isEmpty) return;
+    player?.playQueue(tracks.map(toPlayerTrack).toList(), context: context);
+  }
+
+  void enqueueAll(List<BrowseTrack> tracks) {
+    final player = this.player;
+    if (player == null) return;
+    for (final track in tracks) {
+      player.enqueue(toPlayerTrack(track));
+    }
+    if (tracks.isNotEmpty) {
+      snack(t(PlayerKeys.queueAddedAlbum, {'count': tracks.length}));
+    }
+  }
+
+  /// Loads a collection's tracks, saying so rather than failing silently when it cannot.
+  Future<List<BrowseTrack>> load(
+    Future<List<BrowseTrack>> Function() fetch,
+  ) async {
+    try {
+      return await fetch();
+    } on Object {
+      snack(t(ErrorsKeys.failedToLoad));
+      return const [];
+    }
+  }
+
+  /// Builds a station around any seed and plays it.
+  ///
+  /// The station's own cursor travels in the context, so the queue can ask for the next page when
+  /// it runs dry rather than ending the listening session at track thirty.
+  Future<void> startStation(StationKind kind, String seed) async {
+    final player = this.player;
+    final api = this.api;
+    if (player == null || api == null) return;
+    try {
+      final station = await api.station(kind, seed);
+      if (station.tracks.isEmpty) {
+        snack(t(DiscoveryKeys.stationEmpty));
+        return;
+      }
+      player
+        ..setShuffle(false)
+        ..playQueue(
+          station.tracks.map(toPlayerTrack).toList(),
+          context: RadioContext(
+            id: station.seedId,
+            name: station.seedName,
+            stationKind: _queueStationKind(kind),
+            stationCursor: StationCursor(station.nextCursor),
+          ),
+        );
+    } on Object {
+      snack(t(ErrorsKeys.discoveryRadioFailed));
+    }
+  }
+
+  Future<void> togglePin(
+    PinKind kind,
+    String id, {
+    required bool pinned,
+  }) async {
+    final api = this.api;
+    if (api == null) return;
+    try {
+      await (pinned ? api.removePin(kind, id) : api.addPin(kind, id));
+      _invalidatePins();
+    } on Object {
+      snack(t(ErrorsKeys.changeFailed));
+    }
+  }
+
+  Future<void> share({required String path, required String title}) async {
+    if (!page.mounted) return;
+    await shareCatalogPath(
+      page,
+      frontend: frontend,
+      path: path,
+      title: title,
+      errorMessage: t(ErrorsKeys.generic),
+    );
+  }
+
+  /// Queues a whole collection for offline playback.
+  Future<void> save(List<BrowseTrack> tracks) async {
+    final messenger = this.messenger;
+    if (tracks.isEmpty || messenger == null) return;
+    await saveDownloadsVia(messenger, downloads, t, tracks);
+  }
+
+  void addToPlaylist(List<String> trackIds, String label) {
+    if (!page.mounted || trackIds.isEmpty) return;
+    unawaited(showAddToPlaylistSheet(page, trackIds: trackIds, label: label));
+  }
+}
+
+CatalogApi? _apiOrNull(WidgetRef ref) {
+  try {
+    return ref.read(catalogApiProvider);
+  } on Object {
+    return null;
+  }
+}
+
+bool _isPinned(WidgetRef ref, PinKind kind, String id) =>
+    ref.watch(pinsProvider).value?.any((p) => p.kind == kind && p.id == id) ??
+    false;
+
+MenuAction _pinAction(
+  MenuHost host, {
+  required bool pinned,
+  required PinKind kind,
+  required String id,
+}) => MenuAction(
+  id: 'pin',
+  label: host.t(pinned ? CommonKeys.actionsUnpin : CommonKeys.actionsPin),
+  icon: pinned ? Icons.push_pin : Icons.push_pin_outlined,
+  onSelect: () => host.togglePin(kind, id, pinned: pinned),
+);
+
+MenuAction _radioAction(MenuHost host, StationKind kind, String seed) =>
+    MenuAction(
+      id: 'radio',
+      label: host.t(DiscoveryKeys.stationStart),
+      icon: Icons.radio_rounded,
+      enabled: host.player != null && host.api != null,
+      onSelect: () => host.startStation(kind, seed),
+    );
+
+MenuAction _shareAction(
+  MenuHost host, {
+  required String path,
+  required String title,
+}) => MenuAction(
+  id: 'share',
+  label: host.t(CommonKeys.actionsShare),
+  icon: Icons.ios_share_rounded,
+  onSelect: () => host.share(path: path, title: title),
+);
+
+/// The queue's `StationKind`, which is a separate type from the API's — `chordia_sync` cannot
+/// depend on `chordia_api`. Matched on the wire value, which is the definition of both.
+sync.StationKind? _queueStationKind(StationKind kind) =>
+    sync.StationKind.tryParse(kind.wire);
+
+// ── 1. a track ─────────────────────────────────────────────────────────────────────────────────
+
+/// A track's actions, from its ⋮ button or a long press on its row.
+///
+/// Kept as a named opener because half the app calls it: the row, the track page, the liked list,
+/// a playlist and the downloads screen all raise the same sheet, and every one of them means "this
+/// song's menu".
+Future<void> showTrackMenu(
+  BuildContext context,
+  WidgetRef ref,
+  BrowseTrack track, {
+  VoidCallback? onPlay,
+  VoidCallback? onRemove,
+  String? removeLabel,
+}) => showEntityMenu(
+  context,
+  (page, sheetRef) => trackMenu(
+    page,
+    sheetRef,
+    track,
+    onPlay: onPlay,
+    onRemove: onRemove,
+    removeLabel: removeLabel,
+  ),
+);
+
+/// A song, wherever one is listed.
+///
+/// [onPlay] is supplied by lists that know what "play this row" means for them (the whole album
+/// from here, not the one track). [onMoveUp] / [onMoveDown] give a playlist editor reordering
+/// without drag, and [onRemove] the row's removal — all absent unless the host can honour them.
+EntityMenu trackMenu(
+  BuildContext page,
+  WidgetRef ref,
+  BrowseTrack track, {
+  MenuNav? nav,
+  VoidCallback? onPlay,
+  VoidCallback? onRemove,
+  VoidCallback? onMoveUp,
+  VoidCallback? onMoveDown,
+  String? removeLabel,
+}) {
+  final host = MenuHost(page, ref, nav);
+  final t = host.t;
+  final liked = ref.watch(likedTrackIdsProvider).value?.contains(track.id);
+
+  return EntityMenu(
+    target: MenuTarget(
+      kind: MenuTargetKind.track,
+      id: track.id,
+      title: track.title,
+      subtitle: track.artist,
+      imageUrl: track.coverUrl,
+    ),
+    sections: [
+      MenuSection(
+        id: 'play',
+        items: [
+          if (onPlay != null)
+            MenuAction(
+              id: 'play',
+              label: t(CommonKeys.actionsPlay),
+              icon: Icons.play_arrow_rounded,
+              onSelect: onPlay,
+            ),
+          MenuAction(
+            id: 'play-next',
+            label: t(PlayerKeys.queuePlayNext),
+            icon: Icons.playlist_play_rounded,
+            enabled: host.player != null,
+            onSelect: () => host.player?.playNext(toPlayerTrack(track)),
+          ),
+          MenuAction(
+            id: 'queue',
+            label: t(PlayerKeys.queueAdd),
+            icon: Icons.queue_music_rounded,
+            enabled: host.player != null,
+            onSelect: () => host.player?.enqueue(toPlayerTrack(track)),
+          ),
+          _radioAction(host, StationKind.track, track.id),
+        ],
+      ),
+      MenuSection(
+        id: 'collect',
+        items: [
+          _likeAction(host, track.id, liked: liked),
+          MenuAction(
+            id: 'add-to-playlist',
+            label: t(PlaylistsKeys.addToPlaylist),
+            icon: Icons.playlist_add_rounded,
+            onSelect: () => host.addToPlaylist([track.id], track.title),
+          ),
+          MenuAction.custom(
+            id: 'download',
+            builder: (context, close) =>
+                DownloadMenuTile(tracks: [track], onDone: close),
+          ),
+        ],
+      ),
+      MenuSection(
+        id: 'reorder',
+        items: [
+          if (onMoveUp != null)
+            MenuAction(
+              id: 'move-up',
+              label: t(CommonKeys.actionsMoveUp),
+              icon: Icons.arrow_upward_rounded,
+              onSelect: onMoveUp,
+            ),
+          if (onMoveDown != null)
+            MenuAction(
+              id: 'move-down',
+              label: t(CommonKeys.actionsMoveDown),
+              icon: Icons.arrow_downward_rounded,
+              onSelect: onMoveDown,
+            ),
+        ],
+      ),
+      MenuSection(
+        id: 'navigate',
+        items: [
+          if (track.albumId case final albumId?)
+            MenuAction(
+              id: 'go-to-album',
+              label: t(CommonKeys.actionsGoToAlbum),
+              icon: Icons.album_outlined,
+              onSelect: () => host.nav.goToAlbum(albumId),
+            ),
+          if (track.artistId case final artistId?)
+            MenuAction(
+              id: 'go-to-artist',
+              label: t(CommonKeys.actionsGoToArtist),
+              icon: Icons.person_outline_rounded,
+              onSelect: () => host.nav.goToArtist(artistId),
+            ),
+          _shareAction(host, path: '/tracks/${track.id}', title: track.title),
+        ],
+      ),
+      MenuSection(
+        id: 'danger',
+        items: [
+          if (onRemove != null)
+            MenuAction(
+              id: 'remove',
+              label: removeLabel ?? t(PlaylistsKeys.removeFromPlaylist),
+              icon: Icons.delete_outline_rounded,
+              destructive: true,
+              onSelect: onRemove,
+            ),
+        ],
+      ),
+    ],
+  );
+}
+
+MenuAction _likeAction(
+  MenuHost host,
+  String trackId, {
+  required bool? liked,
+}) => MenuAction(
+  id: 'like',
+  label: host.t(
+    liked ?? false ? LibraryKeys.likedRemove : LibraryKeys.likedSave,
+  ),
+  icon: liked ?? false ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+  // Until the liked set has loaded there is no state to flip, and a heart that reports the
+  // wrong state is worse than one that is briefly unavailable.
+  enabled: liked != null,
+  onSelect: () async {
+    try {
+      await host.liked.toggle(trackId);
+    } on Object {
+      host.snack(host.t(ErrorsKeys.changeFailed));
+    }
+  },
+);
+
+// ── 2. an album card ───────────────────────────────────────────────────────────────────────────
+
+/// An album with only what a card carries.
+@immutable
+class AlbumLike {
+  const AlbumLike({
+    required this.id,
+    required this.title,
+    this.artist,
+    this.artistId,
+    this.coverUrl,
+  });
+
+  final String id;
+  final String title;
+  final String? artist;
+  final String? artistId;
+  final String? coverUrl;
+}
+
+/// The menu of an album CARD. A card has no track list, so Play and Add to queue fetch one.
+EntityMenu albumMenu(
+  BuildContext page,
+  WidgetRef ref,
+  AlbumLike album, {
+  MenuNav? nav,
+}) {
+  final host = MenuHost(page, ref, nav);
+  final t = host.t;
+  final pinned = _isPinned(ref, PinKind.album, album.id);
+  final api = host.api;
+
+  Future<List<BrowseTrack>> tracks() => api == null
+      ? Future.value(const [])
+      : host.load(() => api.albumTracks(album.id));
+
+  return EntityMenu(
+    target: MenuTarget(
+      kind: MenuTargetKind.album,
+      id: album.id,
+      title: album.title,
+      subtitle: album.artist,
+      imageUrl: album.coverUrl,
+    ),
+    sections: [
+      MenuSection(
+        id: 'play',
+        items: [
+          MenuAction(
+            id: 'play',
+            label: t(CommonKeys.actionsPlay),
+            icon: Icons.play_arrow_rounded,
+            enabled: host.player != null && api != null,
+            onSelect: () async => host.play(
+              await tracks(),
+              AlbumContext(id: album.id, name: album.title),
+            ),
+          ),
+          MenuAction(
+            id: 'queue',
+            label: t(PlayerKeys.queueAdd),
+            icon: Icons.queue_music_rounded,
+            enabled: host.player != null && api != null,
+            onSelect: () async => host.enqueueAll(await tracks()),
+          ),
+          _radioAction(host, StationKind.album, album.id),
+        ],
+      ),
+      MenuSection(
+        id: 'collect',
+        items: [
+          _pinAction(host, pinned: pinned, kind: PinKind.album, id: album.id),
+          MenuAction(
+            id: 'add-to-playlist',
+            label: t(PlaylistsKeys.addToPlaylist),
+            icon: Icons.playlist_add_rounded,
+            enabled: api != null,
+            onSelect: () async => host.addToPlaylist([
+              for (final track in await tracks()) track.id,
+            ], album.title),
+          ),
+        ],
+      ),
+      MenuSection(
+        id: 'navigate',
+        items: [
+          MenuAction(
+            id: 'open',
+            label: t(CommonKeys.actionsOpen),
+            icon: Icons.album_outlined,
+            onSelect: () => host.nav.goToAlbum(album.id),
+          ),
+          if (album.artistId case final artistId?)
+            MenuAction(
+              id: 'go-to-artist',
+              label: t(CommonKeys.actionsGoToArtist),
+              icon: Icons.person_outline_rounded,
+              onSelect: () => host.nav.goToArtist(artistId),
+            ),
+          _shareAction(host, path: '/albums/${album.id}', title: album.title),
+        ],
+      ),
+    ],
+  );
+}
+
+// ── 3. an album page ───────────────────────────────────────────────────────────────────────────
+
+/// The album PAGE's menu: it holds the release, so it can offer the whole set without fetching.
+EntityMenu albumDetailMenu(
+  BuildContext page,
+  WidgetRef ref,
+  AlbumDetail album, {
+  MenuNav? nav,
+}) {
+  final host = MenuHost(page, ref, nav);
+  final t = host.t;
+  final pinned = _isPinned(ref, PinKind.album, album.id);
+  final playContext = AlbumContext(id: album.id, name: album.title);
+
+  return EntityMenu(
+    target: MenuTarget(
+      kind: MenuTargetKind.album,
+      id: album.id,
+      title: album.title,
+      subtitle: album.artist,
+      imageUrl: album.coverUrl,
+    ),
+    sections: [
+      MenuSection(
+        id: 'play',
+        items: [
+          MenuAction(
+            id: 'play',
+            label: t(CommonKeys.actionsPlay),
+            icon: Icons.play_arrow_rounded,
+            enabled: host.player != null && album.tracks.isNotEmpty,
+            onSelect: () => host.play(album.tracks, playContext),
+          ),
+          MenuAction(
+            id: 'queue',
+            label: t(PlayerKeys.queueAdd),
+            icon: Icons.queue_music_rounded,
+            enabled: host.player != null && album.tracks.isNotEmpty,
+            onSelect: () => host.enqueueAll(album.tracks),
+          ),
+          _radioAction(host, StationKind.album, album.id),
+          if (album.artistId case final artistId?)
+            MenuAction(
+              id: 'artist-radio',
+              label: t(CatalogKeys.albumGoToRadio),
+              icon: Icons.radio_outlined,
+              enabled: host.player != null && host.api != null,
+              onSelect: () => host.startStation(StationKind.artist, artistId),
+            ),
+        ],
+      ),
+      MenuSection(
+        id: 'collect',
+        items: [
+          _pinAction(host, pinned: pinned, kind: PinKind.album, id: album.id),
+          MenuAction(
+            id: 'add-to-playlist',
+            label: t(PlaylistsKeys.addToPlaylist),
+            icon: Icons.playlist_add_rounded,
+            enabled: album.tracks.isNotEmpty,
+            onSelect: () => host.addToPlaylist([
+              for (final track in album.tracks) track.id,
+            ], album.title),
+          ),
+          if (album.tracks.isNotEmpty)
+            MenuAction.custom(
+              id: 'download',
+              builder: (context, close) => DownloadMenuTile(
+                tracks: album.tracks,
+                label: t(LibraryKeys.downloadsActionDownloadAlbum),
+                onDone: close,
+              ),
+            ),
+        ],
+      ),
+      MenuSection(
+        id: 'navigate',
+        items: [
+          if (album.artistId case final artistId?)
+            MenuAction(
+              id: 'go-to-artist',
+              label: t(CommonKeys.actionsGoToArtist),
+              icon: Icons.person_outline_rounded,
+              onSelect: () => host.nav.goToArtist(artistId),
+            ),
+          _shareAction(host, path: '/albums/${album.id}', title: album.title),
+        ],
+      ),
+    ],
+  );
+}
+
+// ── 4. an artist card ──────────────────────────────────────────────────────────────────────────
+
+@immutable
+class ArtistLike {
+  const ArtistLike({required this.id, required this.name, this.imageUrl});
+
+  final String id;
+  final String name;
+  final String? imageUrl;
+}
+
+/// The menu of an artist CARD or row: what can be offered without their page loaded.
+EntityMenu artistMenu(
+  BuildContext page,
+  WidgetRef ref,
+  ArtistLike artist, {
+  MenuNav? nav,
+}) {
+  final host = MenuHost(page, ref, nav);
+  final t = host.t;
+  final pinned = _isPinned(ref, PinKind.artist, artist.id);
+  final api = host.api;
+
+  Future<List<BrowseTrack>> tracks() async => api == null
+      ? const []
+      : host.load(() async => (await api.artist(artist.id)).topTracks);
+
+  return EntityMenu(
+    target: MenuTarget(
+      kind: MenuTargetKind.artist,
+      id: artist.id,
+      title: artist.name,
+      imageUrl: artist.imageUrl,
+      round: true,
+    ),
+    sections: [
+      MenuSection(
+        id: 'play',
+        items: [
+          MenuAction(
+            id: 'play',
+            label: t(CommonKeys.actionsPlay),
+            icon: Icons.play_arrow_rounded,
+            enabled: host.player != null && api != null,
+            onSelect: () async => host.play(
+              await tracks(),
+              ArtistContext(id: artist.id, name: artist.name),
+            ),
+          ),
+          MenuAction(
+            id: 'queue',
+            label: t(PlayerKeys.queueAdd),
+            icon: Icons.queue_music_rounded,
+            enabled: host.player != null && api != null,
+            onSelect: () async => host.enqueueAll(await tracks()),
+          ),
+          _radioAction(host, StationKind.artist, artist.id),
+        ],
+      ),
+      MenuSection(
+        id: 'collect',
+        items: [
+          _pinAction(host, pinned: pinned, kind: PinKind.artist, id: artist.id),
+        ],
+      ),
+      MenuSection(
+        id: 'navigate',
+        items: [
+          MenuAction(
+            id: 'open',
+            label: t(CommonKeys.actionsOpen),
+            icon: Icons.person_outline_rounded,
+            onSelect: () => host.nav.goToArtist(artist.id),
+          ),
+          _shareAction(host, path: '/artists/${artist.id}', title: artist.name),
+        ],
+      ),
+    ],
+  );
+}
+
+// ── 5. an artist page ──────────────────────────────────────────────────────────────────────────
+
+EntityMenu artistDetailMenu(
+  BuildContext page,
+  WidgetRef ref,
+  ArtistDetail artist, {
+  MenuNav? nav,
+}) {
+  final host = MenuHost(page, ref, nav);
+  final t = host.t;
+  final pinned = _isPinned(ref, PinKind.artist, artist.id);
+  final playContext = ArtistContext(id: artist.id, name: artist.name);
+
+  return EntityMenu(
+    target: MenuTarget(
+      kind: MenuTargetKind.artist,
+      id: artist.id,
+      title: artist.name,
+      imageUrl: artist.imageUrl,
+      round: true,
+    ),
+    sections: [
+      MenuSection(
+        id: 'play',
+        items: [
+          MenuAction(
+            id: 'play',
+            label: t(CommonKeys.actionsPlay),
+            icon: Icons.play_arrow_rounded,
+            enabled: host.player != null && artist.topTracks.isNotEmpty,
+            onSelect: () => host.play(artist.topTracks, playContext),
+          ),
+          MenuAction(
+            id: 'queue',
+            label: t(PlayerKeys.queueAdd),
+            icon: Icons.queue_music_rounded,
+            enabled: host.player != null && artist.topTracks.isNotEmpty,
+            onSelect: () => host.enqueueAll(artist.topTracks),
+          ),
+          _radioAction(host, StationKind.artist, artist.id),
+        ],
+      ),
+      MenuSection(
+        id: 'collect',
+        items: [
+          _pinAction(host, pinned: pinned, kind: PinKind.artist, id: artist.id),
+        ],
+      ),
+      MenuSection(
+        id: 'navigate',
+        items: [
+          MenuAction(
+            id: 'discography',
+            label: t(CatalogKeys.artistDiscography),
+            icon: Icons.library_music_outlined,
+            onSelect: () => host.nav.goToArtistDiscography(artist.id),
+          ),
+          _shareAction(host, path: '/artists/${artist.id}', title: artist.name),
+        ],
+      ),
+    ],
+  );
+}
+
+// ── 6. a playlist ──────────────────────────────────────────────────────────────────────────────
+
+@immutable
+class PlaylistLike {
+  const PlaylistLike({
+    required this.id,
+    required this.name,
+    this.coverUrl,
+    this.tracks,
+  });
+
+  final String id;
+  final String name;
+  final String? coverUrl;
+
+  /// A loaded page passes its rows so Play, Queue and Download skip a round trip; a card omits them
+  /// and the actions fetch on demand.
+  final List<BrowseTrack>? tracks;
+}
+
+EntityMenu playlistMenu(
+  BuildContext page,
+  WidgetRef ref,
+  PlaylistLike playlist, {
+  MenuNav? nav,
+}) {
+  final host = MenuHost(page, ref, nav);
+  final t = host.t;
+  final pinned = _isPinned(ref, PinKind.playlist, playlist.id);
+  final api = host.api;
+  final known = playlist.tracks;
+  final playContext = PlaylistContext(id: playlist.id, name: playlist.name);
+
+  Future<List<BrowseTrack>> tracks() async =>
+      known ??
+      (api == null
+          ? const []
+          : host.load(() async => (await api.playlist(playlist.id)).tracks));
+
+  return EntityMenu(
+    target: MenuTarget(
+      kind: MenuTargetKind.playlist,
+      id: playlist.id,
+      title: playlist.name,
+      imageUrl: playlist.coverUrl,
+    ),
+    sections: [
+      MenuSection(
+        id: 'play',
+        items: [
+          MenuAction(
+            id: 'play',
+            label: t(CommonKeys.actionsPlay),
+            icon: Icons.play_arrow_rounded,
+            enabled: host.player != null && known?.isEmpty != true,
+            onSelect: () async => host.play(await tracks(), playContext),
+          ),
+          MenuAction(
+            id: 'queue',
+            label: t(PlayerKeys.queueAdd),
+            icon: Icons.queue_music_rounded,
+            enabled: host.player != null && known?.isEmpty != true,
+            onSelect: () async => host.enqueueAll(await tracks()),
+          ),
+          _radioAction(host, StationKind.playlist, playlist.id),
+        ],
+      ),
+      MenuSection(
+        id: 'collect',
+        items: [
+          _pinAction(
+            host,
+            pinned: pinned,
+            kind: PinKind.playlist,
+            id: playlist.id,
+          ),
+          if (known != null && known.isNotEmpty)
+            MenuAction.custom(
+              id: 'download',
+              builder: (context, close) => DownloadMenuTile(
+                tracks: known,
+                label: t(LibraryKeys.downloadsActionDownloadPlaylist),
+                onDone: close,
+              ),
+            )
+          else
+            MenuAction(
+              id: 'download',
+              label: t(LibraryKeys.downloadsActionDownloadPlaylist),
+              icon: Icons.download_for_offline_outlined,
+              enabled: api != null,
+              onSelect: () async => host.save(await tracks()),
+            ),
+        ],
+      ),
+      MenuSection(
+        id: 'navigate',
+        items: [
+          MenuAction(
+            id: 'open',
+            label: t(CommonKeys.actionsOpen),
+            icon: Icons.queue_music_rounded,
+            onSelect: () => host.nav.openScreen(
+              (_) => PlaylistDetailScreen(playlistId: playlist.id),
+            ),
+          ),
+          _shareAction(
+            host,
+            path: '/playlists/${playlist.id}',
+            title: playlist.name,
+          ),
+        ],
+      ),
+    ],
+  );
+}
+
+// ── 7. a smart playlist ────────────────────────────────────────────────────────────────────────
+
+/// At parity with a regular playlist, minus manual ordering — the order is the rules' answer.
+EntityMenu smartPlaylistMenu(
+  BuildContext page,
+  WidgetRef ref,
+  PlaylistLike playlist, {
+  MenuNav? nav,
+}) {
+  final host = MenuHost(page, ref, nav);
+  final t = host.t;
+  final pinned = _isPinned(ref, PinKind.playlist, playlist.id);
+  final api = host.api;
+  final known = playlist.tracks;
+  final playContext = SmartPlaylistContext(
+    id: playlist.id,
+    name: playlist.name,
+  );
+
+  Future<List<BrowseTrack>> tracks() async =>
+      known ??
+      (api == null
+          ? const []
+          : host.load(
+              () async => (await api.smartPlaylist(playlist.id)).tracks,
+            ));
+
+  return EntityMenu(
+    target: MenuTarget(
+      // `playlist`, not a kind of its own: the header names and pictures the thing, and for that
+      // purpose a smart playlist is a playlist.
+      kind: MenuTargetKind.playlist,
+      id: playlist.id,
+      title: playlist.name,
+      imageUrl: playlist.coverUrl,
+    ),
+    sections: [
+      MenuSection(
+        id: 'play',
+        items: [
+          MenuAction(
+            id: 'play',
+            label: t(CommonKeys.actionsPlay),
+            icon: Icons.play_arrow_rounded,
+            enabled: host.player != null && known?.isEmpty != true,
+            onSelect: () async => host.play(await tracks(), playContext),
+          ),
+          MenuAction(
+            id: 'queue',
+            label: t(PlayerKeys.queueAdd),
+            icon: Icons.queue_music_rounded,
+            enabled: host.player != null && known?.isEmpty != true,
+            onSelect: () async => host.enqueueAll(await tracks()),
+          ),
+          _radioAction(host, StationKind.playlist, playlist.id),
+        ],
+      ),
+      MenuSection(
+        id: 'collect',
+        items: [
+          // Pinned as a `playlist`: there is no smart pin kind, and the pin only has to reach a
+          // page both kinds have.
+          _pinAction(
+            host,
+            pinned: pinned,
+            kind: PinKind.playlist,
+            id: playlist.id,
+          ),
+        ],
+      ),
+      MenuSection(
+        id: 'navigate',
+        items: [
+          MenuAction(
+            id: 'open',
+            label: t(CommonKeys.actionsOpen),
+            icon: Icons.auto_awesome_rounded,
+            onSelect: () => host.nav.openScreen(
+              (_) => SmartPlaylistScreen(playlistId: playlist.id),
+            ),
+          ),
+          _shareAction(
+            host,
+            path: '/smart/${playlist.id}',
+            title: playlist.name,
+          ),
+        ],
+      ),
+    ],
+  );
+}
+
+// ── 8. a genre ─────────────────────────────────────────────────────────────────────────────────
+
+EntityMenu genreMenu(
+  BuildContext page,
+  WidgetRef ref, {
+  required String slug,
+  required String name,
+  List<BrowseTrack>? tracks,
+  MenuNav? nav,
+}) {
+  final host = MenuHost(page, ref, nav);
+  final t = host.t;
+  final rows = tracks ?? const <BrowseTrack>[];
+
+  return EntityMenu(
+    target: MenuTarget(kind: MenuTargetKind.genre, id: slug, title: name),
+    sections: [
+      MenuSection(
+        id: 'play',
+        items: [
+          if (rows.isNotEmpty)
+            MenuAction(
+              id: 'play',
+              label: t(CommonKeys.actionsPlay),
+              icon: Icons.play_arrow_rounded,
+              enabled: host.player != null,
+              // The same context the genre page itself plays with: a genre is not one of the
+              // queue's own kinds, and inventing one would write a slug into the append-only
+              // listening-events table under a kind that means something else.
+              onSelect: () =>
+                  host.play(rows, LibraryContext(id: slug, name: name)),
+            ),
+          // A genre station is seeded by the SLUG, not an id.
+          _radioAction(host, StationKind.genre, slug),
+        ],
+      ),
+      MenuSection(
+        id: 'navigate',
+        items: [
+          MenuAction(
+            id: 'open',
+            label: t(CommonKeys.actionsOpen),
+            icon: Icons.category_rounded,
+            onSelect: () => host.nav.goToGenre(slug),
+          ),
+          _shareAction(host, path: '/genres/$slug', title: name),
+        ],
+      ),
+    ],
+  );
+}
+
+// ── 9. a record label ──────────────────────────────────────────────────────────────────────────
+
+EntityMenu labelMenu(
+  BuildContext page,
+  WidgetRef ref, {
+  required String labelId,
+  required String name,
+  String? logoUrl,
+  MenuNav? nav,
+}) {
+  final host = MenuHost(page, ref, nav);
+  final t = host.t;
+
+  return EntityMenu(
+    target: MenuTarget(
+      kind: MenuTargetKind.label,
+      id: labelId,
+      title: name,
+      imageUrl: logoUrl,
+    ),
+    sections: [
+      MenuSection(
+        id: 'navigate',
+        items: [
+          MenuAction(
+            id: 'open',
+            label: t(CommonKeys.actionsOpen),
+            icon: Icons.business_rounded,
+            onSelect: () => host.nav.goToLabel(labelId),
+          ),
+          _shareAction(host, path: '/labels/$labelId', title: name),
+        ],
+      ),
+    ],
+  );
+}
+
+// ── 10. a daily mix / station ──────────────────────────────────────────────────────────────────
+
+@immutable
+class MixLike {
+  const MixLike({
+    required this.seedArtistId,
+    required this.title,
+    this.subtitle,
+    this.imageUrl,
+  });
+
+  final String seedArtistId;
+  final String title;
+  final String? subtitle;
+  final String? imageUrl;
+}
+
+/// A daily mix. It plays through its seed artist's station, which is what generated it.
+EntityMenu mixMenu(
+  BuildContext page,
+  WidgetRef ref,
+  MixLike mix, {
+  MenuNav? nav,
+}) {
+  final host = MenuHost(page, ref, nav);
+  final t = host.t;
+  final api = host.api;
+
+  return EntityMenu(
+    target: MenuTarget(
+      kind: MenuTargetKind.mix,
+      id: mix.seedArtistId,
+      title: mix.title,
+      subtitle: mix.subtitle,
+      imageUrl: mix.imageUrl,
+    ),
+    sections: [
+      MenuSection(
+        id: 'play',
+        items: [
+          MenuAction(
+            id: 'play',
+            label: t(CommonKeys.actionsPlay),
+            icon: Icons.play_arrow_rounded,
+            enabled: host.player != null && api != null,
+            onSelect: () async {
+              if (api == null) return;
+              final detail = await host.load(
+                () async => (await api.dailyMix(mix.seedArtistId)).tracks,
+              );
+              host.play(
+                detail,
+                RadioContext(
+                  id: mix.seedArtistId,
+                  name: mix.title,
+                  stationKind: sync.StationKind.artist,
+                ),
+              );
+            },
+          ),
+          _radioAction(host, StationKind.artist, mix.seedArtistId),
+        ],
+      ),
+      MenuSection(
+        id: 'navigate',
+        items: [
+          MenuAction(
+            id: 'go-to-artist',
+            label: t(CommonKeys.actionsGoToArtist),
+            icon: Icons.person_outline_rounded,
+            onSelect: () => host.nav.goToArtist(mix.seedArtistId),
+          ),
+          _shareAction(
+            host,
+            path: '/artists/${mix.seedArtistId}',
+            title: mix.title,
+          ),
+        ],
+      ),
+    ],
+  );
+}
+
+// ── 11. a library ──────────────────────────────────────────────────────────────────────────────
+
+EntityMenu libraryMenu(
+  BuildContext page,
+  WidgetRef ref, {
+  required String libraryId,
+  required String name,
+  bool owned = false,
+  MenuNav? nav,
+}) {
+  final host = MenuHost(page, ref, nav);
+  final t = host.t;
+
+  return EntityMenu(
+    target: MenuTarget(
+      kind: MenuTargetKind.library,
+      id: libraryId,
+      title: name,
+    ),
+    sections: [
+      MenuSection(
+        id: 'navigate',
+        items: [
+          MenuAction(
+            id: 'open',
+            label: t(CommonKeys.actionsOpen),
+            icon: Icons.folder_open_rounded,
+            onSelect: () => host.nav.openScreen(
+              (_) => LibraryDetailScreen(libraryId: libraryId, owned: owned),
+            ),
+          ),
+          _shareAction(host, path: '/library/$libraryId', title: name),
+        ],
+      ),
+    ],
+  );
+}
+
+// ── 12. the liked songs ────────────────────────────────────────────────────────────────────────
+
+/// The one collection with no id: everything the listener has hearted.
+EntityMenu likedSongsMenu(
+  BuildContext page,
+  WidgetRef ref, {
+  required String name,
+  MenuNav? nav,
+}) {
+  final host = MenuHost(page, ref, nav);
+  final t = host.t;
+
+  return EntityMenu(
+    target: MenuTarget(kind: MenuTargetKind.playlist, id: 'liked', title: name),
+    sections: [
+      MenuSection(
+        id: 'navigate',
+        items: [
+          MenuAction(
+            id: 'open',
+            label: t(CommonKeys.actionsOpen),
+            icon: Icons.favorite_rounded,
+            onSelect: () => host.nav.openScreen((_) => const LikedScreen()),
+          ),
+        ],
+      ),
+    ],
+  );
+}

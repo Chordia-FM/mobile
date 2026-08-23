@@ -19,6 +19,11 @@ abstract interface class CatalogApi {
 
   Future<AlbumDetail> album(String albumId);
 
+  /// An album's running order on its own, for a menu opened on a CARD — a card carries no track
+  /// list, so Play and Add to queue fetch one on demand rather than every visible card paying for
+  /// tracks almost none of them will be asked for.
+  Future<List<BrowseTrack>> albumTracks(String albumId);
+
   Future<BrowseTrack> track(String trackId);
 
   /// The caller's own numbers for one entity — plays, rank, first and last heard.
@@ -45,7 +50,23 @@ abstract interface class CatalogApi {
 
   Future<List<Playlist>> playlists();
 
+  /// One playlist with its viewer-filtered tracks, for the menu of a playlist row that carries only
+  /// a name and an id.
+  Future<PlaylistDetail> playlist(String playlistId);
+
+  /// A smart playlist's current snapshot, for the same reason.
+  Future<SmartPlaylistDetail> smartPlaylist(String playlistId);
+
+  /// The tracks behind a daily mix, so a mix row can be played from its own menu.
+  Future<DailyMixDetail> dailyMix(String seedArtistId);
+
   Future<void> addPlaylistTrack(String playlistId, String trackId);
+
+  /// Pins are the "keep this to hand" list the Library tab leads with. Both endpoints existed on
+  /// the wire and nothing in the app had ever called either.
+  Future<void> addPin(PinKind kind, String id);
+
+  Future<void> removePin(PinKind kind, String id);
 }
 
 /// The route segment and [CatalogApi.label] argument for the "Unlabeled" bucket, which has no id
@@ -67,6 +88,10 @@ class HubCatalogApi implements CatalogApi {
 
   @override
   Future<AlbumDetail> album(String albumId) => _hub.album(albumId);
+
+  @override
+  Future<List<BrowseTrack>> albumTracks(String albumId) =>
+      _hub.albumTracks(albumId);
 
   @override
   Future<BrowseTrack> track(String trackId) => _hub.track(trackId);
@@ -106,8 +131,26 @@ class HubCatalogApi implements CatalogApi {
   Future<List<Playlist>> playlists() => _hub.playlists();
 
   @override
+  Future<PlaylistDetail> playlist(String playlistId) =>
+      _hub.playlist(playlistId);
+
+  @override
+  Future<SmartPlaylistDetail> smartPlaylist(String playlistId) =>
+      _hub.smartPlaylist(playlistId);
+
+  @override
+  Future<DailyMixDetail> dailyMix(String seedArtistId) =>
+      _hub.dailyMix(seedArtistId);
+
+  @override
   Future<void> addPlaylistTrack(String playlistId, String trackId) =>
       _hub.addPlaylistTrack(playlistId, TrackBody(trackId: trackId));
+
+  @override
+  Future<void> addPin(PinKind kind, String id) => _hub.addPin(kind, id);
+
+  @override
+  Future<void> removePin(PinKind kind, String id) => _hub.removePin(kind, id);
 }
 
 /// Thrown when a catalog screen is somehow reached with no hub selected.

@@ -82,6 +82,47 @@ class EnginePosition {
 
 enum EngineState { idle, loading, buffering, ready, completed }
 
+/// Whether trying the same track again could plausibly work.
+///
+/// The distinction is the whole reason this type exists. A library that briefly dropped the
+/// connection deserves one more attempt before the listener notices anything; a capability token
+/// the Hub refused, or a track the library no longer holds, will fail exactly the same way the
+/// second time — retrying it only lengthens the silence before the queue moves on.
+enum EngineErrorKind { transient, fatal }
+
+/// A track the engine could not play, and why.
+///
+/// Carried on [PlaybackEngine.errors] rather than thrown, because the thing that has to react is
+/// never the caller of [PlaybackEngine.load]: a mid-track socket failure has no caller at all, and
+/// the queue advancing is not a decision the engine is allowed to make on its own.
+@immutable
+class EngineError {
+  const EngineError({
+    required this.kind,
+    required this.cause,
+    this.track,
+    this.status,
+  });
+
+  final EngineErrorKind kind;
+
+  /// What actually went wrong — an [ApiException] from the library, a platform decode error, a
+  /// dropped socket. Kept whole so the app can say something specific rather than "playback
+  /// failed".
+  final Object cause;
+
+  /// The queue entry that failed, when the engine knows which one it was.
+  final PlayerTrack? track;
+
+  /// The library server's status code, when the failure came back as one.
+  final int? status;
+
+  bool get isTransient => kind == EngineErrorKind.transient;
+
+  @override
+  String toString() => 'EngineError($kind, status: $status, cause: $cause)';
+}
+
 /// Health signals the adaptive-quality controller reads.
 @immutable
 class EngineHealth {
@@ -144,6 +185,14 @@ abstract interface class PlaybackEngine {
   /// Fires when the current source plays to its end. Distinct from [states] reaching
   /// [EngineState.completed], because a crossfade retires a deck without the queue advancing.
   Stream<void> get completions;
+
+  /// Every failure the engine meets, whether or not anybody was awaiting a call at the time.
+  ///
+  /// [load] and [swapSource] therefore do NOT throw for a source they could not play: they report
+  /// here and return. An engine that threw instead would put the failure on a future the media
+  /// session started with `unawaited`, where nothing is listening and the app is left playing
+  /// silence with a play button that says it is playing.
+  Stream<EngineError> get errors;
 
   Future<void> dispose();
 }

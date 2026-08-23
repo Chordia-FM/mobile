@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:chordia_api/chordia_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,6 +9,9 @@ import '../../../i18n/keys.g.dart';
 import '../../../i18n/translations_provider.dart';
 import '../../../widgets/cover_art.dart';
 import '../catalog_routes.dart';
+import 'album_grid.dart';
+import 'entity_menu.dart';
+import 'section.dart';
 
 /// One artist as a list row: round portrait, name, and how much of them there is.
 ///
@@ -22,12 +27,13 @@ class ArtistRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) => ListTile(
-    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+    contentPadding: const EdgeInsets.symmetric(horizontal: catalogGutter),
     leading: CoverArt(
       sha256: artHashOf(artist.imageUrl),
       size: 48,
       shape: BoxShape.circle,
       fallbackIcon: Icons.person_rounded,
+      fallbackInitial: artist.name,
       semanticLabel: artist.name,
     ),
     title: Text(artist.name, maxLines: 1, overflow: TextOverflow.ellipsis),
@@ -38,10 +44,25 @@ class ArtistRow extends ConsumerWidget {
       overflow: TextOverflow.ellipsis,
     ),
     onTap: () => context.goToArtist(artist.id),
+    onLongPress: () => unawaited(
+      showEntityMenu(
+        context,
+        (page, sheetRef) =>
+            artistMenu(page, sheetRef, artistMenuTarget(artist)),
+      ),
+    ),
   );
 }
 
-/// One artist as a tile, for the grids on a genre page and the "fans also like" shelf.
+/// The artist an [ArtistRow] or [ArtistTile] acts on, in the shape the menu takes.
+ArtistLike artistMenuTarget(BrowseArtist artist) =>
+    ArtistLike(id: artist.id, name: artist.name, imageUrl: artist.imageUrl);
+
+/// One artist as a card, for the grids on a genre page and the "fans also like" shelf.
+///
+/// The same card body as an album's ([CatalogCard]) with two differences the web keeps too
+/// (`components/catalog/ArtistShelf.tsx`): the portrait is round, and the two lines under it are
+/// centred.
 class ArtistTile extends StatelessWidget {
   const ArtistTile({
     required this.artistId,
@@ -56,82 +77,65 @@ class ArtistTile extends StatelessWidget {
   final String name;
   final String? imageUrl;
 
-  /// A second line under the name — the kind of relation, on the aliases shelf.
+  /// The second line under the name — an album count on the similarity shelf, the kind of relation
+  /// on the aliases shelf.
   final String? caption;
 
   final double? width;
 
   @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return SizedBox(
+  Widget build(BuildContext context) => EntityMenuGesture(
+    menu: (page, ref) => artistMenu(
+      page,
+      ref,
+      ArtistLike(id: artistId, name: name, imageUrl: imageUrl),
+    ),
+    child: CatalogCard(
       width: width,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: () => context.goToArtist(artistId),
-        child: Padding(
-          padding: const EdgeInsets.all(6),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Expanded(
-                child: LayoutBuilder(
-                  builder: (context, constraints) => CoverArt(
-                    sha256: artHashOf(imageUrl),
-                    size: constraints.maxWidth,
-                    shape: BoxShape.circle,
-                    fallbackIcon: Icons.person_rounded,
-                    semanticLabel: name,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                name,
-                maxLines: 1,
-                textAlign: TextAlign.center,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              if (caption != null)
-                Text(
-                  caption!,
-                  maxLines: 1,
-                  textAlign: TextAlign.center,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// A horizontally scrolling row of artist tiles.
-class ArtistShelf extends StatelessWidget {
-  const ArtistShelf({required this.artists, super.key});
-
-  final List<BrowseArtist> artists;
-
-  @override
-  Widget build(BuildContext context) => SizedBox(
-    height: 180,
-    child: ListView.builder(
-      scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: 10),
-      itemCount: artists.length,
-      itemBuilder: (context, index) => ArtistTile(
-        artistId: artists[index].id,
-        name: artists[index].name,
-        imageUrl: artists[index].imageUrl,
-        width: 130,
+      centred: true,
+      onTap: () => context.goToArtist(artistId),
+      title: name,
+      caption: caption,
+      art: CoverArtSlot(
+        sha256: artHashOf(imageUrl),
+        circular: true,
+        fallbackIcon: Icons.person_rounded,
+        fallbackInitial: name,
+        semanticLabel: name,
       ),
     ),
   );
+}
+
+/// A horizontally scrolling row of artist cards.
+///
+/// Same box, same card width and same cap as the album shelves — the web hands all of them to one
+/// `CardShelf`, so a page of shelves reads as one rhythm rather than four.
+class ArtistShelf extends ConsumerWidget {
+  const ArtistShelf({required this.artists, super.key, this.limit});
+
+  final List<BrowseArtist> artists;
+
+  /// How many cards the shelf shows; null shows all of them.
+  final int? limit;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final cap = limit;
+    final shown = cap == null
+        ? artists
+        : artists.take(cap).toList(growable: false);
+    return CatalogShelf(
+      itemCount: shown.length,
+      itemBuilder: (context, index) => ArtistTile(
+        artistId: shown[index].id,
+        name: shown[index].name,
+        imageUrl: shown[index].imageUrl,
+        caption: ref.t(CatalogKeys.artistCardAlbumCount, {
+          'count': shown[index].albumCount,
+        }),
+        width: catalogCardWidth,
+      ),
+    );
+  }
 }

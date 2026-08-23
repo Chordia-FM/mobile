@@ -4,6 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../i18n/keys.g.dart';
 import '../../i18n/translations_provider.dart';
+import '../playlists/create_playlist_sheet.dart';
+import '../playlists/data/smart_model.dart';
+import '../playlists/smart_rules_screen.dart';
 import 'data/library_providers.dart';
 import 'playlist_detail_screen.dart';
 import 'smart_playlist_screen.dart';
@@ -21,6 +24,14 @@ class PlaylistsScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: Text(t(LibraryKeys.sidebarPlaylists))),
+      // The only place in the app a playlist can be made from nothing. The picker's "New playlist"
+      // row needs a track to be filing somewhere first, so without this a listener could not make
+      // an empty playlist at all.
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _create(context, ref),
+        icon: const Icon(Icons.add_rounded),
+        label: Text(t(PlaylistsKeys.newKey)),
+      ),
       body: RefreshIndicator(
         onRefresh: () async => ref.invalidate(playlistsProvider),
         child: playlists.when(
@@ -35,11 +46,26 @@ class PlaylistsScreen extends ConsumerWidget {
                   icon: Icons.queue_music_rounded,
                 )
               : ListView.builder(
+                  // Room for the button, which would otherwise sit on top of the last row.
+                  padding: const EdgeInsets.only(bottom: 88),
                   itemCount: rows.length,
                   itemBuilder: (context, index) =>
                       PlaylistRow(playlist: rows[index]),
                 ),
         ),
+      ),
+    );
+  }
+
+  /// Makes one, then opens it — a new empty playlist that stays on the list behind you is a thing
+  /// you have to find again before you can put anything in it.
+  Future<void> _create(BuildContext context, WidgetRef ref) async {
+    final created = await showCreatePlaylistSheet(context, ref);
+    if (created == null || !context.mounted) return;
+    ref.invalidate(playlistsProvider);
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (context) => PlaylistDetailScreen(playlistId: created.id),
       ),
     );
   }
@@ -56,6 +82,13 @@ class SmartPlaylistsScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: Text(t(PlaylistsKeys.smartKindLabel))),
+      // Straight into the rule builder rather than a name-only sheet: a smart playlist saved with
+      // no rules is one that matches the entire library, which is never what anybody meant.
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _create(context, ref),
+        icon: const Icon(Icons.add_rounded),
+        label: Text(t(PlaylistsKeys.smartNew)),
+      ),
       body: RefreshIndicator(
         onRefresh: () async => ref.invalidate(smartPlaylistsProvider),
         child: playlists.when(
@@ -70,11 +103,23 @@ class SmartPlaylistsScreen extends ConsumerWidget {
                   icon: Icons.auto_awesome_rounded,
                 )
               : ListView.builder(
+                  padding: const EdgeInsets.only(bottom: 88),
                   itemCount: rows.length,
                   itemBuilder: (context, index) =>
                       SmartPlaylistRow(playlist: rows[index]),
                 ),
         ),
+      ),
+    );
+  }
+
+  Future<void> _create(BuildContext context, WidgetRef ref) async {
+    final id = await openSmartRules(context);
+    if (id == null || !context.mounted) return;
+    ref.invalidate(smartPlaylistsProvider);
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (context) => SmartPlaylistScreen(playlistId: id),
       ),
     );
   }
@@ -142,6 +187,15 @@ class SmartPlaylistRow extends ConsumerWidget {
           builder: (context) => SmartPlaylistScreen(playlistId: playlist.id),
         ),
       ),
+      // The summary row already carries the whole rule set, so the builder can be opened from here
+      // without loading the snapshot first — which is what the web client's row menu does.
+      onLongPress: () async {
+        final saved = await openSmartRules(
+          context,
+          existing: SmartSource.ofSummary(playlist),
+        );
+        if (saved != null) ref.invalidate(smartPlaylistsProvider);
+      },
     );
   }
 }

@@ -50,6 +50,19 @@ final myProfileProvider = FutureProvider<UserProfile>((ref) {
   return api.profile();
 });
 
+/// The account's own **public** profile, which is where the bio, banner and links live.
+///
+/// A family keyed by handle rather than a chain off [myProfileProvider], so a test can seed it
+/// directly and so a handle change re-reads under the new key instead of serving the old profile.
+final myPublicProfileProvider = FutureProvider.family<PublicProfile, String>((
+  ref,
+  handle,
+) {
+  final api = ref.watch(accountApiProvider);
+  if (api == null) throw StateError('No hub session to read a profile from.');
+  return api.publicProfile(handle);
+});
+
 /// Which credentials the account has, and whether its address is confirmed.
 final accountInfoProvider = FutureProvider<AccountInfo>((ref) {
   final api = ref.watch(accountApiProvider);

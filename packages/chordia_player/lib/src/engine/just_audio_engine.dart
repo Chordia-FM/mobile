@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:chordia_api/chordia_api.dart';
 import 'package:chordia_net/chordia_net.dart';
@@ -53,7 +54,18 @@ class JustAudioEngine implements PlaybackEngine {
   final _states = StreamController<EngineState>.broadcast();
   final _health = StreamController<EngineHealth>.broadcast();
   final _completions = StreamController<void>.broadcast();
+  final _errors = StreamController<EngineError>.broadcast();
   final _subs = <StreamSubscription<Object?>>[];
+
+  /// What each deck is currently pointed at, so a failure can name the track it belongs to.
+  final _deckSources = <AudioPlayer, EngineSource>{};
+
+  /// The last cause a deck's own byte fetch reported, kept until something asks for it.
+  ///
+  /// The platform player reaches our bytes through just_audio's loopback proxy, so by the time a
+  /// failure comes back as a `PlayerException` the library's status code is long gone. This is
+  /// where it is kept, and it is the difference between retrying and skipping.
+  final _sourceErrors = <AudioPlayer, Object>{};
 
   Timer? _ticker;
   Duration _lastPosition = Duration.zero;
@@ -73,21 +85,77 @@ class JustAudioEngine implements PlaybackEngine {
 
   void _attach(AudioPlayer player) {
     _subs.add(
-      player.playerStateStream.listen((state) {
-        if (!identical(player, _primary)) return;
-        _states.add(switch (state.processingState) {
-          ProcessingState.idle => EngineState.idle,
-          ProcessingState.loading => EngineState.loading,
-          ProcessingState.buffering => EngineState.buffering,
-          ProcessingState.ready => EngineState.ready,
-          ProcessingState.completed => EngineState.completed,
-        });
-        if (state.processingState == ProcessingState.completed &&
-            !_fadingOut.contains(player)) {
-          _completions.add(null);
-        }
-      }),
+      player.playerStateStream.listen(
+        (state) {
+          if (!identical(player, _primary)) return;
+          _states.add(switch (state.processingState) {
+            ProcessingState.idle => EngineState.idle,
+            ProcessingState.loading => EngineState.loading,
+            ProcessingState.buffering => EngineState.buffering,
+            ProcessingState.ready => EngineState.ready,
+            ProcessingState.completed => EngineState.completed,
+          });
+          if (state.processingState == ProcessingState.completed &&
+              !_fadingOut.contains(player)) {
+            _completions.add(null);
+          }
+        },
+        // A track that dies mid-play — a grant past renewal, a library that went away, a file
+        // that will not decode — arrives here and nowhere else. Without this the stream error was
+        // unhandled, the state never moved, and the app sat on a play button that claimed to be
+        // playing silence.
+        onError: (Object error, StackTrace stack) {
+          if (!identical(player, _primary)) return;
+          _states.add(EngineState.idle);
+          reportFailure(error, deck: player);
+        },
+      ),
     );
+  }
+
+  /// Publishes a failure against [deck], preferring the cause its own byte fetch recorded.
+  ///
+  /// Not private because every path funnels through it — the event stream, and each awaited call
+  /// that can fail — so there is one classification rather than four.
+  void reportFailure(Object error, {required AudioPlayer deck}) {
+    // One load superseding another is how a skip is implemented, not a failure to tell anybody
+    // about.
+    if (error is PlayerInterruptedException) return;
+    if (_errors.isClosed) return;
+    final cause = _sourceErrors.remove(deck) ?? error;
+    _errors.add(
+      EngineError(
+        kind: classifyFailure(cause),
+        cause: cause,
+        track: _deckSources[deck]?.track,
+        status: cause is ApiException ? cause.status : null,
+      ),
+    );
+  }
+
+  /// Whether the same request could plausibly succeed a moment later.
+  static EngineErrorKind classifyFailure(Object error) {
+    if (error is ApiException) {
+      // Status 0 is the transport-failure code; 408, 429 and 5xx are the server itself asking to
+      // be tried again.
+      if (error.isNetworkFailure ||
+          error.status == 408 ||
+          error.status == 429 ||
+          error.status >= 500) {
+        return EngineErrorKind.transient;
+      }
+      // 401 and 403 mean a capability token the Hub declined to widen, 404 a track the library no
+      // longer holds, 409 a server the directory says is offline. None of them heal in a second.
+      return EngineErrorKind.fatal;
+    }
+    if (error is SocketException ||
+        error is TimeoutException ||
+        error is HttpException) {
+      return EngineErrorKind.transient;
+    }
+    // A platform error with no upstream cause behind it: the bytes arrived and would not decode,
+    // which is exactly as true the second time.
+    return EngineErrorKind.fatal;
   }
 
   void _startTicker() {
@@ -136,9 +204,13 @@ class JustAudioEngine implements PlaybackEngine {
     final previous = _pinnedKeys[deck];
     cache.pin(source.cacheKey);
     _pinnedKeys[deck] = source.cacheKey;
+    // Recorded before the await, so a load that fails still knows whose track it was; and the
+    // previous track's cause is dropped, so it cannot be blamed for this one.
+    _deckSources[deck] = source;
+    _sourceErrors.remove(deck);
     try {
       await deck.setAudioSource(
-        _sourceFor(source),
+        _sourceFor(source, deck),
         initialPosition: initialPosition,
         preload: preload,
       );
@@ -157,12 +229,14 @@ class JustAudioEngine implements PlaybackEngine {
     if (key != null) cache.unpin(key);
   }
 
-  ChordiaAudioSource _sourceFor(EngineSource source) => ChordiaAudioSource(
-    source: source,
-    grants: grants,
-    factory: factory,
-    cache: cache,
-  );
+  ChordiaAudioSource _sourceFor(EngineSource source, AudioPlayer deck) =>
+      ChordiaAudioSource(
+        source: source,
+        grants: grants,
+        factory: factory,
+        cache: cache,
+        onFailure: (error) => _sourceErrors[deck] = error,
+      );
 
   @override
   Future<void> load(
@@ -173,10 +247,17 @@ class JustAudioEngine implements PlaybackEngine {
     // A hard start cancels any crossfade in progress; otherwise the retired deck keeps fading
     // audio in under the new track.
     await _collapseCrossfade();
-    await _setDeckSource(_primary, source, initialPosition: initialPosition);
-    await _applyGain(_primary);
-    _startTicker();
-    if (autoPlay) await _primary.play();
+    try {
+      await _setDeckSource(_primary, source, initialPosition: initialPosition);
+      await _applyGain(_primary);
+      _startTicker();
+      if (autoPlay) await _primary.play();
+    } on Object catch (error) {
+      // Deliberately not rethrown — see [PlaybackEngine.errors]. The caller is the media session,
+      // which starts this with `unawaited`, so a thrown error would reach nobody at all.
+      _states.add(EngineState.idle);
+      reportFailure(error, deck: _primary);
+    }
   }
 
   @override
@@ -234,9 +315,14 @@ class JustAudioEngine implements PlaybackEngine {
   Future<void> swapSource(EngineSource source) async {
     final at = _primary.position;
     final wasPlaying = _primary.playing;
-    await _setDeckSource(_primary, source, initialPosition: at);
-    await _applyGain(_primary);
-    if (wasPlaying) await _primary.play();
+    try {
+      await _setDeckSource(_primary, source, initialPosition: at);
+      await _applyGain(_primary);
+      if (wasPlaying) await _primary.play();
+    } on Object catch (error) {
+      _states.add(EngineState.idle);
+      reportFailure(error, deck: _primary);
+    }
   }
 
   @override
@@ -255,7 +341,15 @@ class JustAudioEngine implements PlaybackEngine {
     _fadingOut.add(outgoing);
 
     try {
-      await _setDeckSource(incoming, source);
+      try {
+        await _setDeckSource(incoming, source);
+      } on Object catch (error) {
+        // The incoming track never arrived. Retiring the outgoing deck anyway would replace a
+        // playing track with silence, so it is left alone and the failure reported instead.
+        _fadingOut.remove(outgoing);
+        reportFailure(error, deck: incoming);
+        return;
+      }
       await incoming.setVolume(0);
       await incoming.play();
 
@@ -327,6 +421,9 @@ class JustAudioEngine implements PlaybackEngine {
   @override
   Stream<void> get completions => _completions.stream;
 
+  @override
+  Stream<EngineError> get errors => _errors.stream;
+
   Duration get lastPosition => _lastPosition;
 
   @override
@@ -342,5 +439,6 @@ class JustAudioEngine implements PlaybackEngine {
     await _states.close();
     await _health.close();
     await _completions.close();
+    await _errors.close();
   }
 }

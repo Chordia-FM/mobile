@@ -9,6 +9,7 @@ import '../catalog/data/playback.dart';
 import '../catalog/widgets/album_grid.dart';
 import '../catalog/widgets/artist_row.dart';
 import '../catalog/widgets/catalog_state.dart';
+import '../social/social_routes.dart';
 import 'data/daypart.dart';
 import 'data/discovery_nav.dart';
 import 'data/home_feed.dart';

@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:chordia_api/chordia_api.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -8,6 +11,27 @@ import '../../data/playback/quality.dart';
 import '../../i18n/keys.g.dart';
 import '../../i18n/translations_provider.dart';
 
+/// What is playing, and the one thing the listener can do about it.
+///
+/// A seam of its own rather than reaching for [adaptiveQualityProvider] from the widgets: that
+/// provider builds the whole adaptation service — engine, cache probe, connectivity — which a
+/// widget test cannot stand up, and "is the quality sheet reachable from the player?" is exactly
+/// the kind of question that has to stay testable.
+@immutable
+class QualityControl {
+  const QualityControl({required this.status, required this.restore});
+
+  final ValueListenable<QualityStatus> status;
+
+  /// Undoes an automatic downgrade, back up to the listener's ceiling.
+  final Future<void> Function() restore;
+}
+
+final qualityControlProvider = Provider<QualityControl>((ref) {
+  final service = ref.watch(adaptiveQualityProvider);
+  return QualityControl(status: service.status, restore: service.restore);
+});
+
 /// Opens the streaming-quality readout.
 Future<void> showQualitySheet(BuildContext context) =>
     showModalBottomSheet<void>(
@@ -15,6 +39,45 @@ Future<void> showQualitySheet(BuildContext context) =>
       backgroundColor: Colors.transparent,
       builder: (_) => const QualitySheet(),
     );
+
+/// The player's way in: what tier is sounding, and a warning when it is not the one chosen.
+///
+/// The controller has always computed the downgrade and nothing ever showed it — the sheet that
+/// explains it had no caller at all, so the ladder, the reason and Restore were unreachable. This
+/// is that entry point, and it doubles as the readout: a listener who never opens it still sees
+/// which tier is playing.
+class QualityButton extends ConsumerWidget {
+  const QualityButton({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = ref.t;
+    return ValueListenableBuilder<QualityStatus>(
+      valueListenable: ref.watch(qualityControlProvider).status,
+      builder: (context, status, _) {
+        final limited = status.limit != QualityLimit.none;
+        return TextButton.icon(
+          onPressed: () => unawaited(showQualitySheet(context)),
+          icon: Icon(
+            limited ? Icons.warning_amber_rounded : Icons.graphic_eq_rounded,
+            size: 18,
+            color: limited
+                ? ChordiaColors.accent
+                : ChordiaColors.mutedForeground,
+          ),
+          label: Text(
+            t(_labelKeyOf(status.playing)),
+            style: TextStyle(
+              color: limited
+                  ? ChordiaColors.accent
+                  : ChordiaColors.mutedForeground,
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
 
 /// What tier is streaming, what was asked for, and why they differ.
 ///
@@ -28,7 +91,7 @@ class QualitySheet extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final t = ref.t;
     final theme = Theme.of(context);
-    final service = ref.watch(adaptiveQualityProvider);
+    final control = ref.watch(qualityControlProvider);
 
     return SafeArea(
       child: DecoratedBox(
@@ -37,7 +100,7 @@ class QualitySheet extends ConsumerWidget {
           borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
         ),
         child: ValueListenableBuilder<QualityStatus>(
-          valueListenable: service.status,
+          valueListenable: control.status,
           builder: (context, status, _) => Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -61,7 +124,7 @@ class QualitySheet extends ConsumerWidget {
                     width: double.infinity,
                     child: FilledButton(
                       onPressed: () async {
-                        await service.restore();
+                        await control.restore();
                         if (context.mounted) Navigator.of(context).pop();
                       },
                       child: Text(t(PlayerKeys.qualityRestore)),

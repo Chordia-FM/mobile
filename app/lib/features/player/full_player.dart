@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:chordia_sync/chordia_sync.dart' hide PlaybackState;
@@ -7,15 +8,22 @@ import 'package:flutter/material.dart' hide RepeatMode;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/providers.dart';
-import '../../app/theme.dart';
 import '../../data/playback/notification_art.dart';
 import '../../i18n/keys.g.dart';
 import '../../i18n/translations_provider.dart';
 import '../../widgets/cover_art.dart';
-import 'player_format.dart';
+import '../catalog/data/catalog_providers.dart';
+import '../catalog/widgets/artist_links.dart';
 import '../devices/device_picker_sheet.dart';
+import '../catalog/widgets/entity_menu.dart';
+import '../lyrics/data/lyrics_providers.dart';
 import '../lyrics/lyrics_screen.dart';
-import 'queue_sheet.dart';
+import 'play_context_nav.dart';
+import 'player_badges.dart';
+import 'player_menu.dart';
+import 'player_format.dart';
+import 'quality_sheet.dart';
+import 'queue_panel.dart';
 import 'sleep_timer_sheet.dart';
 
 /// Opens the now-playing screen over everything, tab bar included.
@@ -44,13 +52,23 @@ Route<void> fullPlayerRoute() => PageRouteBuilder<void>(
   ),
 );
 
+/// The three views of the player, in the order the web client lists them.
+enum PlayerTab { nowPlaying, lyrics, queue }
+
 /// The now-playing screen.
-class FullPlayerScreen extends ConsumerWidget {
+class FullPlayerScreen extends ConsumerStatefulWidget {
   const FullPlayerScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    // Signing out, or clearing the queue from the queue sheet, leaves this screen with nothing to
+  ConsumerState<FullPlayerScreen> createState() => _FullPlayerScreenState();
+}
+
+class _FullPlayerScreenState extends ConsumerState<FullPlayerScreen> {
+  PlayerTab _tab = PlayerTab.nowPlaying;
+
+  @override
+  Widget build(BuildContext context) {
+    // Signing out, or clearing the queue from the queue tab, leaves this screen with nothing to
     // show. Closing it is the only honest response — the alternative is a frozen player over a
     // signed-out app.
     ref.listen(currentTrackProvider, (_, next) {
@@ -61,106 +79,44 @@ class FullPlayerScreen extends ConsumerWidget {
     final track = snapshot.current;
     if (track == null) return const SizedBox.shrink();
 
-    final t = ref.t;
     final theme = Theme.of(context);
+
+    // Asked for as soon as the player opens, not when the lyrics tab is entered: the tab has to be
+    // able to say up front whether this track has any, and the repository behind this caches both
+    // answers — the miss included — so the ask costs one request per track per session.
+    final lyrics = ref.watch(trackLyricsProvider(track.id));
+    final hasLyrics = lyrics.hasValue
+        ? (lyrics.value?.lines.isNotEmpty ?? false)
+        // Loading, or a read that failed in a tunnel. Neither is evidence about the song, so the
+        // tab stays reachable and the panel explains itself.
+        : null;
 
     return _DragToDismiss(
       child: Scaffold(
-        backgroundColor: ChordiaColors.pane,
+        backgroundColor: theme.colorScheme.surface,
         body: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Column(
-              children: [
-                _Header(context: snapshot.context),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 20),
-                    child: Center(
-                      child: LayoutBuilder(
-                        builder: (context, constraints) => CoverArt(
-                          sha256: artHashOf(track.coverUrl),
-                          size: math.min(
-                            constraints.maxWidth,
-                            constraints.maxHeight,
-                          ),
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                      ),
-                    ),
-                  ),
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: _Header(
+                  context: snapshot.context,
+                  sleepTimerOn: snapshot.sleepTimer != null,
                 ),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        track.title,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        track.artist,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          color: ChordiaColors.mutedForeground,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 12),
-                const _Scrubber(),
-                const SizedBox(height: 4),
-                _Transport(
-                  playing: snapshot.playing,
-                  buffering: snapshot.buffering,
-                  shuffle: snapshot.shuffle,
-                  repeat: snapshot.repeat,
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    TextButton.icon(
-                      onPressed: () => showSleepTimerSheet(context),
-                      icon: Icon(
-                        snapshot.sleepTimer == null
-                            ? Icons.bedtime_outlined
-                            : Icons.bedtime,
-                        color: snapshot.sleepTimer == null
-                            ? ChordiaColors.mutedForeground
-                            : ChordiaColors.accent,
-                      ),
-                      label: Text(t(PlayerKeys.sleepTimerTitle)),
-                    ),
-                    TextButton.icon(
-                      onPressed: () => showLyricsSheet(context),
-                      icon: const Icon(
-                        Icons.lyrics_outlined,
-                        color: ChordiaColors.mutedForeground,
-                      ),
-                      label: Text(t(CatalogKeys.lyricsHeading)),
-                    ),
-                    TextButton.icon(
-                      onPressed: () => showQueueSheet(context),
-                      icon: const Icon(
-                        Icons.queue_music_rounded,
-                        color: ChordiaColors.mutedForeground,
-                      ),
-                      label: Text(t(PlayerKeys.queueTitle)),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-              ],
-            ),
+              ),
+              Expanded(
+                child: switch (_tab) {
+                  PlayerTab.nowPlaying => _NowPlaying(snapshot: snapshot),
+                  PlayerTab.lyrics => const LyricsPanel(),
+                  PlayerTab.queue => const QueuePanel(),
+                },
+              ),
+              PlayerTabBar(
+                current: _tab,
+                hasLyrics: hasLyrics,
+                onSelect: (tab) => setState(() => _tab = tab),
+              ),
+            ],
           ),
         ),
       ),
@@ -168,11 +124,297 @@ class FullPlayerScreen extends ConsumerWidget {
   }
 }
 
+/// The artwork, the credits and the transport.
+class _NowPlaying extends StatelessWidget {
+  const _NowPlaying({required this.snapshot});
+
+  final PlayerSnapshot snapshot;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final track = snapshot.current;
+    if (track == null) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Column(
+        children: [
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 20),
+              child: Center(
+                child: LayoutBuilder(
+                  builder: (context, constraints) => CoverArt(
+                    sha256: artHashOf(track.coverUrl),
+                    size: math.min(constraints.maxWidth, constraints.maxHeight),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            track.title,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.headlineSmall?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        PlayerTrackBadges(track: track),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    // Each credited artist its own link, exactly as in a track row: the guest on a
+                    // feature is the one thing a listener most often wants to open from here, and a
+                    // joined string threw that away.
+                    ArtistLinks(
+                      artists: playerArtistRefs(track.artists),
+                      fallbackName: track.artist,
+                      fallbackId: track.artistId,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                      linkStyle: theme.textTheme.titleMedium?.copyWith(
+                        color: theme.colorScheme.onSurface,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // The heart the player never had. It sits where the web puts it — beside the title,
+              // not behind a menu — because it is the one action a listener takes mid-song.
+              LikeButton(trackId: track.id),
+            ],
+          ),
+          const SizedBox(height: 12),
+          const _Scrubber(),
+          const SizedBox(height: 4),
+          _Transport(
+            playing: snapshot.playing,
+            buffering: snapshot.buffering,
+            shuffle: snapshot.shuffle,
+            repeat: snapshot.repeat,
+          ),
+          // What tier is actually sounding, and a warning when the connection or the adapter has
+          // taken it down from what was chosen. The controller computed both from the first day
+          // and nothing on screen ever said so.
+          const QualityButton(),
+          const SizedBox(height: 4),
+        ],
+      ),
+    );
+  }
+}
+
+/// The heart, wherever the player shows one.
+class LikeButton extends ConsumerWidget {
+  const LikeButton({required this.trackId, super.key, this.iconSize});
+
+  final String trackId;
+  final double? iconSize;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = ref.t;
+    final liked = ref.watch(likedTrackIdsProvider).value?.contains(trackId);
+    final theme = Theme.of(context);
+
+    return IconButton(
+      // Until the liked set has loaded there is nothing to flip, and a heart that reports the wrong
+      // state is worse than one that is briefly unavailable.
+      onPressed: liked == null
+          ? null
+          : () async {
+              try {
+                await ref.read(likedTrackIdsProvider.notifier).toggle(trackId);
+              } on Object {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context)
+                    ..hideCurrentSnackBar()
+                    ..showSnackBar(
+                      SnackBar(content: Text(t(ErrorsKeys.changeFailed))),
+                    );
+                }
+              }
+            },
+      iconSize: iconSize,
+      tooltip: t(
+        liked ?? false ? LibraryKeys.likedRemove : LibraryKeys.likedSave,
+      ),
+      icon: Icon(
+        liked ?? false ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+        color: liked ?? false ? theme.colorScheme.primary : null,
+      ),
+    );
+  }
+}
+
+/// The player's view switcher, pinned to the bottom edge.
+///
+/// Underline tabs rather than a segmented pill or a row of text buttons — the same shape the web
+/// client uses on a phone, for the same reason: flush against the bottom border it reads as a
+/// native tab bar, and it puts lyrics and the queue where somebody would look for them instead of
+/// behind a control they have to already know about.
+class PlayerTabBar extends ConsumerWidget {
+  const PlayerTabBar({
+    required this.current,
+    required this.onSelect,
+    required this.hasLyrics,
+    super.key,
+  });
+
+  final PlayerTab current;
+  final ValueChanged<PlayerTab> onSelect;
+
+  /// Whether the playing track has lyrics, or null while that is not yet known.
+  ///
+  /// A definite `false` disables the tab and says why, rather than opening a view whose only
+  /// content is an apology.
+  final bool? hasLyrics;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = ref.t;
+    final theme = Theme.of(context);
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        border: Border(top: BorderSide(color: theme.colorScheme.outline)),
+      ),
+      child: Semantics(
+        label: t(PlayerKeys.expandedTabs),
+        container: true,
+        child: Row(
+          children: [
+            _Tab(
+              icon: Icons.album_rounded,
+              label: t(PlayerKeys.expandedNowPlaying),
+              active: current == PlayerTab.nowPlaying,
+              onTap: () => onSelect(PlayerTab.nowPlaying),
+            ),
+            _Tab(
+              // A microphone on a stand, the same glyph the web client's lyrics control uses.
+              icon: Icons.mic_external_on_rounded,
+              label: t(PlayerKeys.expandedLyrics),
+              active: current == PlayerTab.lyrics,
+              disabledReason: hasLyrics == false
+                  ? t(PlayerKeys.lyricsNone)
+                  : null,
+              onTap: () => onSelect(PlayerTab.lyrics),
+            ),
+            _Tab(
+              icon: Icons.queue_music_rounded,
+              label: t(PlayerKeys.expandedQueue),
+              active: current == PlayerTab.queue,
+              onTap: () => onSelect(PlayerTab.queue),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _Tab extends StatelessWidget {
+  const _Tab({
+    required this.icon,
+    required this.label,
+    required this.active,
+    required this.onTap,
+    this.disabledReason,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool active;
+  final VoidCallback onTap;
+
+  /// Why this tab cannot be opened, or null when it can. Carried as the tooltip and the
+  /// accessibility hint, so the tab is never simply inert.
+  final String? disabledReason;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final reason = disabledReason;
+    final colour = reason != null
+        ? theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.4)
+        : active
+        ? theme.colorScheme.onSurface
+        : theme.colorScheme.onSurfaceVariant;
+
+    final tab = Semantics(
+      button: true,
+      selected: active,
+      enabled: reason == null,
+      hint: reason,
+      child: InkWell(
+        onTap: reason == null ? onTap : null,
+        child: Stack(
+          alignment: Alignment.topCenter,
+          children: [
+            if (active)
+              Positioned(
+                left: 20,
+                right: 20,
+                top: 0,
+                child: Container(
+                  height: 2,
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primary,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(icon, size: 20, color: colour),
+                  const SizedBox(height: 4),
+                  Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      color: colour,
+                      fontWeight: active ? FontWeight.w600 : FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    return Expanded(
+      child: reason == null ? tab : Tooltip(message: reason, child: tab),
+    );
+  }
+}
+
 class _Header extends ConsumerWidget {
-  const _Header({required this.context});
+  const _Header({required this.context, required this.sleepTimerOn});
 
   /// Where this queue was started from, or null when it was not started from anywhere nameable.
   final PlayContext? context;
+
+  final bool sleepTimerOn;
 
   @override
   Widget build(BuildContext buildContext, WidgetRef ref) {
@@ -195,28 +437,79 @@ class _Header extends ConsumerWidget {
                     ? t(PlayerKeys.expandedNowPlaying)
                     : t(PlayerKeys.nowPlayingPlayingFrom),
                 style: theme.textTheme.labelSmall?.copyWith(
-                  color: ChordiaColors.mutedForeground,
+                  color: theme.colorScheme.onSurfaceVariant,
                   letterSpacing: 0.6,
                 ),
               ),
+              // The source LEADS somewhere. It was dead text: the player named the album or the
+              // playlist a queue came from and touching it did nothing, so the one screen a
+              // listener spends their time on had no way back to what they were listening to.
               if (source != null)
-                Text(
-                  source.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.labelLarge,
-                ),
+                _PlayingFrom(source: source, player: buildContext),
             ],
           ),
         ),
-        // Occupies the slot that used to be an empty spacer balancing the collapse button, so the
-        // label above stays optically centred and this costs no extra width.
+        IconButton(
+          onPressed: () => showSleepTimerSheet(buildContext),
+          tooltip: t(PlayerKeys.sleepTimerTitle),
+          icon: Icon(
+            sleepTimerOn ? Icons.bedtime : Icons.bedtime_outlined,
+            color: sleepTimerOn ? theme.colorScheme.primary : null,
+          ),
+        ),
         IconButton(
           onPressed: () => showDevicePickerSheet(buildContext),
           tooltip: t(PlayerKeys.devicesTitle),
           icon: const Icon(Icons.devices_rounded),
         ),
+        const _MoreButton(),
       ],
+    );
+  }
+}
+
+/// The source of the queue, as a link back to it — and its own menu on a long press.
+class _PlayingFrom extends StatelessWidget {
+  const _PlayingFrom({required this.source, required this.player});
+
+  final PlayContext source;
+
+  /// The full player's context: navigating away has to dismiss it first.
+  final BuildContext player;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final menu = playContextMenu(source);
+    return InkWell(
+      onTap: () => openPlayContext(player, source),
+      onLongPress: menu == null
+          ? null
+          : () => unawaited(showEntityMenu(context, menu)),
+      child: Text(
+        source.name,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: theme.textTheme.labelLarge,
+      ),
+    );
+  }
+}
+
+/// Everything the player can do that is not a transport control.
+///
+/// One menu rather than a row of icons: the phone's header has room for three targets, and the web
+/// keeps the same set (equalizer, quality, the track's own actions) behind its `…` for the same
+/// reason.
+class _MoreButton extends ConsumerWidget {
+  const _MoreButton();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final track = ref.watch(currentTrackProvider);
+    if (track == null) return const SizedBox.shrink();
+    return EntityMenuButton(
+      menu: (page, sheetRef) => playerTrackMenu(page, sheetRef, track),
     );
   }
 }
@@ -270,7 +563,7 @@ class _ScrubberState extends ConsumerState<_Scrubber> {
             trackHeight: 3,
             overlayShape: const RoundSliderOverlayShape(overlayRadius: 16),
             thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
-            inactiveTrackColor: ChordiaColors.line,
+            inactiveTrackColor: theme.colorScheme.outline,
           ),
           child: Slider(
             value: currentMs,
@@ -301,13 +594,13 @@ class _ScrubberState extends ConsumerState<_Scrubber> {
               Text(
                 formatPlaybackTime(Duration(milliseconds: currentMs.round())),
                 style: theme.textTheme.labelSmall?.copyWith(
-                  color: ChordiaColors.mutedForeground,
+                  color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
               Text(
                 formatPlaybackTime(duration),
                 style: theme.textTheme.labelSmall?.copyWith(
-                  color: ChordiaColors.mutedForeground,
+                  color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
             ],
@@ -334,37 +627,41 @@ class _Transport extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = ref.t;
-    final actions = ref.watch(playerActionsProvider);
+    final theme = Theme.of(context);
+    // Read in the callbacks rather than watched: these actions never change identity in a way this
+    // row draws, and watching them builds the audio handler for a screen that may only be reading
+    // lyrics.
+    PlayerActions actions() => ref.read(playerActionsProvider);
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
         IconButton(
-          onPressed: () => actions.setShuffle(!shuffle),
+          onPressed: () => actions().setShuffle(!shuffle),
           tooltip: t(PlayerKeys.controlsShuffle),
           isSelected: shuffle,
           icon: Icon(
             Icons.shuffle_rounded,
             color: shuffle
-                ? ChordiaColors.accent
-                : ChordiaColors.mutedForeground,
+                ? theme.colorScheme.primary
+                : theme.colorScheme.onSurfaceVariant,
           ),
         ),
         IconButton(
-          onPressed: actions.prev,
+          onPressed: () => actions().prev(),
           tooltip: t(PlayerKeys.controlsPrevious),
           iconSize: 40,
           icon: const Icon(Icons.skip_previous_rounded),
         ),
         _PlayButton(playing: playing, buffering: buffering),
         IconButton(
-          onPressed: actions.next,
+          onPressed: () => actions().next(),
           tooltip: t(PlayerKeys.controlsNext),
           iconSize: 40,
           icon: const Icon(Icons.skip_next_rounded),
         ),
         IconButton(
-          onPressed: actions.cycleRepeat,
+          onPressed: () => actions().cycleRepeat(),
           tooltip: t(switch (repeat) {
             RepeatMode.off => PlayerKeys.controlsRepeatOff,
             RepeatMode.all => PlayerKeys.controlsRepeatAll,
@@ -376,8 +673,8 @@ class _Transport extends ConsumerWidget {
                 ? Icons.repeat_one_rounded
                 : Icons.repeat_rounded,
             color: repeat == RepeatMode.off
-                ? ChordiaColors.mutedForeground
-                : ChordiaColors.accent,
+                ? theme.colorScheme.onSurfaceVariant
+                : theme.colorScheme.primary,
           ),
         ),
       ],
@@ -394,6 +691,7 @@ class _PlayButton extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = ref.t;
+    final theme = Theme.of(context);
     return SizedBox(
       width: 68,
       height: 68,
@@ -403,12 +701,12 @@ class _PlayButton extends ConsumerWidget {
           // A ring around the button rather than a spinner in place of it: replacing the glyph
           // would take the control away at the exact moment somebody is most likely to press it.
           if (buffering)
-            const SizedBox(
+            SizedBox(
               width: 68,
               height: 68,
               child: CircularProgressIndicator(
                 strokeWidth: 2,
-                color: ChordiaColors.accent,
+                color: theme.colorScheme.primary,
               ),
             ),
           FilledButton(
@@ -441,6 +739,9 @@ class _PlayButton extends ConsumerWidget {
 /// The gesture is the one every music app has, and the reason it is hand-rolled rather than a
 /// `DismissiblePageRoute` is that the screen has to follow the finger *and* spring back when the
 /// drag does not earn a dismissal — a route transition driven by a plain animation does neither.
+///
+/// A list inside a tab wins the vertical drag over this, because the scrollable is deeper in the
+/// hit test: reading lyrics or reordering the queue scrolls, and the artwork still throws away.
 class _DragToDismiss extends StatefulWidget {
   const _DragToDismiss({required this.child});
 

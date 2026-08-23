@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:chordia_api/chordia_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,8 +9,10 @@ import '../../i18n/keys.g.dart';
 import '../../i18n/translations_provider.dart';
 import '../../widgets/cover_art.dart';
 import '../libraries/libraries_home_screen.dart';
+import '../nav/nav_drawer.dart';
 import 'catalog_browse_screen.dart';
 import 'data/library_providers.dart';
+import 'data/pins.dart';
 import 'downloads_screen.dart';
 import 'liked_screen.dart';
 import 'playlist_detail_screen.dart';
@@ -32,7 +36,12 @@ class LibraryScreen extends ConsumerWidget {
     final libraries = ref.watch(myLibrariesProvider);
 
     return Scaffold(
-      appBar: AppBar(title: Text(t(CommonKeys.navLibrary))),
+      appBar: AppBar(
+        // A tab root: the web's top bar puts the drawer's hamburger at exactly this spot, and
+        // [NavMenuButton] falls back to the ordinary back button on a pushed screen.
+        leading: const NavMenuButton(),
+        title: Text(t(CommonKeys.navLibrary)),
+      ),
       body: RefreshIndicator(
         onRefresh: () async {
           ref
@@ -173,7 +182,8 @@ class _PinnedShelf extends ConsumerWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             itemCount: rows.length,
             separatorBuilder: (context, index) => const SizedBox(width: 12),
-            itemBuilder: (context, index) => _PinTile(pin: rows[index]),
+            itemBuilder: (context, index) =>
+                _PinTile(pin: rows[index], index: index, count: rows.length),
           ),
         ),
         const Divider(height: 24),
@@ -183,9 +193,15 @@ class _PinnedShelf extends ConsumerWidget {
 }
 
 class _PinTile extends ConsumerWidget {
-  const _PinTile({required this.pin});
+  const _PinTile({required this.pin, required this.index, required this.count});
 
   final PinnedItem pin;
+
+  /// Where this pin sits on the shelf, and how long the shelf is — the two facts the reorder
+  /// actions need. The Hub has no "move one pin" call, so a move is expressed as the whole shelf
+  /// in a new order and the arithmetic has to happen where the positions are known.
+  final int index;
+  final int count;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -210,6 +226,10 @@ class _PinTile extends ConsumerWidget {
       width: 108,
       child: InkWell(
         onTap: open,
+        // The shelf's only editing surface. The web client reorders it by dragging in the sidebar
+        // and unpins from each entity's own menu; neither gesture exists on a phone, so without
+        // this a listener could fill the shelf and never change it again.
+        onLongPress: () => unawaited(_edit(context, ref)),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -233,6 +253,53 @@ class _PinTile extends ConsumerWidget {
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _edit(BuildContext context, WidgetRef ref) async {
+    final t = ref.read(translationsProvider).call;
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            ListTile(
+              title: Text(pin.name),
+              subtitle: Text(t(LibraryKeys.sidebarPinned)),
+            ),
+            const Divider(height: 1),
+            ListTile(
+              leading: const Icon(Icons.arrow_upward_rounded),
+              title: Text(t(CommonKeys.actionsMoveUp)),
+              enabled: index > 0,
+              onTap: () {
+                Navigator.of(sheetContext).pop();
+                unawaited(movePin(context, ref, from: index, to: index - 1));
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.arrow_downward_rounded),
+              title: Text(t(CommonKeys.actionsMoveDown)),
+              enabled: index < count - 1,
+              onTap: () {
+                Navigator.of(sheetContext).pop();
+                unawaited(movePin(context, ref, from: index, to: index + 1));
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.push_pin_outlined),
+              title: Text(t(CommonKeys.actionsUnpin)),
+              onTap: () {
+                Navigator.of(sheetContext).pop();
+                unawaited(togglePin(context, ref, kind: pin.kind, id: pin.id));
+              },
             ),
           ],
         ),

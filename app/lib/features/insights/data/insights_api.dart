@@ -99,6 +99,23 @@ abstract interface class InsightsApi {
   Future<Compatibility> compatibility(String handle);
 
   Future<List<FriendScrobble>> friendsActivity({int? limit});
+
+  /// The nth play of a listener's history — "what was my 5,000th song?".
+  ///
+  /// 404 past the end of the history, which is the one failure worth wording: everything else is a
+  /// server that could not be reached.
+  Future<Milestone> milestone(InsightsQuery query, int n);
+
+  /// The caller's own numbers for one catalog entity — the entity stats page.
+  ///
+  /// Always about the caller: `/v1/insights/entity` takes no `user`, because "how do I play this"
+  /// is a question only the asker's own history can answer.
+  Future<EntityStats> entityStats(
+    EntityKind kind,
+    String id, {
+    Period? period,
+    String? tz,
+  });
 }
 
 /// [InsightsApi] over the real Hub.
@@ -187,6 +204,18 @@ class HubInsightsApi implements InsightsApi {
   @override
   Future<List<FriendScrobble>> friendsActivity({int? limit}) =>
       _hub.friendsActivity(limit: limit);
+
+  @override
+  Future<Milestone> milestone(InsightsQuery query, int n) =>
+      _hub.milestone(n: n, user: query.handle);
+
+  @override
+  Future<EntityStats> entityStats(
+    EntityKind kind,
+    String id, {
+    Period? period,
+    String? tz,
+  }) => _hub.entityStats(kind: kind, id: id, period: period, tz: tz);
 }
 
 /// Thrown when an insights screen is somehow reached with no hub selected.

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:chordia_api/chordia_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,6 +10,9 @@ import '../library/data/formatting.dart';
 import '../library/data/library_providers.dart';
 import '../library/widgets/library_states.dart';
 import 'data/libraries_providers.dart';
+import 'icon_picker_sheet.dart';
+import 'libraries_home_screen.dart';
+import 'library_icons.dart';
 import 'overrides_screen.dart';
 import 'share_library_sheet.dart';
 
@@ -64,10 +69,13 @@ class _LibraryManageScreenState extends ConsumerState<LibraryManageScreen> {
               const Divider(),
               if (widget.owned) ...[
                 _rename(summary, t),
+                _icon(summary, t),
                 const Divider(),
                 _sharing(t),
                 const Divider(),
                 _overrides(t),
+                const Divider(),
+                _remove(summary, t),
               ] else
                 Padding(
                   padding: const EdgeInsets.all(16),
@@ -166,6 +174,56 @@ class _LibraryManageScreenState extends ConsumerState<LibraryManageScreen> {
     trailing: const Icon(Icons.chevron_right_rounded),
     onTap: () => _renameDialog(summary, t),
   );
+
+  /// The icon this library wears everywhere it is listed.
+  ///
+  /// Stored as a slug (or `emoji:` plus a literal emoji), which is what makes it the SAME icon on
+  /// the web client — the column holds a name both clients agree on, never a drawing.
+  Widget _icon(LibrarySummary summary, Translate t) => ListTile(
+    leading: LibraryIcon(
+      icon: summary.icon,
+      color: Theme.of(context).colorScheme.onSurfaceVariant,
+    ),
+    title: Text(t(LibraryKeys.editIconLabel)),
+    trailing: const Icon(Icons.chevron_right_rounded),
+    onTap: () => unawaited(_pickIcon(summary, t)),
+  );
+
+  Future<void> _pickIcon(LibrarySummary summary, Translate t) async {
+    final chosen = await showLibraryIconPicker(context, current: summary.icon);
+    if (chosen == null || chosen == summary.icon) return;
+    final api = ref.read(librariesApiProvider);
+    if (api == null) return;
+    try {
+      await api.update(summary.id, UpdateLibraryRequest(icon: chosen));
+      ref
+        ..invalidate(libraryDetailProvider(widget.libraryId))
+        ..invalidate(myLibrariesProvider);
+      if (mounted) _snack(t(LibraryKeys.editIconSaved));
+    } on Object {
+      if (mounted) _snack(t(LibraryKeys.editIconSaveFailed));
+    }
+  }
+
+  /// Removing the library from the Hub. Last, and on its own, because it is the one action here
+  /// that cannot be undone by doing it again.
+  Widget _remove(LibrarySummary summary, Translate t) => ListTile(
+    leading: Icon(
+      Icons.delete_outline_rounded,
+      color: Theme.of(context).colorScheme.error,
+    ),
+    title: Text(t(LibraryKeys.editRemoveTitle)),
+    subtitle: Text(t(LibraryKeys.editRemoveHelp)),
+    onTap: () => unawaited(_removeLibrary(summary)),
+  );
+
+  Future<void> _removeLibrary(LibrarySummary summary) async {
+    if (await confirmRemoveLibrary(context, ref, summary) && mounted) {
+      // The page has to go with it: a library that is no longer in the directory has nothing left
+      // to read, and its own refresh would fail on the way to saying so.
+      Navigator.of(context).pop();
+    }
+  }
 
   Future<void> _renameDialog(LibrarySummary summary, Translate t) async {
     final field = TextEditingController(text: summary.name);
