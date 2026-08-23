@@ -52,9 +52,9 @@ class DevicePickerSheet extends ConsumerWidget {
 
     return SafeArea(
       child: DecoratedBox(
-        decoration: const BoxDecoration(
-          color: ChordiaColors.paneRaised,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        decoration: BoxDecoration(
+          color: context.surfaces.paneRaised,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -147,7 +147,9 @@ class _DeviceRow extends ConsumerWidget {
       onTap: onTap,
       leading: Icon(
         Icons.speaker_rounded,
-        color: isTarget ? ChordiaColors.accent : ChordiaColors.mutedForeground,
+        color: isTarget
+            ? context.surfaces.accent
+            : ChordiaColors.mutedForeground,
       ),
       title: Text(device.label, maxLines: 1, overflow: TextOverflow.ellipsis),
       subtitle: isLocal ? Text(t(PlayerKeys.devicesThisDevice)) : null,
@@ -155,15 +157,15 @@ class _DeviceRow extends ConsumerWidget {
           ? Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(
+                Icon(
                   Icons.check_rounded,
                   size: 18,
-                  color: ChordiaColors.accent,
+                  color: context.surfaces.accent,
                 ),
                 const SizedBox(width: 6),
                 Text(
                   t(PlayerKeys.devicesCurrent),
-                  style: const TextStyle(color: ChordiaColors.accent),
+                  style: TextStyle(color: context.surfaces.accent),
                 ),
               ],
             )

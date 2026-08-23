@@ -62,14 +62,14 @@ class QualityButton extends ConsumerWidget {
             limited ? Icons.warning_amber_rounded : Icons.graphic_eq_rounded,
             size: 18,
             color: limited
-                ? ChordiaColors.accent
+                ? context.surfaces.accent
                 : ChordiaColors.mutedForeground,
           ),
           label: Text(
             t(_labelKeyOf(status.playing)),
             style: TextStyle(
               color: limited
-                  ? ChordiaColors.accent
+                  ? context.surfaces.accent
                   : ChordiaColors.mutedForeground,
             ),
           ),
@@ -95,9 +95,9 @@ class QualitySheet extends ConsumerWidget {
 
     return SafeArea(
       child: DecoratedBox(
-        decoration: const BoxDecoration(
-          color: ChordiaColors.paneRaised,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        decoration: BoxDecoration(
+          color: context.surfaces.paneRaised,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
         ),
         child: ValueListenableBuilder<QualityStatus>(
           valueListenable: control.status,
@@ -216,7 +216,7 @@ class _TierRow extends ConsumerWidget {
       leading: Icon(
         playing ? Icons.graphic_eq_rounded : Icons.circle_outlined,
         color: playing
-            ? ChordiaColors.accent
+            ? context.surfaces.accent
             : ChordiaColors.mutedForeground.withValues(alpha: 0.5),
         size: 20,
       ),
@@ -256,14 +256,14 @@ class _Chip extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
     decoration: BoxDecoration(
-      color: ChordiaColors.accent.withValues(alpha: 0.16),
+      color: context.surfaces.accent.withValues(alpha: 0.16),
       borderRadius: BorderRadius.circular(999),
     ),
     child: Text(
       label,
       style: Theme.of(
         context,
-      ).textTheme.labelSmall?.copyWith(color: ChordiaColors.accent),
+      ).textTheme.labelSmall?.copyWith(color: context.surfaces.accent),
     ),
   );
 }

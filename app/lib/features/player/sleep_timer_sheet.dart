@@ -35,9 +35,9 @@ class _SleepTimerSheet extends ConsumerWidget {
 
     return SafeArea(
       child: DecoratedBox(
-        decoration: const BoxDecoration(
-          color: ChordiaColors.paneRaised,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        decoration: BoxDecoration(
+          color: context.surfaces.paneRaised,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -70,7 +70,7 @@ class _SleepTimerSheet extends ConsumerWidget {
               // becomes a wall-clock deadline the moment it is set, so which option produced it is
               // no longer knowable — and guessing from the remaining time would tick out of date.
               trailing: armed is SleepAtTrackEnd
-                  ? const Icon(Icons.check_rounded, color: ChordiaColors.accent)
+                  ? Icon(Icons.check_rounded, color: context.surfaces.accent)
                   : null,
             ),
             if (armed != null)

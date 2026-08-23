@@ -68,7 +68,7 @@ class UpdateSheet extends ConsumerWidget {
     final running = ref.watch(appVersionProvider).value;
 
     return Material(
-      color: ChordiaColors.paneRaised,
+      color: context.surfaces.paneRaised,
       elevation: 12,
       borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
       child: SafeArea(
@@ -84,7 +84,7 @@ class UpdateSheet extends ConsumerWidget {
                   width: 36,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: ChordiaColors.line,
+                    color: context.surfaces.line,
                     borderRadius: BorderRadius.circular(999),
                   ),
                 ),

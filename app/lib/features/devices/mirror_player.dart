@@ -62,9 +62,9 @@ class MirrorPlayerScreen extends ConsumerWidget {
     final transport = ref.watch(meshTransportProvider);
 
     return Scaffold(
-      backgroundColor: ChordiaColors.pane,
+      backgroundColor: context.surfaces.pane,
       appBar: AppBar(
-        backgroundColor: ChordiaColors.pane,
+        backgroundColor: context.surfaces.pane,
         title: Text(
           t(PlayerKeys.devicesPlayingOn, {
             'device': mirror.deviceLabel ?? t(PlayerKeys.remoteUnnamedDevice),
@@ -164,7 +164,7 @@ class MirrorBar extends ConsumerWidget {
     final transport = ref.watch(meshTransportProvider);
 
     return Material(
-      color: ChordiaColors.paneRaised,
+      color: context.surfaces.paneRaised,
       child: InkWell(
         onTap: () => openMirrorPlayer(context),
         child: SizedBox(
@@ -196,7 +196,7 @@ class MirrorBar extends ConsumerWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color: ChordiaColors.accent,
+                        color: context.surfaces.accent,
                       ),
                     ),
                   ],
@@ -286,7 +286,7 @@ class _MirrorScrubberState extends ConsumerState<_MirrorScrubber> {
             trackHeight: 3,
             overlayShape: const RoundSliderOverlayShape(overlayRadius: 16),
             thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
-            inactiveTrackColor: ChordiaColors.line,
+            inactiveTrackColor: context.surfaces.line,
           ),
           child: Slider(
             value: currentMs,
@@ -348,7 +348,7 @@ class _MirrorTransport extends ConsumerWidget {
           icon: Icon(
             Icons.shuffle_rounded,
             color: mirror.shuffle
-                ? ChordiaColors.accent
+                ? context.surfaces.accent
                 : ChordiaColors.mutedForeground,
           ),
         ),
@@ -365,12 +365,12 @@ class _MirrorTransport extends ConsumerWidget {
             alignment: Alignment.center,
             children: [
               if (mirror.buffering)
-                const SizedBox(
+                SizedBox(
                   width: 68,
                   height: 68,
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
-                    color: ChordiaColors.accent,
+                    color: context.surfaces.accent,
                   ),
                 ),
               FilledButton(
@@ -418,7 +418,7 @@ class _MirrorTransport extends ConsumerWidget {
                 : Icons.repeat_rounded,
             color: mirror.repeat == sync.RepeatMode.off
                 ? ChordiaColors.mutedForeground
-                : ChordiaColors.accent,
+                : context.surfaces.accent,
           ),
         ),
       ],
