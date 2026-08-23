@@ -187,7 +187,11 @@ class _ProfileViewState extends ConsumerState<_ProfileView> {
               // Hub then buckets in their own timezone setting instead of resolving it again.
               handle: own ? null : widget.handle,
               own: own,
-              shareHandle: own ? widget.handle : null,
+              // Always this profile's handle, never the viewer's. The card is stamped with whoever
+              // the report is about, which is what makes it publishable from somebody else's page:
+              // hiding the button there was solving a privacy problem the stamp already solves,
+              // and it left a listener unable to post the friend's rotation they were looking at.
+              shareHandle: widget.handle,
             ),
         ],
         const SizedBox(height: 32),

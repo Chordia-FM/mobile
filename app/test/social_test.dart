@@ -575,10 +575,11 @@ Widget _account(FakeAccountApi account) => ProviderScope(
     // The test binding answers every platform channel with an error, so a real picker would fail
     // on the channel rather than on anything under test.
     imagePickerProvider.overrideWithValue(
-      ({required int maxWidth}) async => PickedImage(
-        bytes: Uint8List.fromList([1, 2, 3]),
-        contentType: 'image/jpeg',
-      ),
+      ({required int maxWidth, bool allowAnimated = false}) async =>
+          PickedImage(
+            bytes: Uint8List.fromList([1, 2, 3]),
+            contentType: 'image/jpeg',
+          ),
     ),
   ],
   child: MaterialApp(theme: buildChordiaTheme(), home: const AccountScreen()),

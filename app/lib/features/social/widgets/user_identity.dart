@@ -1,11 +1,13 @@
 import 'package:chordia_api/chordia_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 
 import '../../../data/art/art_cache.dart';
 import '../../../i18n/keys.g.dart';
 import '../../../i18n/translations_provider.dart';
 import '../../../widgets/cover_art.dart';
+import 'badge_art.dart';
 
 /// Somebody's picture, or their initial.
 ///
@@ -156,10 +158,31 @@ double _parseAlpha(String? text) {
   return (percent ? number / 100 : number).clamp(0, 1).toDouble();
 }
 
-/// The badges an account carries, as a row of chips.
+/// Display order, most specific first.
+///
+/// Identity before status: who someone IS on this instance (developer, staff) reads before what
+/// they have done (early, supporting). The tier badges come last because they are the only ones
+/// that can change every month, and a row whose leading item moves is a row that never looks
+/// settled. The Hub sends them in whatever order it stored them, so without this a profile's
+/// badges reshuffle between reads.
+const _badgeOrder = [
+  'developer',
+  'staff',
+  'translator',
+  'early_supporter',
+  'early_bird',
+  'super_sonic',
+  'sonic',
+];
+
+/// The badges an account carries, as a row of records.
 ///
 /// Shown even on a withheld profile: a badge is identity, like the handle, and hiding it would make
 /// a moderator unrecognisable on exactly the profile where knowing they are staff matters.
+///
+/// Tapping one explains it. The web hovers for that, which does not exist on a phone, and the
+/// chip it replaced answered a tap with silence — so the detail the web puts in its hover card is
+/// a sheet here, and it is the badge's only action.
 class BadgeRow extends ConsumerWidget {
   const BadgeRow({
     required this.badges,
@@ -172,7 +195,11 @@ class BadgeRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final held = badges ?? const <ProfileBadge>[];
+    final held = [...?badges]
+      ..sort(
+        (a, b) =>
+            _badgeOrder.indexOf(a.kind).compareTo(_badgeOrder.indexOf(b.kind)),
+      );
     if (held.isEmpty) return const SizedBox.shrink();
     final t = ref.t;
     final theme = Theme.of(context);
@@ -182,27 +209,174 @@ class BadgeRow extends ConsumerWidget {
       alignment: alignment,
       children: [
         for (final badge in held)
-          Chip(
-            visualDensity: VisualDensity.compact,
-            avatar: Icon(_badgeIcon(badge), size: 16),
-            label: Text(_badgeLabel(badge, t)),
-            labelStyle: theme.textTheme.labelSmall,
-            padding: const EdgeInsets.symmetric(horizontal: 4),
+          InkWell(
+            borderRadius: BorderRadius.circular(999),
+            onTap: () => showBadgeDetail(context, badge),
+            child: Padding(
+              // The badge art is 28px, which is below the touch minimum on its own; the padding is
+              // what makes the whole chip the target rather than the disc.
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  BadgeArt(badge: badge, size: 28),
+                  const SizedBox(width: 6),
+                  Text(
+                    _badgeLabel(badge, t),
+                    style: theme.textTheme.labelSmall,
+                  ),
+                ],
+              ),
+            ),
           ),
       ],
     );
   }
 }
 
-IconData _badgeIcon(ProfileBadge badge) => switch (badge) {
-  ProfileBadgeDeveloper() => Icons.code_rounded,
-  ProfileBadgeStaff() => Icons.shield_rounded,
-  ProfileBadgeTranslator() => Icons.translate_rounded,
-  ProfileBadgeEarlyBird() => Icons.album_rounded,
-  ProfileBadgeEarlySupporter() => Icons.workspace_premium_rounded,
-  ProfileBadgeSonic() => Icons.graphic_eq_rounded,
-  ProfileBadgeSuperSonic() => Icons.auto_awesome_rounded,
+/// One badge, at a size where it can actually be read, beside what it means.
+///
+/// A badge at 28px is an identifier — you recognise which one it is, you cannot read it. This is
+/// where the engraving, the rank number and the Super-Sonic stage rings are legible, and where the
+/// three questions a badge on a stranger's profile raises get answered: which one is it, since
+/// when, and why does this person have it.
+Future<void> showBadgeDetail(BuildContext context, ProfileBadge badge) =>
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (_) => _BadgeDetail(badge: badge),
+    );
+
+class _BadgeDetail extends ConsumerWidget {
+  const _BadgeDetail({required this.badge});
+
+  final ProfileBadge badge;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = ref.t;
+    final theme = Theme.of(context);
+    final locale = ref.watch(translationsProvider).locale;
+    final stage = badge is ProfileBadgeSuperSonic
+        ? stageFor((badge as ProfileBadgeSuperSonic).streakMonths)
+        : null;
+    final detail = _badgeDetail(badge, t, locale);
+
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                BadgeArt(badge: badge, size: 96),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        _badgeLabel(badge, t),
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      if (stage != null)
+                        Text(
+                          '${stage.stage}. ${t(_stageKey(stage.key))}',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.primary,
+                          ),
+                        ),
+                      if (detail != null) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          detail,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            // What the badge is FOR. The title says which one it is and the detail says since
+            // when; neither answers "why does this person have it".
+            Text(
+              t(_aboutKey(badge)),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+String _stageKey(String key) => switch (key) {
+  'spark' => SocialKeys.badgesStageSpark,
+  'orbit' => SocialKeys.badgesStageOrbit,
+  'nova' => SocialKeys.badgesStageNova,
+  _ => SocialKeys.badgesStageDiamond,
 };
+
+String _aboutKey(ProfileBadge badge) => switch (badge) {
+  ProfileBadgeDeveloper() => SocialKeys.badgesAboutDeveloper,
+  ProfileBadgeStaff() => SocialKeys.badgesAboutStaff,
+  ProfileBadgeTranslator() => SocialKeys.badgesAboutTranslator,
+  ProfileBadgeEarlyBird() => SocialKeys.badgesAboutEarlyBird,
+  ProfileBadgeEarlySupporter() => SocialKeys.badgesAboutEarlySupporter,
+  ProfileBadgeSonic() => SocialKeys.badgesAboutSonic,
+  ProfileBadgeSuperSonic() => SocialKeys.badgesAboutSuperSonic,
+};
+
+/// The line under the title.
+///
+/// Every badge answers "since when", because that is the question a badge on a stranger's profile
+/// actually raises, and because for the two premium ones the answer is the thing being rewarded.
+String? _badgeDetail(
+  ProfileBadge badge,
+  String Function(String, [Map<String, Object?>]) t,
+  String locale,
+) {
+  String date(int ms) =>
+      DateFormat.yMMMd(locale).format(DateTime.fromMillisecondsSinceEpoch(ms));
+  return switch (badge) {
+    ProfileBadgeDeveloper(:final tagline) => tagline,
+    ProfileBadgeStaff() => t(SocialKeys.badgesStaffDetail),
+    // The languages ARE the detail, and the badge is not granted without them.
+    ProfileBadgeTranslator(:final languages) => languages,
+    // The position is the interesting half — "since June" is a fact, "the 41st account here" is
+    // the claim. Falls back to the date alone when the Hub could not resolve a position.
+    ProfileBadgeEarlyBird(:final joinedAt, :final position) =>
+      position == null || position <= 0
+          ? t(SocialKeys.badgesEarlyBirdDetail, {'date': date(joinedAt)})
+          : t(SocialKeys.badgesEarlyBirdDetailRanked, {
+              'position': position,
+              'date': date(joinedAt),
+            }),
+    ProfileBadgeEarlySupporter(:final rank, :final since) => t(
+      SocialKeys.badgesEarlySupporterDetail,
+      {'rank': rank, 'date': date(since)},
+    ),
+    // The streak, not the total. It resets if a subscription actually lapses and survives
+    // everything else — switching tier, switching interval, cancelling and coming back before the
+    // period runs out. That distinction is the whole meaning of the number.
+    ProfileBadgeSonic(:final streakMonths, :final since) ||
+    ProfileBadgeSuperSonic(:final streakMonths, :final since) => t(
+      SocialKeys.badgesPremiumDetail,
+      {'count': streakMonths, 'date': date(since)},
+    ),
+  };
+}
 
 /// The badge's own name — the staff badge says which role, because "Staff" alone is the one label
 /// that leaves the reader with the question the badge exists to answer.

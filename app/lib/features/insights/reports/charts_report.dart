@@ -9,6 +9,7 @@ import '../../social/data/social_messages.dart';
 import '../data/insights_providers.dart';
 import '../entity_stats_screen.dart';
 import '../format.dart';
+import '../widgets/insights_charts.dart';
 import '../widgets/insights_primitives.dart';
 
 /// A day's worth of milliseconds, for reading a window's length off its bounds.
@@ -55,6 +56,14 @@ class _ChartsReportState extends ConsumerState<ChartsReport> {
                   BarDatum(weekdayLabel(day, t), plays),
               ],
             ),
+          ],
+          // Below about three weeks each (weekday, hour) cell holds at most a couple of samples —
+          // noise, not a pattern — so the 7x24 grid only appears once the window can feed it. The
+          // clock and weekday bars above always show, so nothing vanishes on a short period; the
+          // grid is their cross, not a replacement for either.
+          if (_windowDays(value) >= 21) ...[
+            ReportHeading(title: t(InsightsKeys.panelsClockHeatmap)),
+            ClockGridHeatmap(grid: value.clockGrid),
           ],
           ReportHeading(
             title: t(switch (_kind) {
@@ -124,9 +133,24 @@ class _Activity extends ConsumerWidget {
     if (charts.overTime.every((bucket) => bucket.plays == 0)) {
       return ReportEmpty(title: t(InsightsKeys.chartNoActivityPeriod));
     }
-    // A year of daily buckets is 365 rows, which is a scroll rather than a chart. The tail is what
-    // a reader is actually asking about ("how have I been listening lately"), so the most recent
-    // stretch is what gets drawn.
+    // One over-time view, never two of the same data. Bar rows while individual days still read as
+    // a trend; past about twenty weeks a calendar, because a year of daily cells shows streaks and
+    // seasonality that 365 stacked rows cannot — and the truncation those rows needed was answering
+    // a question nobody asked, since "the last 30 days" is a different report from "this year".
+    final windowDays = (charts.windowEnd - charts.windowStart) ~/ _dayMs;
+    if (charts.granularity == BucketGranularity.day && windowDays >= 140) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          ReportHeading(title: t(InsightsKeys.panelsActivity)),
+          CalendarHeatmap(
+            buckets: charts.overTime,
+            windowStart: charts.windowStart,
+            windowEnd: charts.windowEnd,
+          ),
+        ],
+      );
+    }
     final buckets = charts.overTime.length > 30
         ? charts.overTime.sublist(charts.overTime.length - 30)
         : charts.overTime;
@@ -197,7 +221,7 @@ class _FullChart extends ConsumerWidget {
                   ),
                 ),
                 for (final entry in value.entries)
-                  _ChartRow(entry: entry, kind: value.kind, own: own),
+                  _ChartRow(entry: entry, kind: value.kind),
                 if (value.nextOffset != null)
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
@@ -235,13 +259,10 @@ class _FullChart extends ConsumerWidget {
 }
 
 class _ChartRow extends ConsumerWidget {
-  const _ChartRow({required this.entry, required this.kind, required this.own});
+  const _ChartRow({required this.entry, required this.kind});
 
   final ChartEntry entry;
   final EntityKind kind;
-
-  /// Whether this chart is the reader's own. Gates the entity page — see [build].
-  final bool own;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -270,17 +291,14 @@ class _ChartRow extends ConsumerWidget {
         overflow: TextOverflow.ellipsis,
       ),
       // Drilling from "what did I play" into "how do I play it" is the whole point of the entity
-      // page, and a ranked row is where that question is asked. Only the reader's own chart opens
-      // it: `/v1/insights/entity` reports on the caller, so opening it from somebody else's chart
-      // would put the reader's own numbers under that person's row.
-      onTap: !own
-          ? null
-          : () => showEntityStats(
-              context,
-              kind: kind,
-              id: entry.id,
-              name: entry.name,
-            ),
+      // page, and a ranked row is where that question is asked — on anybody's chart. This used to
+      // be gated on the chart being the reader's own, on the grounds that `/v1/insights/entity`
+      // reports on the caller; that left row 87 of a friend's chart with nowhere to go at all,
+      // which is worse. The web links every row for the same reason, and the page it opens is
+      // written throughout in the second person ("of N artists you played"), so it cannot be
+      // mistaken for a report about the profile it was opened from.
+      onTap: () =>
+          showEntityStats(context, kind: kind, id: entry.id, name: entry.name),
       trailing: _RankMove(rank: entry.rank, previous: entry.prevRank),
     );
   }

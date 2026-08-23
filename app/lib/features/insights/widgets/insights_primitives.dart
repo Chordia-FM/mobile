@@ -7,9 +7,12 @@ import '../../../i18n/keys.g.dart';
 import '../../../i18n/translations_provider.dart';
 import '../../../widgets/cover_art.dart';
 import '../../catalog/catalog_routes.dart';
+import '../../catalog/format.dart';
+import '../../catalog/widgets/artist_links.dart';
 import '../../catalog/widgets/catalog_state.dart';
 import '../data/insights_providers.dart';
 import '../format.dart';
+import 'top_entity_card.dart' show openEntity;
 
 /// The reporting-window pills.
 ///
@@ -118,7 +121,7 @@ class StatTile extends ConsumerWidget {
               fontWeight: FontWeight.w700,
             ),
           ),
-          if (change != null) _Delta(change: change),
+          if (change != null) DeltaLabel(change: change),
         ],
       ),
     );
@@ -126,8 +129,8 @@ class StatTile extends ConsumerWidget {
 }
 
 /// "+18%" / "−7%" / "No change", against the previous window.
-class _Delta extends ConsumerWidget {
-  const _Delta({required this.change});
+class DeltaLabel extends ConsumerWidget {
+  const DeltaLabel({required this.change, super.key});
 
   final double change;
 
@@ -198,17 +201,27 @@ class StatGrid extends StatelessWidget {
 
 /// A ranked list of entities: rank, artwork, name, plays and time.
 ///
-/// Rows link into the catalog where the entity has a page there. Genres are not catalog entities,
-/// so they carry no artwork and no destination — passing a null [kind] is what says so, and it also
-/// stops the row rendering a cover slot that could only ever be empty.
+/// Rows link into the catalog. Genres get [TopList.genres] rather than a sixth [EntityKind]: they
+/// are not catalog entities, so they carry no artwork (a cover slot that could only ever be empty
+/// reads as a broken image on every row) and they key off a slug of their name rather than off
+/// `item.id`, which for a genre is a hash of that name the catalog has never heard of.
 class TopList extends ConsumerWidget {
-  const TopList({required this.items, super.key, this.kind, this.limit});
+  const TopList({required this.items, super.key, this.kind, this.limit})
+    : _genres = false;
+
+  /// The top-genre rows, each opening its genre page — the same destination an album header's
+  /// genre chips already use.
+  const TopList.genres({required this.items, super.key, this.limit})
+    : kind = null,
+      _genres = true;
 
   final List<TopItem> items;
   final EntityKind? kind;
 
   /// Rows to show. Null shows everything the report returned.
   final int? limit;
+
+  final bool _genres;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -252,7 +265,10 @@ class TopList extends ConsumerWidget {
               ),
             ),
             title: Text(
-              item.name,
+              // The catalog stores genres lower-cased, and every other surface title-cases them on
+              // the way out. A row reading "hip hop" beside a chip reading "Hip Hop" looks like
+              // two different tags rather than one.
+              _genres ? titleCaseGenre(item.name) : item.name,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
@@ -262,18 +278,15 @@ class TopList extends ConsumerWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
-            onTap: kind == null ? null : () => _open(context, kind!, item.id),
+            onTap: _genres
+                ? () => context.goToGenre(genreSlug(item.name))
+                : kind == null
+                ? null
+                : () => openEntity(context, kind!, item.id),
           ),
       ],
     );
   }
-
-  void _open(BuildContext context, EntityKind kind, String id) =>
-      switch (kind) {
-        EntityKind.artist => context.goToArtist(id),
-        EntityKind.album => context.goToAlbum(id),
-        EntityKind.track => context.goToTrack(id),
-      };
 }
 
 /// One play in a feed: cover, title, who by, and how long ago.
@@ -285,6 +298,7 @@ class PlayRow extends ConsumerWidget {
     super.key,
     this.imageUrl,
     this.trackId,
+    this.artistId,
     this.footnote,
   });
 
@@ -295,6 +309,11 @@ class PlayRow extends ConsumerWidget {
 
   /// Set when the scrobble matched the catalog, which is what makes the row openable.
   final String? trackId;
+
+  /// The resolved primary artist, when the scrobble matched one. Present, it makes the credited
+  /// name its own tap target: the row already answers "what was this", and "who is this" is a
+  /// different question that was costing a trip through the track page to ask.
+  final String? artistId;
 
   /// An extra fact after the timestamp — whose play this was, on a shared feed.
   final String? footnote;
@@ -311,10 +330,24 @@ class PlayRow extends ConsumerWidget {
       contentPadding: const EdgeInsets.symmetric(horizontal: 16),
       leading: CoverArt(sha256: artHashOf(imageUrl), size: 44),
       title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
-      subtitle: Text(
-        footnote == null ? '$artist · $when' : '$artist · $when · $footnote',
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
+      subtitle: Row(
+        children: [
+          // The artist is a link rather than the head of a joined string. `ArtistLinks` with no
+          // credit list is exactly this case — one name, one destination — and going through it
+          // keeps a credited name looking and behaving here as it does in a track list.
+          Flexible(
+            child: ArtistLinks(
+              artists: null,
+              fallbackName: artist,
+              fallbackId: artistId,
+            ),
+          ),
+          Text(
+            footnote == null ? ' · $when' : ' · $when · $footnote',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
       ),
       onTap: trackId == null ? null : () => context.goToTrack(trackId!),
     );
