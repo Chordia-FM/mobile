@@ -1,0 +1,18 @@
+# Release signing. Copy to key.properties (same directory) and fill in.
+#
+# key.properties and *.jks are gitignored — nothing here ever reaches the repository. Without the
+# file, release builds are signed with the debug key: fine for trying a build on your own phone,
+# not fine for anything anyone else installs, because Android will not update an app whose signer
+# has changed.
+#
+# Make a keystore once, and then never lose it — the signing key is the app's identity, and a
+# replacement means every existing install has to be uninstalled before it can update:
+#
+#   keytool -genkey -v -keystore chordia-release.jks -storetype JKS \
+#           -keyalg RSA -keysize 2048 -validity 10000 -alias chordia
+#
+# storeFile is resolved relative to this directory (app/android), or given absolute.
+storeFile=chordia-release.jks
+storePassword=
+keyAlias=chordia
+keyPassword=

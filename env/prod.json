@@ -1,0 +1,5 @@
+{
+  "CHORDIA_FLAVOR": "prod",
+  "CHORDIA_DEFAULT_HUB": "https://api.chordia.fm",
+  "CHORDIA_ALLOW_INSECURE_HUBS": false
+}

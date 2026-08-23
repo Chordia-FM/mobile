@@ -1,0 +1,285 @@
+import 'package:chordia_api/chordia_api.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
+
+import '../../../i18n/keys.g.dart';
+import '../../../i18n/translations_provider.dart';
+import '../data/insights_providers.dart';
+import '../format.dart';
+import '../widgets/insights_primitives.dart';
+
+/// A day's worth of milliseconds, for reading a window's length off its bounds.
+const _dayMs = 86400000;
+
+/// The Charts tab: when the listening happened, and the full ranked chart behind the top five.
+class ChartsReport extends ConsumerStatefulWidget {
+  const ChartsReport({required this.handle, super.key, this.own = false});
+
+  final String? handle;
+
+  /// Whether the report is about the reader, which is what the catalogs' `person` select needs.
+  final bool own;
+
+  @override
+  ConsumerState<ChartsReport> createState() => _ChartsReportState();
+}
+
+class _ChartsReportState extends ConsumerState<ChartsReport> {
+  EntityKind _kind = EntityKind.artist;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = ref.t;
+    final query = ref.watch(insightsQueryProvider(widget.handle));
+    final charts = ref.watch(listeningChartsProvider(query));
+
+    return ReportBody<ListeningCharts>(
+      value: charts,
+      onRetry: () => ref.invalidate(listeningChartsProvider(query)),
+      builder: (context, value) => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _Activity(charts: value),
+          ReportHeading(title: t(InsightsKeys.panelsListeningClock)),
+          BarChart(bars: _clockBars(value, ref)),
+          // A window shorter than a fortnight spans one or two weekdays, so seven bars would be
+          // five empty ones and a claim about a pattern that cannot exist yet.
+          if (_windowDays(value) >= 14) ...[
+            ReportHeading(title: t(InsightsKeys.panelsByWeekday)),
+            BarChart(
+              bars: [
+                for (final (day, plays) in value.weekday.indexed)
+                  BarDatum(weekdayLabel(day, t), plays),
+              ],
+            ),
+          ],
+          ReportHeading(
+            title: t(switch (_kind) {
+              EntityKind.artist => InsightsKeys.topArtists,
+              EntityKind.album => InsightsKeys.topAlbums,
+              EntityKind.track => InsightsKeys.topTracks,
+            }),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: SegmentedButton<EntityKind>(
+              segments: [
+                ButtonSegment(
+                  value: EntityKind.artist,
+                  label: Text(t(InsightsKeys.discoveryKindsArtist)),
+                ),
+                ButtonSegment(
+                  value: EntityKind.album,
+                  label: Text(t(InsightsKeys.discoveryKindsAlbum)),
+                ),
+                ButtonSegment(
+                  value: EntityKind.track,
+                  label: Text(t(InsightsKeys.discoveryKindsTrack)),
+                ),
+              ],
+              selected: {_kind},
+              onSelectionChanged: (selection) =>
+                  setState(() => _kind = selection.first),
+            ),
+          ),
+          _FullChart(
+            request: ChartRequest(query: query, kind: _kind),
+            own: widget.own,
+          ),
+          const SizedBox(height: 32),
+        ],
+      ),
+    );
+  }
+
+  int _windowDays(ListeningCharts charts) =>
+      (charts.windowEnd - charts.windowStart) ~/ _dayMs;
+
+  /// One bar per local hour, labelled in the reader's own clock convention.
+  ///
+  /// `DateFormat.j` is the localisation here — it is what turns hour 13 into "1 PM" or "13:00" —
+  /// so there is no catalog string to keep in step with it. The date the hours are hung on is
+  /// arbitrary and never shown.
+  List<BarDatum> _clockBars(ListeningCharts charts, WidgetRef ref) {
+    final clock = DateFormat.j(ref.watch(translationsProvider).locale);
+    return [
+      for (final (hour, plays) in charts.clock.indexed)
+        BarDatum(clock.format(DateTime(2000, 1, 1, hour)), plays),
+    ];
+  }
+}
+
+/// Plays over the window, in whatever buckets the Hub chose.
+class _Activity extends ConsumerWidget {
+  const _Activity({required this.charts});
+
+  final ListeningCharts charts;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = ref.t;
+    if (charts.overTime.every((bucket) => bucket.plays == 0)) {
+      return ReportEmpty(title: t(InsightsKeys.chartNoActivityPeriod));
+    }
+    // A year of daily buckets is 365 rows, which is a scroll rather than a chart. The tail is what
+    // a reader is actually asking about ("how have I been listening lately"), so the most recent
+    // stretch is what gets drawn.
+    final buckets = charts.overTime.length > 30
+        ? charts.overTime.sublist(charts.overTime.length - 30)
+        : charts.overTime;
+    final locale = ref.watch(translationsProvider).locale;
+    final label = charts.granularity == BucketGranularity.month
+        ? DateFormat.yMMM(locale)
+        : DateFormat.MMMd(locale);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        ReportHeading(title: t(InsightsKeys.panelsActivity)),
+        BarChart(
+          bars: [
+            for (final bucket in buckets)
+              BarDatum(
+                label.format(DateTime.fromMillisecondsSinceEpoch(bucket.start)),
+                bucket.plays,
+              ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+/// One page of the listener's full ranked chart, with its rank movement.
+class _FullChart extends ConsumerWidget {
+  const _FullChart({required this.request, required this.own});
+
+  final ChartRequest request;
+  final bool own;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = ref.t;
+    final page = ref.watch(topChartProvider(request));
+
+    return ReportBody<ChartPage>(
+      value: page,
+      onRetry: () => ref.invalidate(topChartProvider(request)),
+      builder: (context, value) => value.entries.isEmpty
+          ? ReportEmpty(
+              title: t(InsightsKeys.chartsEmptyTitle),
+              body: t(InsightsKeys.chartsEmptyBody, personArg(own: own)),
+            )
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                  child: Text(
+                    t(InsightsKeys.chartsShowing, {
+                      'from': value.offset + 1,
+                      'to': value.offset + value.entries.length,
+                      'total': value.total,
+                    }),
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+                for (final entry in value.entries)
+                  _ChartRow(entry: entry, kind: value.kind),
+              ],
+            ),
+    );
+  }
+}
+
+class _ChartRow extends ConsumerWidget {
+  const _ChartRow({required this.entry, required this.kind});
+
+  final ChartEntry entry;
+  final EntityKind kind;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = ref.t;
+    final theme = Theme.of(context);
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+      leading: SizedBox(
+        width: 32,
+        child: Text(
+          '${entry.rank}',
+          textAlign: TextAlign.center,
+          style: theme.textTheme.titleSmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+      ),
+      title: Text(entry.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+      subtitle: Text(
+        [
+          ?entry.subtitle,
+          t(InsightsKeys.topPlaysCount, {'count': entry.plays}),
+          msToTime(entry.msPlayed, t),
+        ].join(' · '),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
+      trailing: _RankMove(rank: entry.rank, previous: entry.prevRank),
+    );
+  }
+}
+
+/// How far this entry moved since the previous window.
+class _RankMove extends ConsumerWidget {
+  const _RankMove({required this.rank, required this.previous});
+
+  final int rank;
+  final int? previous;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = ref.t;
+    final theme = Theme.of(context);
+    // No previous rank is not a fall from infinity — it means the entry was not in the last
+    // window's chart at all, which is a different fact and gets different copy.
+    if (previous == null) {
+      return Text(
+        t(InsightsKeys.chartsNew),
+        style: theme.textTheme.labelSmall?.copyWith(
+          color: theme.colorScheme.primary,
+        ),
+      );
+    }
+    final delta = previous! - rank;
+    if (delta == 0) {
+      return Text(
+        t(InsightsKeys.chartsHeld),
+        style: theme.textTheme.labelSmall?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
+      );
+    }
+    final up = delta > 0;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          up ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded,
+          size: 14,
+          color: up ? theme.colorScheme.primary : theme.colorScheme.error,
+        ),
+        Text(
+          '${delta.abs()}',
+          semanticsLabel: t(
+            up ? InsightsKeys.chartsUp : InsightsKeys.chartsDown,
+            {'count': delta.abs()},
+          ),
+          style: theme.textTheme.labelSmall,
+        ),
+      ],
+    );
+  }
+}

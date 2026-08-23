@@ -1,23 +1,32 @@
-# Flutter / Dart
+# Dart / Flutter
 .dart_tool/
 .flutter-plugins
 .flutter-plugins-dependencies
 .packages
 build/
+**/build/
 .pub-cache/
 .pub/
 
-# Generated platform projects (re-create with `flutter create .` when needed)
-# Keep our native source under android/.../kotlin and ios/Runner; ignore generated build files.
+# Platform projects ARE committed — only their build output and machine-local files are not.
 android/.gradle/
 android/local.properties
-ios/Pods/
-ios/.symlinks/
+android/key.properties
+app/android/.gradle/
+app/android/local.properties
+app/android/key.properties
+app/android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java
+app/ios/Pods/
+app/ios/.symlinks/
+app/ios/Flutter/Generated.xcconfig
+app/ios/Flutter/flutter_export_environment.sh
+app/ios/Flutter/ephemeral/
+app/ios/Runner/GeneratedPluginRegistrant.*
 
-# Env & secrets
-.env
+# Signing material — never committed, supplied by CI secrets or a local key.properties.
 *.keystore
 *.jks
+.env
 
 # OS / editor
 .DS_Store

@@ -3,15 +3,18 @@ name: CI
 on:
   push:
     branches: [main]
+    # A `v*` tag cuts a release. Every gate below runs on it first — the release job needs them —
+    # so a tag is never the first time the code is checked.
+    tags: ["v*"]
   pull_request:
     branches: [main]
 
-# Nothing pushes to this repo today — it is a scaffold, not active work — so in practice this runs
-# only when somebody opens a PR against it. That is deliberate: the gate is here and working for
-# whenever mobile becomes real, and costs nothing until then.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
+
+env:
+  FLUTTER_VERSION: "3.44.2"
 
 jobs:
   analyze:
@@ -20,16 +23,215 @@ jobs:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
         with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
+          cache: true
       - run: flutter pub get
+      - run: dart format --output=none --set-exit-if-changed .
       - run: flutter analyze
-      # `flutter test` exits 1 on `Test directory "test" not found`, which is not a failing test — it
-      # is a scaffold that has not grown any yet, and a job that is red for that reason teaches
-      # everyone to ignore it. Runs for real the moment the directory appears.
-      - name: Test, once there are tests
+
+  test:
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      # The pure-Dart packages hold the load-bearing logic — certificate pinning, the mesh
+      # protocol, queue semantics, the scrobble latch — and run on the VM with no emulator.
+      - name: Package tests
         run: |
-          if [ -d test ]; then
-            flutter test
-          else
-            echo "No test/ directory yet — skipping."
-          fi
+          for pkg in packages/*/; do
+            [ -d "$pkg/test" ] || continue
+            echo "::group::$pkg"
+            # A package that reaches Flutter — chordia_player does, through just_audio — has to run
+            # under `flutter test`. `dart test` compiles it for the plain VM, where `dart:ui` does
+            # not exist, and the failure names flutter_test's own files rather than the package.
+            if grep -q '^  flutter:' "$pkg/pubspec.yaml"; then
+              (cd "$pkg" && flutter test)
+            else
+              (cd "$pkg" && dart test)
+            fi
+            echo "::endgroup::"
+          done
+      - name: App tests
+        run: flutter test
+        working-directory: app
+
+  drift-check:
+    # Generated code and synced locale assets are committed, so a change that was never regenerated
+    # is a diff here rather than a surprise at runtime.
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check out the shared locale catalogs beside this repo
+        uses: actions/checkout@v4
+        with:
+          repository: chordia-fm/i18n
+          path: .i18n-src
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Locale assets are in sync
+        run: dart tool/sync_i18n.dart --check --source .i18n-src
+      - name: Generated API models match the vendored schema
+        run: dart tool/gen_api.dart --check
+      # build_runner has to run in the package that owns the builder; from the workspace root it
+      # finds no code and cheerfully writes nothing.
+      - name: Drift output matches the schema
+        run: dart run build_runner build
+        working-directory: packages/chordia_db
+      - name: Nothing regenerated differently
+        run: git diff --exit-code
+
+  build:
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Build dev APK
+        run: >-
+          flutter build apk --debug --flavor dev
+          -t lib/main_dev.dart
+          --dart-define-from-file=../env/dev.json
+        working-directory: app
+      - uses: actions/upload-artifact@v4
+        with:
+          name: chordia-dev-apk
+          path: app/build/app/outputs/flutter-apk/app-dev-debug.apk
+          if-no-files-found: error
+
+  release:
+    # Tag-triggered only, and only after the gates above have gone green on that exact commit — a
+    # release is the one build nobody gets to re-run after the fact.
+    #
+    # Runs on Blacksmith like everything else. There is deliberately no macOS job: iOS is not a
+    # target yet, and a GitHub-hosted macOS runner is the one thing this org has no minutes for.
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [analyze, test, drift-check]
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    permissions:
+      # For `gh release create`. Everything else in this workflow is read-only.
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # `--generate-notes` writes the changelog from the commits since the previous tag, and it
+          # can only see the ones that were fetched.
+          fetch-depth: 0
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+
+      - name: Version from the tag
+        id: version
+        run: |
+          set -euo pipefail
+          # `v0.2.0` -> `0.2.0`. This has to match what the Hub's release feed reports and what
+          # `package_info_plus` reads back on the device, or the in-app update check compares two
+          # different numbers and either never prompts or prompts forever.
+          echo "number=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Restore the release keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$KEYSTORE_BASE64" | base64 -d > app/android/chordia-release.jks
+          # A secret that is missing or did not decode must stop the run here. The Gradle config
+          # falls back to the debug key when key.properties is absent, which is right for a
+          # contributor and catastrophic for a release: Android refuses to install an APK whose
+          # signer changed, so every existing user's update would break silently.
+          test -s app/android/chordia-release.jks
+          {
+            echo "storeFile=chordia-release.jks"
+            echo "storePassword=$KEYSTORE_PASSWORD"
+            echo "keyAlias=$KEY_ALIAS"
+            echo "keyPassword=$KEY_PASSWORD"
+          } > app/android/key.properties
+
+      # Two builds, because they are two different artifacts. The universal APK installs on
+      # anything and is what the in-app update prompt offers; the per-ABI builds are roughly half
+      # the size for anyone who knows which one they want.
+      - name: Build the universal APK
+        working-directory: app
+        run: >-
+          flutter build apk --release --flavor prod
+          -t lib/main_prod.dart
+          --dart-define-from-file=../env/prod.json
+          --build-name=${{ steps.version.outputs.number }}
+          --build-number=${{ github.run_number }}
+      - name: Collect it
+        run: |
+          set -euo pipefail
+          v='${{ steps.version.outputs.number }}'
+          mkdir -p release
+          cp app/build/app/outputs/flutter-apk/app-prod-release.apk "release/chordia-$v-universal.apk"
+          # The deobfuscation map for the build people actually install. Named for that build
+          # rather than for the release, because the split APKs below overwrite this file with
+          # a map that does not describe it.
+          cp app/build/app/outputs/mapping/prodRelease/mapping.txt "release/chordia-$v-universal-mapping.txt"
+
+      - name: Build the per-ABI APKs
+        working-directory: app
+        # Exactly the two architectures phones ship: the default target list also builds x86_64,
+        # which is emulators only and already covered by the universal APK.
+        run: >-
+          flutter build apk --release --flavor prod --split-per-abi
+          --target-platform android-arm,android-arm64
+          -t lib/main_prod.dart
+          --dart-define-from-file=../env/prod.json
+          --build-name=${{ steps.version.outputs.number }}
+          --build-number=${{ github.run_number }}
+      - name: Collect them, and checksum the lot
+        run: |
+          set -euo pipefail
+          v='${{ steps.version.outputs.number }}'
+          out=app/build/app/outputs/flutter-apk
+          cp "$out/app-arm64-v8a-prod-release.apk" "release/chordia-$v-arm64-v8a.apk"
+          cp "$out/app-armeabi-v7a-prod-release.apk" "release/chordia-$v-armeabi-v7a.apk"
+          # Relative names, so `sha256sum -c SHA256SUMS` works in whatever directory somebody
+          # downloaded the files into.
+          cd release && sha256sum chordia-*.apk > SHA256SUMS
+          cat SHA256SUMS
+
+      - name: Publish the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          # A tag with a suffix (`v0.3.0-rc.1`) is a pre-release, and marking it keeps it out of
+          # `/releases/latest` — which is the endpoint the Hub reads, so an unmarked release
+          # candidate would be offered to every phone as an update.
+          flags=()
+          case "$GITHUB_REF_NAME" in *-*) flags+=(--prerelease) ;; esac
+          # Re-runnable: a job that failed after creating the release uploads into the existing one
+          # rather than dying on "release already exists".
+          gh release create "$GITHUB_REF_NAME" release/* \
+            --title "$GITHUB_REF_NAME" --generate-notes "${flags[@]}" \
+            || gh release upload "$GITHUB_REF_NAME" release/* --clobber
