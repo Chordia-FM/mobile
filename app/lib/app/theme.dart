@@ -74,7 +74,7 @@ ThemeData buildChordiaTheme() {
     ),
     dropdownMenuTheme: DropdownMenuThemeData(
       menuStyle: MenuStyle(
-        backgroundColor: WidgetStatePropertyAll(ChordiaColors.paneRaised),
+        backgroundColor: const WidgetStatePropertyAll(ChordiaColors.paneRaised),
         surfaceTintColor: const WidgetStatePropertyAll(Colors.transparent),
         shape: WidgetStatePropertyAll(
           RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
