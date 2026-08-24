@@ -98,6 +98,11 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
+          # Gradle resolves the Android plugin, the Kotlin plugin and every plugin AAR on a cold
+          # runner, which is nearly all of this job's four minutes -- `flutter-action`'s own cache
+          # covers the Flutter SDK and nothing under `~/.gradle`. Keyed on the `*.gradle*` files,
+          # so it re-resolves only when the build scripts actually change.
+          cache: gradle
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
@@ -138,6 +143,11 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
+          # Gradle resolves the Android plugin, the Kotlin plugin and every plugin AAR on a cold
+          # runner, which is nearly all of this job's four minutes -- `flutter-action`'s own cache
+          # covers the Flutter SDK and nothing under `~/.gradle`. Keyed on the `*.gradle*` files,
+          # so it re-resolves only when the build scripts actually change.
+          cache: gradle
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
