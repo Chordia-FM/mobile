@@ -5,6 +5,9 @@ import 'package:intl/intl.dart';
 
 import '../../../i18n/keys.g.dart';
 import '../../../i18n/translations_provider.dart';
+import '../../catalog/widgets/list_row.dart';
+import '../../social/data/social_messages.dart';
+import '../data/insights_api.dart';
 import '../data/insights_providers.dart';
 import '../format.dart';
 import '../widgets/insights_primitives.dart';
@@ -103,72 +106,109 @@ class _Records extends ConsumerWidget {
             ),
           ),
 
-        ReportHeading(title: t(InsightsKeys.recordsStreaksCurrent)),
-        if (records.currentStreak case final streak?)
-          _StreakTile(streak: streak, date: date, longest: false)
-        else
-          ReportEmpty(
-            title: t(InsightsKeys.recordsStreaksNoCurrentTitle),
-            body: t(
-              InsightsKeys.recordsStreaksNoCurrentBody,
-              personArg(own: own),
+        // `RecordsReport.tsx:82` and :124 — a streak is a CARD on the web, present or absent, so
+        // both states get the panel rather than only the one with a number in it.
+        ReportPanel(
+          title: t(InsightsKeys.recordsStreaksCurrent),
+          child: switch (records.currentStreak) {
+            final streak? => _StreakTile(
+              streak: streak,
+              date: date,
+              longest: false,
+            ),
+            null => ReportEmpty(
+              title: t(InsightsKeys.recordsStreaksNoCurrentTitle),
+              body: t(
+                InsightsKeys.recordsStreaksNoCurrentBody,
+                personArg(own: own),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+            ),
+          },
+        ),
+        if (records.longestStreak case final streak?)
+          ReportPanel(
+            title: t(InsightsKeys.recordsStreaksLongest),
+            child: _StreakTile(streak: streak, date: date, longest: true),
+          ),
+
+        if (records.topSessions.isNotEmpty)
+          ReportPanel(
+            title: t(InsightsKeys.recordsSessionsTitle),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (final session in records.topSessions)
+                  ListRow(
+                    leading: const Icon(Icons.timelapse_rounded),
+                    title: Text(msToTime(session.msPlayed, t)),
+                    subtitle: Text(
+                      [
+                        session.topArtist == null
+                            ? t(InsightsKeys.recordsSessionsMeta, {
+                                'tracks': session.tracks,
+                              })
+                            : t(InsightsKeys.recordsSessionsMetaWithArtist, {
+                                'tracks': session.tracks,
+                                'artist': session.topArtist,
+                              }),
+                        date.format(
+                          DateTime.fromMillisecondsSinceEpoch(
+                            session.startedAt,
+                          ),
+                        ),
+                      ].join(' · '),
+                      maxLines: 2,
+                    ),
+                  ),
+              ],
             ),
           ),
-        if (records.longestStreak case final streak?) ...[
-          ReportHeading(title: t(InsightsKeys.recordsStreaksLongest)),
-          _StreakTile(streak: streak, date: date, longest: true),
-        ],
 
-        if (records.topSessions.isNotEmpty) ...[
-          ReportHeading(title: t(InsightsKeys.recordsSessionsTitle)),
-          for (final session in records.topSessions)
-            ListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-              leading: const Icon(Icons.timelapse_rounded),
-              title: Text(msToTime(session.msPlayed, t)),
-              subtitle: Text(
-                [
-                  session.topArtist == null
-                      ? t(InsightsKeys.recordsSessionsMeta, {
-                          'tracks': session.tracks,
-                        })
-                      : t(InsightsKeys.recordsSessionsMetaWithArtist, {
-                          'tracks': session.tracks,
-                          'artist': session.topArtist,
-                        }),
-                  date.format(
-                    DateTime.fromMillisecondsSinceEpoch(session.startedAt),
+        // One panel for the whole milestone story, lookup included — `RecordsReport.tsx:558` wraps
+        // the curve, the cards and the lookup in a single island for the same reason: the question
+        // "what was my 4,242nd play" belongs to the list it is asked about, not beside it.
+        ReportPanel(
+          title: t(InsightsKeys.recordsMilestonesTitle),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (records.milestones.isEmpty && records.firstScrobble == null)
+                ReportEmpty(
+                  title: t(
+                    InsightsKeys.recordsMilestonesBeginning,
+                    personArg(own: own),
                   ),
-                ].join(' · '),
-                maxLines: 2,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                )
+              else ...[
+                if (records.firstScrobble case final first?)
+                  _MilestoneTile(
+                    milestone: first,
+                    label: t(InsightsKeys.recordsMilestonesFirst),
+                    date: date,
+                  ),
+                for (final milestone in records.milestones)
+                  _MilestoneTile(
+                    milestone: milestone,
+                    label: t(InsightsKeys.recordsMilestonesOrdinal, {
+                      'ordinal': milestone.ordinal,
+                    }),
+                    date: date,
+                  ),
+              ],
+              // The tiles above land on round numbers only, and the number somebody actually has
+              // in mind is rarely one of them. The Hub can answer for any position, so this asks.
+              _MilestoneLookup(
+                handle: handle,
+                date: date,
+                hint: records.milestones.isEmpty
+                    ? 1
+                    : records.milestones.last.ordinal,
               ),
-            ),
-        ],
-
-        ReportHeading(title: t(InsightsKeys.recordsMilestonesTitle)),
-        if (records.milestones.isEmpty && records.firstScrobble == null)
-          ReportEmpty(
-            title: t(
-              InsightsKeys.recordsMilestonesBeginning,
-              personArg(own: own),
-            ),
-          )
-        else ...[
-          if (records.firstScrobble case final first?)
-            _MilestoneTile(
-              milestone: first,
-              label: t(InsightsKeys.recordsMilestonesFirst),
-              date: date,
-            ),
-          for (final milestone in records.milestones)
-            _MilestoneTile(
-              milestone: milestone,
-              label: t(InsightsKeys.recordsMilestonesOrdinal, {
-                'ordinal': milestone.ordinal,
-              }),
-              date: date,
-            ),
-        ],
+            ],
+          ),
+        ),
 
         _OnThisDay(handle: handle, own: own),
         const SizedBox(height: 32),
@@ -191,8 +231,7 @@ class _StreakTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = ref.t;
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+    return ListRow(
       leading: Icon(
         longest
             ? Icons.emoji_events_rounded
@@ -229,16 +268,142 @@ class _MilestoneTile extends StatelessWidget {
   final DateFormat date;
 
   @override
-  Widget build(BuildContext context) => ListTile(
-    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+  Widget build(BuildContext context) => ListRow(
     leading: const Icon(Icons.flag_rounded),
     title: Text(label, style: Theme.of(context).textTheme.labelMedium),
     subtitle: Text(
       '${milestone.title} · ${milestone.artist}\n'
       '${date.format(DateTime.fromMillisecondsSinceEpoch(milestone.playedAt))}',
     ),
-    isThreeLine: true,
+    subtitleMaxLines: 3,
   );
+}
+
+/// "What was my 4,242nd play?" - one play, by its position in the history.
+///
+/// Deliberately not a provider: it is a question asked once, on demand, whose answer belongs to
+/// this widget and nothing else. Caching it under a family key would keep every number anybody had
+/// ever typed alive for the life of the screen.
+class _MilestoneLookup extends ConsumerStatefulWidget {
+  const _MilestoneLookup({
+    required this.handle,
+    required this.date,
+    required this.hint,
+  });
+
+  final String? handle;
+  final DateFormat date;
+
+  /// The largest ordinal already on the page - a plausible placeholder, not a bound.
+  final int hint;
+
+  @override
+  ConsumerState<_MilestoneLookup> createState() => _MilestoneLookupState();
+}
+
+class _MilestoneLookupState extends ConsumerState<_MilestoneLookup> {
+  final _typed = TextEditingController();
+  bool _busy = false;
+  Milestone? _found;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    // The button is disabled on an empty field, so every keystroke has to reach it.
+    _typed.addListener(() {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _typed.dispose();
+    super.dispose();
+  }
+
+  Future<void> _look() async {
+    final n = int.tryParse(_typed.text.trim());
+    if (n == null || n < 1) return;
+    final t = ref.read(translationsProvider).call;
+    final query = ref.read(insightsQueryProvider(widget.handle));
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      final found = await ref.read(insightsApiProvider).milestone(query, n);
+      if (!mounted) return;
+      setState(() => _found = found);
+    } on Object catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _found = null;
+        // A 404 is the only expected failure - asking past the end of the history - and it is the
+        // one worth wording here. Anything else is the Hub's own sentence about what went wrong.
+        _error = error is ApiException && error.isNotFound
+            ? t(InsightsKeys.recordsMilestonesLookupOutOfRange)
+            : describeSocialError(error, t);
+      });
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = ref.t;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _typed,
+                  enabled: !_busy,
+                  keyboardType: TextInputType.number,
+                  textInputAction: TextInputAction.search,
+                  onSubmitted: (_) => _busy ? null : _look(),
+                  decoration: InputDecoration(
+                    labelText: t(InsightsKeys.recordsMilestonesLookupLabel),
+                    hintText: '${widget.hint}',
+                    errorText: _error,
+                    errorMaxLines: 2,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: OutlinedButton(
+                  onPressed: _busy || _typed.text.trim().isEmpty ? null : _look,
+                  child: Text(
+                    t(
+                      _busy
+                          ? CommonKeys.statesLoading
+                          : InsightsKeys.recordsMilestonesLookupSubmit,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (_found case final found?)
+          _MilestoneTile(
+            milestone: found,
+            label: t(InsightsKeys.recordsMilestonesOrdinal, {
+              'ordinal': found.ordinal,
+            }),
+            date: widget.date,
+          ),
+      ],
+    );
+  }
 }
 
 /// What was playing on today's date in earlier years.

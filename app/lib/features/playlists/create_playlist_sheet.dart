@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../i18n/keys.g.dart';
 import '../../i18n/translations_provider.dart';
+import '../catalog/widgets/list_row.dart';
 import '../library/widgets/library_states.dart';
 import 'data/playlists_providers.dart';
 import 'smart_rules_screen.dart';
@@ -94,8 +95,8 @@ class _CreateSheetState extends ConsumerState<_CreateSheet> {
                   style: theme.textTheme.labelLarge,
                 ),
                 for (final kind in _Kind.values)
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
+                  ListRow(
+                    gutter: 0,
                     onTap: () => setState(() => _kind = kind),
                     title: Text(
                       t(

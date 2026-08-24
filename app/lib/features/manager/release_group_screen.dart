@@ -8,6 +8,7 @@ import '../../i18n/translations_provider.dart';
 import '../../widgets/cover_art.dart';
 import '../catalog/format.dart';
 import '../catalog/widgets/catalog_state.dart';
+import '../catalog/widgets/list_row.dart';
 import 'data/manager_providers.dart';
 import 'manager_routes.dart';
 import 'widgets/manager_widgets.dart';
@@ -152,20 +153,20 @@ class _Edition extends ConsumerWidget {
                 ),
               ),
             for (final track in discs[disc]!)
-              ListTile(
-                dense: true,
+              ListRow(
                 leading: Icon(
                   (track.owned ?? false)
                       ? Icons.check_circle_rounded
                       : Icons.radio_button_unchecked_rounded,
+                  size: 20,
                   color: (track.owned ?? false)
                       ? theme.colorScheme.primary
                       : theme.colorScheme.onSurfaceVariant,
                 ),
                 title: Text(
                   '${track.position}. ${track.title}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                  // A track the library does not hold is information, not an offer, and reads a
+                  // step back from the ones it does.
                   style: (track.owned ?? false)
                       ? null
                       : TextStyle(color: theme.colorScheme.onSurfaceVariant),

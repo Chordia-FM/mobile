@@ -4,7 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../i18n/keys.g.dart';
 import '../../../i18n/translations_provider.dart';
+import '../../../widgets/tokens.dart';
 import '../../catalog/widgets/catalog_state.dart';
+import '../../catalog/widgets/list_row.dart';
 import '../../library/data/formatting.dart';
 import '../data/admin_providers.dart';
 import 'admin_widgets.dart';
@@ -65,8 +67,7 @@ class AdminSystemView extends ConsumerWidget {
               CatalogEmpty(message: t(AdminKeys.systemNoRollups))
             else
               for (final rollup in health.rollups)
-                ListTile(
-                  dense: true,
+                ListRow(
                   title: Text(rollup.name),
                   subtitle: Text(
                     rollup.lagSeconds <= 0
@@ -90,8 +91,7 @@ class AdminSystemView extends ConsumerWidget {
               description: t(AdminKeys.systemSizeDesc),
             ),
             for (final table in health.biggestTables)
-              ListTile(
-                dense: true,
+              ListRow(
                 title: Text(table.name),
                 subtitle: Text(
                   '${t(AdminKeys.systemRows)}: '
@@ -167,7 +167,7 @@ class _DesktopOnlyNote extends ConsumerWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: theme.colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: ChordiaRadius.xlAll,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

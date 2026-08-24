@@ -1,8 +1,40 @@
 import 'package:chordia_api/chordia_api.dart' show ArtistRef;
+import 'package:chordia_sync/chordia_sync.dart' show TrackArtist;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
-import '../catalog_routes.dart';
+/// The credits on a queue entry, in the catalog's own reference type.
+///
+/// `PlayerTrack.artists` carries `chordia_sync`'s [TrackArtist], which is the identical wire shape
+/// and cannot be [ArtistRef]: `chordia_api` depends on `chordia_sync`, so the dependency only runs
+/// one way. Converting here is what lets the player, the queue and every catalog row draw their
+/// credits through the one widget instead of the player re-implementing it as a string.
+List<ArtistRef>? playerArtistRefs(List<TrackArtist>? artists) => artists
+    ?.map((a) => ArtistRef(id: a.id, name: a.name, imageUrl: a.imageUrl))
+    .toList(growable: false);
+
+/// Opens an artist from a credited name, from wherever that name is drawn.
+///
+/// Deliberately not `CatalogNavigation.goToArtist`, which reads the tab out of
+/// `GoRouterState.of(context)`. Two things break that over the player. The full player and its
+/// tabs are pushed onto the ROOT navigator by hand, and route state only resolves under a route the
+/// router itself built — there it throws. And even where it resolved, the artist page would open
+/// *behind* a full-screen player, which reads as the tap having done nothing.
+void openArtistLink(BuildContext context, String artistId) {
+  final router = GoRouter.of(context);
+  // The tab, from the router's own configuration rather than from this subtree: an imperative push
+  // does not change that configuration, so it still names the branch the listener is browsing.
+  final segments = router.state.uri.pathSegments;
+  if (segments.isEmpty) return;
+  // Everything above the topmost page-backed route was pushed by hand — the player, a dialog — and
+  // has to come off before the destination is visible. Page-backed routes belong to the router.
+  Navigator.of(
+    context,
+    rootNavigator: true,
+  ).popUntil((route) => route.settings is Page || route.isFirst);
+  router.push('/${segments.first}/artists/$artistId');
+}
 
 /// The credited-artist line, with every credited artist its own tap target.
 ///
@@ -66,7 +98,7 @@ class _ArtistLinksState extends State<ArtistLinks> {
 
   TapGestureRecognizer _linkTo(String artistId) {
     final recognizer = TapGestureRecognizer()
-      ..onTap = () => context.goToArtist(artistId);
+      ..onTap = () => openArtistLink(context, artistId);
     _recognizers.add(recognizer);
     return recognizer;
   }

@@ -6,7 +6,9 @@ import '../../../data/art/art_cache.dart';
 import '../../../i18n/keys.g.dart';
 import '../../../i18n/translations_provider.dart';
 import '../../../widgets/cover_art.dart';
+import '../../../widgets/tokens.dart';
 import '../../catalog/widgets/catalog_state.dart';
+import '../../catalog/widgets/list_row.dart';
 import '../data/coverage_format.dart';
 import '../data/manager_providers.dart';
 
@@ -49,7 +51,8 @@ class CoverageMeter extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         ClipRRect(
-          borderRadius: BorderRadius.circular(4),
+          // `rounded-full`, like every bar on the web (`library/$libraryId/edit.tsx:697`).
+          borderRadius: ChordiaRadius.pill,
           child: LinearProgressIndicator(
             value: pct == null ? 0 : pct / 100,
             minHeight: 8,
@@ -81,7 +84,11 @@ class ManagerCard extends StatelessWidget {
     padding: padding ?? const EdgeInsets.all(16),
     decoration: BoxDecoration(
       color: Theme.of(context).colorScheme.surfaceContainer,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: ChordiaRadius.xlAll,
+      // `rounded-xl border border-border/60 bg-card/40` (`manager/index.tsx:107`) — the manager
+      // cards are the softer bordered card, not an island panel, and the phone was drawing the
+      // fill without the edge.
+      border: Border.all(color: Theme.of(context).colorScheme.lineSoft),
     ),
     child: child,
   );
@@ -183,13 +190,11 @@ class ReleaseGroupTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = ref.t;
-    return ListTile(
+    return ListRow(
       onTap: onTap,
-      leading: CoverArt(sha256: artHashOf(coverUrl), size: 48),
-      title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
-      subtitle: subtitle == null
-          ? null
-          : Text(subtitle!, maxLines: 1, overflow: TextOverflow.ellipsis),
+      leading: CoverArt(sha256: artHashOf(coverUrl), size: 40),
+      title: Text(title),
+      subtitle: subtitle == null ? null : Text(subtitle!),
       trailing: OwnedBadge(
         owned: owned,
         ownedLabel: t(ManagerKeys.discoverOwned),
@@ -220,7 +225,7 @@ class OwnedBadge extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: owned ? scheme.primaryContainer : scheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: ChordiaRadius.pill,
       ),
       child: Text(
         owned ? ownedLabel : missingLabel,

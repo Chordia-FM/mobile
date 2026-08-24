@@ -7,6 +7,7 @@ import '../../../i18n/keys.g.dart';
 import '../../../i18n/translations_provider.dart';
 import '../../../widgets/cover_art.dart';
 import '../../catalog/widgets/catalog_state.dart';
+import '../../catalog/widgets/list_row.dart';
 import '../data/manager_providers.dart';
 import '../manager_routes.dart';
 import 'manager_widgets.dart';
@@ -64,21 +65,17 @@ class _FollowRow extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = ref.t;
-    return ListTile(
+    return ListRow(
       onTap: () => context.goToDiscoverArtist(follow.artistMbid),
       leading: CoverArt(
         sha256: artHashOf(follow.imageUrl),
-        size: 44,
+        size: 40,
         shape: BoxShape.circle,
         fallbackIcon: Icons.person_rounded,
       ),
       // A follow made before the Hub knew the artist's name has only its MBID, and showing that is
       // more honest than an empty row.
-      title: Text(
-        follow.name ?? follow.artistMbid,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-      ),
+      title: Text(follow.name ?? follow.artistMbid),
       subtitle: follow.monitorTypes == null || follow.monitorTypes!.isEmpty
           ? null
           : Text(follow.monitorTypes!.join(' · ')),

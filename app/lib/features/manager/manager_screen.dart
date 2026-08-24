@@ -13,13 +13,22 @@ import 'widgets/follows_view.dart';
 /// next release should I hear about" — and stops there. There is deliberately no action on a
 /// missing release: seeing the gap is the product.
 class ManagerScreen extends ConsumerWidget {
-  const ManagerScreen({super.key});
+  const ManagerScreen({super.key, this.query});
+
+  /// A search term off `manager?q=`, from an "Open in Discover" on something with no MusicBrainz id
+  /// — a track, always, since none travel on the wire.
+  ///
+  /// It picks the tab the reader was sent to AND seeds the search field, so arriving from a menu
+  /// shows the results rather than an empty box on the right tab.
+  final String? query;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = ref.t;
+    final term = query?.trim() ?? '';
     return DefaultTabController(
       length: 3,
+      initialIndex: term.isEmpty ? 0 : 1,
       child: Scaffold(
         appBar: AppBar(
           title: Text(t(ManagerKeys.title)),
@@ -31,8 +40,12 @@ class ManagerScreen extends ConsumerWidget {
             ],
           ),
         ),
-        body: const TabBarView(
-          children: [CoverageView(), DiscoverView(), FollowsView()],
+        body: TabBarView(
+          children: [
+            const CoverageView(),
+            DiscoverView(initialQuery: term.isEmpty ? null : term),
+            const FollowsView(),
+          ],
         ),
       ),
     );

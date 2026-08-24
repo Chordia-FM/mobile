@@ -14,9 +14,9 @@ import 'package:chordia_mobile/data/hub_probe.dart';
 import 'package:chordia_mobile/data/hub_registry.dart';
 import 'package:chordia_mobile/data/secret_store.dart';
 import 'package:chordia_mobile/data/session_store.dart';
+import 'package:chordia_mobile/features/nav/mobile_tab_bar.dart';
 import 'package:chordia_mobile/features/auth/sign_in_screen.dart';
 import 'package:chordia_mobile/i18n/translations.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 // Only the database itself: chordia_db also generates a row class called `Hub`, which would
@@ -453,7 +453,7 @@ void main() {
       // The whole point of the resolving state: a session that is only on disk still counts, so
       // nobody is shown a sign-in form for an account the app is holding credentials for.
       expect(find.byType(SignInScreen), findsNothing);
-      expect(find.byType(NavigationBar), findsOneWidget);
+      expect(find.byType(MobileTabBar), findsOneWidget);
     });
   });
 

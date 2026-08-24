@@ -17,9 +17,7 @@
 ///   width ladder the Hub actually derives;
 /// * the routes a **library server** calls with its own API key rather than a user session:
 ///   `catalog/sync`, `catalog/prune`, `catalog/identify`, `directory/heartbeat`,
-///   `scrobbles:ingest`, `libraries/pair`;
-/// * `POST /v1/me/imports` — an `application/octet-stream` upload, which the JSON transport has no
-///   way to send.
+///   `scrobbles:ingest`, `libraries/pair`.
 library;
 
 export 'auth.dart';
@@ -28,6 +26,7 @@ export 'catalog.dart';
 export 'desktop.dart';
 export 'directory.dart';
 export 'discovery.dart';
+export 'images.dart';
 export 'imports.dart';
 export 'insights.dart';
 export 'libraries.dart';

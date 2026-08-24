@@ -10,6 +10,8 @@ import '../../i18n/translations_provider.dart';
 import '../catalog/catalog_routes.dart';
 import '../catalog/widgets/artist_row.dart';
 import '../catalog/widgets/catalog_state.dart';
+import '../catalog/widgets/entity_menu.dart';
+import '../catalog/widgets/list_row.dart';
 import '../catalog/widgets/section.dart';
 import '../catalog/widgets/track_list.dart';
 import '../home/data/discovery_nav.dart';
@@ -148,6 +150,20 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
               title: album.title,
               subtitle: album.artist,
               onTap: () => context.goToAlbum(album.id),
+              // `mbid` travels with the row, which is what lets "Open in Discover" land on the
+              // release group rather than being dropped for want of an id the row already had.
+              menu: (page, ref) => albumMenu(
+                page,
+                ref,
+                AlbumLike(
+                  id: album.id,
+                  title: album.title,
+                  artist: album.artist,
+                  artistId: album.artistId,
+                  coverUrl: album.coverUrl,
+                  mbid: album.mbid,
+                ),
+              ),
             );
           },
         );
@@ -165,18 +181,28 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           itemBuilder: (context, index) {
             final playlist = results.playlists[index];
             final auto = playlist.autoCoverUrls;
+            // A playlist with no cover of its own borrows the first tile of its auto mosaic,
+            // which is what the web client shows in the same row.
+            final cover =
+                playlist.coverUrl ??
+                (auto == null || auto.isEmpty ? null : auto.first);
             return ResultRow(
-              // A playlist with no cover of its own borrows the first tile of its auto mosaic,
-              // which is what the web client shows in the same row.
-              imageUrl:
-                  playlist.coverUrl ??
-                  (auto == null || auto.isEmpty ? null : auto.first),
+              imageUrl: cover,
               title: playlist.name,
               subtitle: t(PlaylistsKeys.songCount, {
                 'count': playlist.trackCount,
               }),
               fallbackIcon: Icons.queue_music_rounded,
               onTap: () => context.goToPlaylist(playlist.id),
+              menu: (page, ref) => playlistMenu(
+                page,
+                ref,
+                PlaylistLike(
+                  id: playlist.id,
+                  name: playlist.name,
+                  coverUrl: cover,
+                ),
+              ),
             );
           },
         );
@@ -194,8 +220,18 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                 'count': label.albumCount,
               }),
               fallbackIcon: Icons.business_rounded,
-              // The synthetic "Unlabeled" bucket carries no id and so has no page of its own.
+              // The synthetic "Unlabeled" bucket carries no id and so has no page of its own —
+              // and a menu whose every row leads to that page has nothing to offer either.
               onTap: id == null ? null : () => context.goToLabel(id),
+              menu: id == null
+                  ? null
+                  : (page, ref) => labelMenu(
+                      page,
+                      ref,
+                      labelId: id,
+                      name: label.name,
+                      logoUrl: label.logoUrl,
+                    ),
             );
           },
         );
@@ -210,6 +246,8 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
               title: genre.name,
               fallbackIcon: Icons.category_rounded,
               onTap: () => context.goToGenre(genre.slug),
+              menu: (page, ref) =>
+                  genreMenu(page, ref, slug: genre.slug, name: genre.name),
             );
           },
         );
@@ -293,7 +331,7 @@ class _RecentSearches extends ConsumerWidget {
         Expanded(
           child: ListView.builder(
             itemCount: terms.length,
-            itemBuilder: (context, index) => ListTile(
+            itemBuilder: (context, index) => ListRow(
               leading: const Icon(Icons.history_rounded),
               title: Text(
                 terms[index],

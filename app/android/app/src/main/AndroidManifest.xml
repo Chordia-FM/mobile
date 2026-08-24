@@ -41,6 +41,35 @@
                 <category android:name="android.intent.category.BROWSABLE"/>
                 <data android:scheme="chordia" android:host="auth"/>
             </intent-filter>
+            <!-- App Links. Every link this product hands somebody is a page on the site, so a
+                 shared album opens in the app rather than in a browser tab beside it. The paths are
+                 the web client's own: `/app/...` covers every destination it has, and the short
+                 forms beside it are what `shareUrl()` actually writes into a copied link (it drops
+                 the `/app` prefix, and the site serves redirect stubs for these seven). They are
+                 translated onto this client's tab-prefixed routes in `app/router.dart` —
+                 registering a filter for a path the router cannot resolve would open the app onto
+                 an error page, which is worse than leaving the link to the browser.
+
+                 `autoVerify` needs a matching `/.well-known/assetlinks.json` on the site carrying
+                 this app's signing certificate fingerprint; without it Android falls back to the
+                 disambiguation chooser rather than opening the app directly. Both flavours claim
+                 the same host, so with dev and prod side by side that chooser is expected. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="https" android:host="chordia.dev"/>
+                <data android:scheme="https" android:host="www.chordia.dev"/>
+                <data android:pathPrefix="/app"/>
+                <data android:pathPrefix="/albums/"/>
+                <data android:pathPrefix="/artists/"/>
+                <data android:pathPrefix="/genres/"/>
+                <data android:pathPrefix="/labels/"/>
+                <data android:pathPrefix="/playlists/"/>
+                <data android:pathPrefix="/smart/"/>
+                <data android:pathPrefix="/tracks/"/>
+                <data android:pathPrefix="/u/"/>
+            </intent-filter>
         </activity>
 
         <service

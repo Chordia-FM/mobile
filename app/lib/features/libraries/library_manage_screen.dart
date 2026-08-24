@@ -1,13 +1,19 @@
+import 'dart:async';
+
 import 'package:chordia_api/chordia_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../i18n/keys.g.dart';
 import '../../i18n/translations_provider.dart';
+import '../catalog/widgets/list_row.dart';
 import '../library/data/formatting.dart';
 import '../library/data/library_providers.dart';
 import '../library/widgets/library_states.dart';
 import 'data/libraries_providers.dart';
+import 'icon_picker_sheet.dart';
+import 'libraries_home_screen.dart';
+import 'library_icons.dart';
 import 'overrides_screen.dart';
 import 'share_library_sheet.dart';
 
@@ -64,10 +70,13 @@ class _LibraryManageScreenState extends ConsumerState<LibraryManageScreen> {
               const Divider(),
               if (widget.owned) ...[
                 _rename(summary, t),
+                _icon(summary, t),
                 const Divider(),
                 _sharing(t),
                 const Divider(),
                 _overrides(t),
+                const Divider(),
+                _remove(summary, t),
               ] else
                 Padding(
                   padding: const EdgeInsets.all(16),
@@ -136,13 +145,14 @@ class _LibraryManageScreenState extends ConsumerState<LibraryManageScreen> {
     final endpoint = server.value?.endpoint;
     final theme = Theme.of(context);
 
-    return ListTile(
+    return ListRow(
       leading: Icon(
         endpoint == null
             ? Icons.cloud_queue_rounded
             : endpoint.online
             ? Icons.cloud_done_rounded
             : Icons.cloud_off_rounded,
+        size: 20,
         color: (endpoint?.online ?? false)
             ? theme.colorScheme.primary
             : theme.colorScheme.onSurfaceVariant,
@@ -159,13 +169,61 @@ class _LibraryManageScreenState extends ConsumerState<LibraryManageScreen> {
     );
   }
 
-  Widget _rename(LibrarySummary summary, Translate t) => ListTile(
-    leading: const Icon(Icons.drive_file_rename_outline_rounded),
+  Widget _rename(LibrarySummary summary, Translate t) => ListRow(
+    leading: const Icon(Icons.drive_file_rename_outline_rounded, size: 20),
     title: Text(t(LibraryKeys.manageNameLabel)),
     subtitle: Text(summary.name),
-    trailing: const Icon(Icons.chevron_right_rounded),
+    trailing: listRowChevron,
     onTap: () => _renameDialog(summary, t),
   );
+
+  /// The icon this library wears everywhere it is listed.
+  ///
+  /// Stored as a slug (or `emoji:` plus a literal emoji), which is what makes it the SAME icon on
+  /// the web client — the column holds a name both clients agree on, never a drawing.
+  Widget _icon(LibrarySummary summary, Translate t) => ListRow(
+    leading: LibraryIcon(
+      icon: summary.icon,
+      color: Theme.of(context).colorScheme.onSurfaceVariant,
+    ),
+    title: Text(t(LibraryKeys.editIconLabel)),
+    trailing: listRowChevron,
+    onTap: () => unawaited(_pickIcon(summary, t)),
+  );
+
+  Future<void> _pickIcon(LibrarySummary summary, Translate t) async {
+    final chosen = await showLibraryIconPicker(context, current: summary.icon);
+    if (chosen == null || chosen == summary.icon) return;
+    final api = ref.read(librariesApiProvider);
+    if (api == null) return;
+    try {
+      await api.update(summary.id, UpdateLibraryRequest(icon: chosen));
+      ref
+        ..invalidate(libraryDetailProvider(widget.libraryId))
+        ..invalidate(myLibrariesProvider);
+      if (mounted) _snack(t(LibraryKeys.editIconSaved));
+    } on Object {
+      if (mounted) _snack(t(LibraryKeys.editIconSaveFailed));
+    }
+  }
+
+  /// Removing the library from the Hub. Last, and on its own, because it is the one action here
+  /// that cannot be undone by doing it again.
+  Widget _remove(LibrarySummary summary, Translate t) => ListRow(
+    destructive: true,
+    leading: const Icon(Icons.delete_outline_rounded, size: 20),
+    title: Text(t(LibraryKeys.editRemoveTitle)),
+    subtitle: Text(t(LibraryKeys.editRemoveHelp)),
+    onTap: () => unawaited(_removeLibrary(summary)),
+  );
+
+  Future<void> _removeLibrary(LibrarySummary summary) async {
+    if (await confirmRemoveLibrary(context, ref, summary) && mounted) {
+      // The page has to go with it: a library that is no longer in the directory has nothing left
+      // to read, and its own refresh would fail on the way to saying so.
+      Navigator.of(context).pop();
+    }
+  }
 
   Future<void> _renameDialog(LibrarySummary summary, Translate t) async {
     final field = TextEditingController(text: summary.name);
@@ -264,15 +322,15 @@ class _LibraryManageScreenState extends ConsumerState<LibraryManageScreen> {
     final overrides = ref.watch(libraryOverridesProvider(widget.libraryId));
     final count = overrides.value?.length;
 
-    return ListTile(
-      leading: const Icon(Icons.edit_note_rounded),
+    return ListRow(
+      leading: const Icon(Icons.edit_note_rounded, size: 20),
       title: Text(t(LibraryKeys.manageOpenOverrides)),
       subtitle: Text(
         count == null
             ? t(LibraryKeys.listLoading)
             : t(LibraryKeys.metadataOverridesTitle, {'count': count}),
       ),
-      trailing: const Icon(Icons.chevron_right_rounded),
+      trailing: listRowChevron,
       onTap: () => Navigator.of(context).push(
         MaterialPageRoute<void>(
           builder: (_) => OverridesScreen(libraryId: widget.libraryId),

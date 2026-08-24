@@ -5,7 +5,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/art/art_cache.dart';
 import '../../i18n/keys.g.dart';
 import '../../i18n/translations_provider.dart';
+import '../catalog/widgets/list_row.dart';
 import '../../widgets/cover_art.dart';
+import '../libraries/library_manage_screen.dart';
 import 'data/library_providers.dart';
 import 'widgets/library_states.dart';
 
@@ -14,8 +16,9 @@ import 'widgets/library_states.dart';
 /// The artist list is the body for the same reason it is on the web client — a library is only
 /// interesting as the music inside it, and artists are the level at which a collection is browsed.
 ///
-/// Editing a library (renaming, folders, rescan) and sharing it with a friend are the library
-/// server's own surfaces and a later milestone; this screen reads.
+/// This screen READS. Renaming it, its icon, who it is shared with, its metadata overrides and
+/// removing it live one level in, behind the header's settings button — the same split the web
+/// client draws between `/app/library/{id}` and `/app/library/{id}/edit`.
 class LibraryDetailScreen extends ConsumerWidget {
   const LibraryDetailScreen({
     required this.libraryId,
@@ -37,6 +40,18 @@ class LibraryDetailScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text(library.value?.name ?? t(CommonKeys.navAllLibraries)),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings_outlined),
+            tooltip: t(LibraryKeys.manageTitle),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) =>
+                    LibraryManageScreen(libraryId: libraryId, owned: owned),
+              ),
+            ),
+          ),
+        ],
       ),
       body: library.when(
         loading: () => const ListSkeleton(),
@@ -102,18 +117,14 @@ class LibraryDetailScreen extends ConsumerWidget {
           );
         }
         final artist = rows[index - 1];
-        return ListTile(
+        return ListRow(
           leading: CoverArt(
             sha256: artHashOf(artist.imageUrl),
-            size: 44,
+            size: 40,
             shape: BoxShape.circle,
             fallbackIcon: Icons.person_rounded,
           ),
-          title: Text(
-            artist.name,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
+          title: Text(artist.name),
           subtitle: Text(
             t(LibraryKeys.trackCount, {'count': artist.trackCount}),
           ),
@@ -223,7 +234,7 @@ class _Shares extends ConsumerWidget {
               ? [EmptyNote(message: t(LibraryKeys.shareManagerEmpty))]
               : [
                   for (final share in rows)
-                    ListTile(
+                    ListRow(
                       leading: CoverArt(
                         sha256: artHashOf(share.grantee.avatarUrl),
                         size: 40,

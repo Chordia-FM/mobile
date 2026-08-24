@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/downloads/download_storage.dart';
 import '../../../i18n/keys.g.dart';
 import '../../../i18n/translations_provider.dart';
+import '../../../widgets/tokens.dart';
+import '../../catalog/widgets/list_row.dart';
 import '../../library/data/formatting.dart';
 import '../data/downloads_providers.dart';
 import '../downloads_api.dart';
@@ -50,7 +52,9 @@ class DownloadStorageCard extends ConsumerWidget {
             if (storage.hasCap) ...[
               const SizedBox(height: 8),
               ClipRRect(
-                borderRadius: BorderRadius.circular(4),
+                // Every progress bar on the web is `rounded-full` — `DownloadStatsPanel.tsx:139`,
+                // `EntityStatsView.tsx:339`, `slider.tsx:57`. None of them is a 4px corner.
+                borderRadius: ChordiaRadius.pill,
                 child: LinearProgressIndicator(
                   value: storage.fraction,
                   minHeight: 6,
@@ -226,7 +230,7 @@ class _QueueRow extends ConsumerWidget {
             : formatBytes(task.bytesDone),
     };
 
-    return ListTile(
+    return ListRow(
       key: ValueKey(task.id),
       title: Text(
         entry.request?.title ?? task.trackId,

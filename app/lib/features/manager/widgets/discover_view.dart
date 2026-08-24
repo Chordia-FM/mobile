@@ -9,8 +9,10 @@ import '../../../i18n/keys.g.dart';
 import '../../../i18n/translations_provider.dart';
 import '../../../widgets/cover_art.dart';
 import '../../catalog/widgets/catalog_state.dart';
+import '../../catalog/widgets/list_row.dart';
 import '../data/coverage_format.dart';
 import '../data/manager_providers.dart';
+import '../data/releases.dart';
 import '../manager_routes.dart';
 import 'manager_widgets.dart';
 
@@ -19,18 +21,27 @@ import 'manager_widgets.dart';
 /// Nothing here acts on a result that is missing from the library. Tapping one opens the detail,
 /// which is where the coverage story continues.
 class DiscoverView extends ConsumerStatefulWidget {
-  const DiscoverView({super.key});
+  const DiscoverView({super.key, this.initialQuery});
+
+  /// The term a menu arrived with, off `manager?q=`.
+  ///
+  /// Seeded once, in [State.initState], rather than watched: this field is the reader's from the
+  /// first keystroke, and re-applying the URL's term on a later rebuild would overwrite what they
+  /// had typed.
+  final String? initialQuery;
 
   @override
   ConsumerState<DiscoverView> createState() => _DiscoverViewState();
 }
 
 class _DiscoverViewState extends ConsumerState<DiscoverView> {
-  final _controller = TextEditingController();
+  late final _controller = TextEditingController(
+    text: widget.initialQuery ?? '',
+  );
 
   /// The query the provider is actually keyed on. Separate from the field's text so a family
   /// provider is not created per keystroke — each one would be its own in-flight request.
-  String _query = '';
+  late String _query = widget.initialQuery?.trim() ?? '';
 
   Timer? _debounce;
 
@@ -101,6 +112,11 @@ class _Results extends ConsumerWidget {
       return CatalogEmpty(message: t(ManagerKeys.discoverNoResults));
     }
 
+    // The same collapse the web runs over its results list (`discover/index.tsx:60-63`), and for
+    // the same reason: a search for an album returns its every edition, and eight tiles of "X
+    // (Deluxe)" push the artist the reader was looking for off the screen.
+    final releases = groupReleases(results.releaseGroups);
+
     return CustomScrollView(
       slivers: [
         if (results.artists.isNotEmpty) ...[
@@ -113,14 +129,14 @@ class _Results extends ConsumerWidget {
                 _ArtistRow(artist: results.artists[index]),
           ),
         ],
-        if (results.releaseGroups.isNotEmpty) ...[
+        if (releases.isNotEmpty) ...[
           SliverToBoxAdapter(
             child: ManagerSectionHeader(title: t(ManagerKeys.discoverReleases)),
           ),
           SliverList.builder(
-            itemCount: results.releaseGroups.length,
+            itemCount: releases.length,
             itemBuilder: (context, index) {
-              final release = results.releaseGroups[index];
+              final release = releases[index];
               return ReleaseGroupTile(
                 title: release.title,
                 owned: release.owned,
@@ -155,22 +171,20 @@ class _ArtistRow extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = ref.t;
-    return ListTile(
+    return ListRow(
       onTap: () => context.goToDiscoverArtist(artist.mbid),
       leading: CoverArt(
         sha256: artHashOf(artist.imageUrl),
-        size: 44,
+        size: 40,
         shape: BoxShape.circle,
         fallbackIcon: Icons.person_rounded,
       ),
-      title: Text(artist.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+      title: Text(artist.name),
       subtitle: Text(
         [
           artist.disambiguation,
           artist.genres?.take(2).join(', '),
         ].where((part) => part != null && part.isNotEmpty).join(' · '),
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
       ),
       trailing: OwnedBadge(
         owned: artist.owned,

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../i18n/keys.g.dart';
 import '../../../i18n/translations_provider.dart';
+import '../../catalog/widgets/list_row.dart';
 import '../../social/social_routes.dart';
 import '../../social/widgets/friends_listening.dart';
 import '../data/insights_providers.dart';
@@ -43,8 +44,12 @@ class _SocialReportState extends ConsumerState<SocialReport> {
       children: [
         const FriendsListening(),
 
-        ReportHeading(title: t(InsightsKeys.compatibilityTitle)),
-        Padding(
+        // `SocialReport.tsx:187` puts the ask and its answer in one island. The phone keeps only
+        // the ask in the panel: its answer is a ranked list of shared artists and a decade chart,
+        // which are sections in their own right rather than the two lines of chips the web fits
+        // inside the card.
+        ReportPanel(
+          title: t(InsightsKeys.compatibilityTitle),
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Row(
             children: [
@@ -130,7 +135,7 @@ class _Compatibility extends ConsumerWidget {
       builder: (context, value) => Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          ListTile(
+          ListRow(
             title: Text(
               t(InsightsKeys.compatibilityYouAnd, {'name': value.displayName}),
             ),
@@ -175,20 +180,21 @@ class _TasteSummary extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (summary.decades.any((split) => split.you + split.them > 0)) ...[
-          ReportHeading(title: t(InsightsKeys.panelsDecades)),
-          // Both sides on one axis: the interesting fact is where the two overlap, and two charts
-          // side by side on a 375px screen is two unreadable charts.
-          BarChart(
-            bars: [
-              for (final split in summary.decades)
-                BarDatum(
-                  t(InsightsKeys.decadesLabel, {'decade': split.decade}),
-                  split.you + split.them,
-                ),
-            ],
+        if (summary.decades.any((split) => split.you + split.them > 0))
+          ReportPanel(
+            title: t(InsightsKeys.panelsDecades),
+            // Both sides on one axis: the interesting fact is where the two overlap, and two
+            // charts side by side on a 375px screen is two unreadable charts.
+            child: BarChart(
+              bars: [
+                for (final split in summary.decades)
+                  BarDatum(
+                    t(InsightsKeys.decadesLabel, {'decade': split.decade}),
+                    split.you + split.them,
+                  ),
+              ],
+            ),
           ),
-        ],
         if (summary.sharedTracks.isNotEmpty) ...[
           ReportHeading(title: t(InsightsKeys.topTracks)),
           TopList(

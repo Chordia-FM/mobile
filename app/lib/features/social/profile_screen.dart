@@ -2,23 +2,33 @@ import 'package:chordia_api/chordia_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:url_launcher/url_launcher.dart';
 
-import '../../data/art/art_cache.dart';
 import '../../i18n/keys.g.dart';
 import '../../i18n/translations_provider.dart';
-import '../../widgets/cover_art.dart';
-import '../catalog/catalog_routes.dart';
 import '../catalog/widgets/catalog_state.dart';
 import '../catalog/widgets/section.dart';
 import '../insights/widgets/insights_tabs.dart';
+import '../nav/nav_drawer.dart';
 import 'data/social_messages.dart';
 import 'data/social_providers.dart';
+import 'widgets/follow_list.dart';
 import 'widgets/person_row.dart';
+import 'widgets/profile_banner.dart';
+import 'widgets/profile_links.dart';
+import 'widgets/profile_list_tabs.dart';
+import 'widgets/profile_shelves.dart';
+import 'widgets/profile_wall.dart';
 import 'widgets/user_identity.dart';
 
-/// One listener's public profile: who they are, what the viewer may do about it, and their
-/// listening surfaces.
+/// One listener's profile — **and their listening report**, which is not a second surface.
+///
+/// The shape is the web route's, top to bottom (`routes/_authed/app/u/$handle/route.tsx`):
+///
+///     banner → identity → stat row → actions → bio → links → shelves → the insights tabs
+///
+/// Your own profile is your own insights page. There is no separate stats screen: the reports are
+/// tabs *inside* this one, under your banner and your name, so opening Insights shows you yourself
+/// rather than a bare table of numbers about you.
 ///
 /// **Two different walls, from two different settings, with two different copies.**
 /// `hidden` means the whole profile is withheld — every field below it is a placeholder rather
@@ -41,6 +51,11 @@ class ProfileScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
+        // Your own profile IS the Insights tab's root (the web redirects `/app/insights` here), and
+        // a tab root has nothing to go back to — so this slot carries the nav drawer's hamburger,
+        // which is where the web's top bar keeps it. On a profile reached by pushing, it is the
+        // ordinary back button instead.
+        leading: const NavMenuButton(),
         title: Text(
           profile.value?.user.displayName ?? '@$handle',
           maxLines: 1,
@@ -65,15 +80,25 @@ class ProfileScreen extends ConsumerWidget {
   }
 }
 
-class _ProfileView extends ConsumerWidget {
+class _ProfileView extends ConsumerStatefulWidget {
   const _ProfileView({required this.handle, required this.profile});
 
   final String handle;
   final PublicProfile profile;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_ProfileView> createState() => _ProfileViewState();
+}
+
+class _ProfileViewState extends ConsumerState<_ProfileView> {
+  /// Which of the three counted lists the panel is showing. Playlists is the default, as on the
+  /// web — where it is also the one value that never appears in the URL.
+  ProfileList _list = ProfileList.playlists;
+
+  @override
+  Widget build(BuildContext context) {
     final t = ref.t;
+    final profile = widget.profile;
     final user = profile.user;
     final own = ref.watch(viewerProvider).value?.id == user.id;
     final hidden = profile.hidden ?? false;
@@ -81,8 +106,18 @@ class _ProfileView extends ConsumerWidget {
     return ListView(
       children: [
         _Header(profile: profile, own: own),
+
+        // Below the header rather than inside it, so it reads as the divider between who this is
+        // and what of theirs you are looking at.
+        if (!hidden && ProfileListTabs.tabsFor(profile).isNotEmpty)
+          ProfileListTabs(
+            profile: profile,
+            current: _list,
+            onSelect: (next) => setState(() => _list = next),
+          ),
+
         if (hidden)
-          _Wall(
+          ProfileWall(
             title: t(SocialKeys.profileHiddenTitle),
             description: t(SocialKeys.profileHiddenDescription, {
               'name': user.displayName,
@@ -94,16 +129,53 @@ class _ProfileView extends ConsumerWidget {
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
               child: ExpandableText(text: bio),
             ),
-          _Links(links: profile.links ?? const []),
-          _Counts(profile: profile),
-          // `null` is the server's "you may not see this surface" and renders nothing at all; an
-          // empty list is visible-and-empty and renders the empty line. The client never decides.
-          if (profile.playlists case final playlists?)
-            _PlaylistShelf(playlists: playlists),
-          if (profile.followedArtists case final artists?)
-            _ArtistShelf(artists: artists),
+          ProfileLinkBar(links: profile.links ?? const []),
+
+          // ONLY this section answers the tabs. Bio, links and the listening report are properties
+          // of the person, not of the list you happen to be looking at — swapping the whole page
+          // out was the overcorrection: opening Followers should not take someone's charts away.
+          switch (_list) {
+            // `null` is the server's "you may not see this surface" and renders nothing at all; an
+            // empty list is visible-and-empty and renders the empty line. The client never decides.
+            ProfileList.playlists =>
+              profile.playlists == null
+                  ? const SizedBox.shrink()
+                  : PlaylistShelf(
+                      key: ValueKey('playlists:${user.handle}'),
+                      handle: widget.handle,
+                      shelf: profile.playlists!,
+                      total: profile.playlistCount ?? profile.playlists!.length,
+                    ),
+            ProfileList.followers => FollowList(
+              key: ValueKey('followers:${user.handle}'),
+              handle: widget.handle,
+              followers: true,
+              own: own,
+            ),
+            ProfileList.following => Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                FollowList(
+                  key: ValueKey('following:${user.handle}'),
+                  handle: widget.handle,
+                  followers: false,
+                  own: own,
+                ),
+                // Followed ARTISTS live here rather than in a shelf of their own: following is one
+                // question, and answering half of it in a tab and the other half in an unrelated
+                // section further down made them look like different things.
+                if (profile.followedArtists case final artists?)
+                  ArtistShelf(
+                    key: ValueKey('artists:${user.handle}'),
+                    handle: widget.handle,
+                    shelf: artists,
+                  ),
+              ],
+            ),
+          },
+
           if (profile.private)
-            _Wall(
+            ProfileWall(
               title: t(SocialKeys.profilePrivateTitle),
               description: t(SocialKeys.profilePrivateDescription, {
                 'name': user.displayName,
@@ -113,9 +185,13 @@ class _ProfileView extends ConsumerWidget {
             InsightsTabView(
               // The viewer's own profile still asks about "me" rather than about a handle: the
               // Hub then buckets in their own timezone setting instead of resolving it again.
-              handle: own ? null : handle,
+              handle: own ? null : widget.handle,
               own: own,
-              shareHandle: own ? handle : null,
+              // Always this profile's handle, never the viewer's. The card is stamped with whoever
+              // the report is about, which is what makes it publishable from somebody else's page:
+              // hiding the button there was solving a privacy problem the stamp already solves,
+              // and it left a listener unable to post the friend's rotation they were looking at.
+              shareHandle: widget.handle,
             ),
         ],
         const SizedBox(height: 32),
@@ -124,6 +200,11 @@ class _ProfileView extends ConsumerWidget {
   }
 }
 
+/// Banner, then one centred column: avatar → name → badges → handle line → actions.
+///
+/// The centred column is the web's **below-`md`** header, which is the one that belongs on a
+/// phone. Its `md`+ layout puts the avatar and the identity side by side with the actions at the
+/// bottom right, and that shape has nowhere to go at 375px.
 class _Header extends ConsumerWidget {
   const _Header({required this.profile, required this.own});
 
@@ -141,18 +222,7 @@ class _Header extends ConsumerWidget {
 
     return Column(
       children: [
-        if (artHashOf(profile.bannerUrl) case final banner?)
-          AspectRatio(
-            aspectRatio: 3,
-            child: CoverArt(
-              sha256: banner,
-              // The banner fills the width; `CoverArt` is square-sized, so the side it is given is
-              // the larger of the two the layout will use.
-              size: MediaQuery.sizeOf(context).width,
-              borderRadius: BorderRadius.zero,
-              fallbackIcon: Icons.image_outlined,
-            ),
-          ),
+        ProfileBanner(bannerUrl: profile.bannerUrl),
         const SizedBox(height: 16),
         UserAvatar(user: user, size: 96),
         const SizedBox(height: 12),
@@ -161,12 +231,14 @@ class _Header extends ConsumerWidget {
           child: DisplayName(
             name: user.displayName,
             flair: user.flair,
-            style: theme.textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
+            // `display-title break-words font-bold text-2xl sm:text-4xl`
+            // (`u/$handle/route.tsx:204`) — `text-2xl` at phone width, which is `displaySmall`.
+            style: theme.textTheme.displaySmall,
             maxLines: 2,
           ),
         ),
+        // Under the name and above the handle: badges are about who this person is, so they belong
+        // with the identity rather than down among the statistics.
         const SizedBox(height: 8),
         BadgeRow(badges: profile.badges, alignment: WrapAlignment.center),
         const SizedBox(height: 8),
@@ -182,24 +254,28 @@ class _Header extends ConsumerWidget {
             color: theme.colorScheme.onSurfaceVariant,
           ),
         ),
-        if (!(profile.hidden ?? false) && !own) ...[
+        // Shown on your OWN profile too, exactly as the web shows the ⋮ there: sharing your
+        // profile is the action you want from it most, and it is the only one the menu offers
+        // about yourself.
+        if (!(profile.hidden ?? false)) ...[
           const SizedBox(height: 12),
-          _Actions(profile: profile),
+          _Actions(profile: profile, own: own),
         ],
       ],
     );
   }
 }
 
-/// Follow / Unfollow, and the ⋮ that holds the friendship lifecycle.
+/// Follow / Unfollow, and the ⋮ that holds sharing, the friendship lifecycle, report and block.
 ///
 /// Friendship is deliberately not a second button here: following and being friends are two
 /// different graphs, and two adjacent buttons is precisely what made people think they were the
 /// same one. The menu explains the difference in a line of copy.
 class _Actions extends ConsumerWidget {
-  const _Actions({required this.profile});
+  const _Actions({required this.profile, required this.own});
 
   final PublicProfile profile;
+  final bool own;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -216,7 +292,8 @@ class _Actions extends ConsumerWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        // `can_follow` goes false once you already follow, so Unfollow's reachability rides on
+        // `can_follow` goes false once you already follow (and on your own profile, a closed
+        // account, or a social-disabled instance), so Unfollow's reachability rides on
         // `viewer_follows` instead.
         if (canFollow || following)
           following
@@ -230,7 +307,7 @@ class _Actions extends ConsumerWidget {
                   icon: const Icon(Icons.person_add_alt_rounded),
                   label: Text(t(SocialKeys.followFollow)),
                 )
-        else
+        else if (!own)
           Text(
             t(SocialKeys.followNotOpen),
             style: Theme.of(context).textTheme.bodySmall,
@@ -279,206 +356,5 @@ class _Actions extends ConsumerWidget {
       if (!context.mounted) return;
       showSocialMessage(context, describeSocialError(error, t));
     }
-  }
-}
-
-/// Followers · Following · Playlists, as plain counts.
-///
-/// Counts the viewer may not see are omitted rather than shown as zero — a zero is a claim, and
-/// the visibility flags exist so the client does not have to make one.
-class _Counts extends ConsumerWidget {
-  const _Counts({required this.profile});
-
-  final PublicProfile profile;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final t = ref.t;
-    final entries = <String>[
-      if (profile.followersVisible ?? false)
-        '${profile.followerCount ?? 0} ${t(SocialKeys.profileStatsFollowers)}',
-      if (profile.followingVisible ?? false)
-        '${profile.followingCount ?? 0} ${t(SocialKeys.profileStatsFollowing)}',
-      if (profile.playlists != null)
-        '${profile.playlistCount ?? 0} ${t(SocialKeys.profileStatsPlaylists)}',
-    ];
-    if (entries.isEmpty) return const SizedBox.shrink();
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-      child: Text(
-        entries.join(' · '),
-        textAlign: TextAlign.center,
-        style: Theme.of(context).textTheme.labelLarge,
-      ),
-    );
-  }
-}
-
-class _Links extends StatelessWidget {
-  const _Links({required this.links});
-
-  final List<ProfileLink> links;
-
-  @override
-  Widget build(BuildContext context) {
-    if (links.isEmpty) return const SizedBox.shrink();
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-      child: Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        alignment: WrapAlignment.center,
-        children: [
-          for (final link in links)
-            ActionChip(
-              avatar: const Icon(Icons.link_rounded, size: 16),
-              label: Text(link.kind),
-              onPressed: () {
-                final url = Uri.tryParse(link.url);
-                // Free text on somebody else's profile: anything that is not a parseable web
-                // address is not something this app hands to the platform browser.
-                if (url == null || !url.hasScheme) return;
-                launchUrl(url, mode: LaunchMode.externalApplication).ignore();
-              },
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PlaylistShelf extends ConsumerWidget {
-  const _PlaylistShelf({required this.playlists});
-
-  final List<Playlist> playlists;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final t = ref.t;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
-          child: Text(
-            t(SocialKeys.profileShelvesPlaylists),
-            style: Theme.of(
-              context,
-            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
-          ),
-        ),
-        if (playlists.isEmpty)
-          CatalogEmpty(message: t(SocialKeys.profileShelvesNoPlaylists))
-        else
-          for (final playlist in playlists)
-            ListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-              leading: CoverArt(
-                sha256: artHashOf(playlist.coverUrl),
-                size: 44,
-                fallbackIcon: Icons.queue_music_rounded,
-              ),
-              title: Text(
-                playlist.name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              subtitle: Text(
-                t(CatalogKeys.trackCount, {'count': playlist.trackCount}),
-              ),
-            ),
-      ],
-    );
-  }
-}
-
-class _ArtistShelf extends ConsumerWidget {
-  const _ArtistShelf({required this.artists});
-
-  final List<ProfileArtist> artists;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final t = ref.t;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
-          child: Text(
-            t(SocialKeys.profileShelvesFollowedArtists),
-            style: Theme.of(
-              context,
-            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
-          ),
-        ),
-        if (artists.isEmpty)
-          CatalogEmpty(message: t(SocialKeys.profileShelvesNoArtists))
-        else
-          for (final artist in artists)
-            ListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-              leading: CoverArt(
-                sha256: artHashOf(artist.imageUrl),
-                size: 44,
-                shape: BoxShape.circle,
-                fallbackIcon: Icons.person_rounded,
-              ),
-              title: Text(
-                artist.name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              // Only an artist that resolves in this hub's catalog has a page to open; one known
-              // to the follow list by MBID alone has nowhere to go.
-              onTap: artist.artistId == null
-                  ? null
-                  : () => context.goToArtist(artist.artistId!),
-            ),
-      ],
-    );
-  }
-}
-
-/// One lock card. Two copies use it: the whole-page lock and the activity-only wall.
-class _Wall extends StatelessWidget {
-  const _Wall({required this.title, required this.description});
-
-  final String title;
-  final String description;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        children: [
-          Icon(
-            Icons.lock_outline_rounded,
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
-          const SizedBox(height: 12),
-          Text(
-            title,
-            textAlign: TextAlign.center,
-            style: theme.textTheme.titleSmall,
-          ),
-          const SizedBox(height: 4),
-          Text(
-            description,
-            textAlign: TextAlign.center,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }

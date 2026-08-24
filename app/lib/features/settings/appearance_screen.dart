@@ -2,6 +2,7 @@ import 'package:chordia_api/chordia_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../data/accent/accent_palette.dart' show parseHexColor;
 import '../../i18n/keys.g.dart';
 import '../../i18n/translations_provider.dart';
 import 'data/settings_controller.dart';
@@ -40,6 +41,36 @@ class AppearanceScreen extends ConsumerWidget {
     );
   }
 }
+
+/// The palette a mode is seeded with when somebody switches into it having chosen nothing.
+///
+/// The web's `PALETTE_SEED` (`components/settings/AppearanceSection.tsx:220`), value for value, so
+/// an account that turns Fade on from a phone and then opens the browser is looking at the same two
+/// colours. Deliberately far apart in hue: the seed before this one was violet-to-pink, adjacent
+/// enough that the result looked like a flat colour, and the first thing anybody saw of the feature
+/// was an apparently broken one.
+const _paletteSeed = ['#7c5cff', '#22d3ee'];
+
+/// Modes that READ the palette, so the editor only appears where it would do something.
+const _paletteModes = {AccentMode.fade, AccentMode.gradient};
+
+/// Modes that move on a timer, and are therefore the only ones a speed means anything for.
+///
+/// Gradient and Artwork both change colour — one across space, one per track — but neither ticks,
+/// so offering them a speed would be a control that does nothing.
+const _timedModes = {AccentMode.fade, AccentMode.chroma};
+
+/// Entering a palette mode with nothing to travel between seeds it.
+///
+/// Without this, choosing Fade or Gradient wrote the mode and left `accent_palette` empty. The
+/// engine degrades a palette of fewer than two stops back to the static accent, so the colour did
+/// not move and the mode read as broken rather than as unconfigured — and the palette editor that
+/// appeared underneath was empty, which says "there is nothing here" rather than "pick something".
+/// The web seeds at the same moment, for the same reason (`AppearanceSection.tsx:280-284`).
+SettingsPatch accentModeChange(AccentMode picked, List<String> palette) =>
+    _paletteModes.contains(picked) && palette.length < 2
+    ? SettingsPatch(accentMode: picked, accentPalette: _paletteSeed)
+    : SettingsPatch(accentMode: picked);
 
 class _AppearanceControls extends ConsumerWidget {
   const _AppearanceControls({required this.settings});
@@ -87,12 +118,16 @@ class _AppearanceControls extends ConsumerWidget {
               // that has lost it rather than rewriting the stored choice, so the whole control is
               // locked rather than individual rows: an unentitled account has one legal value.
               onChanged: has(Feature.dynamicAccent)
-                  ? (picked) => write(SettingsPatch(accentMode: picked))
+                  ? (picked) => write(accentModeChange(picked, palette))
                   : null,
             ),
             if (!has(Feature.dynamicAccent))
               SettingsNote(t(BillingKeys.featuresDynamicAccentLocked)),
-            if (mode != AccentMode.staticValue) ...[
+            // Each control appears only under the modes it changes something for, which is the
+            // web's split (`PALETTE_MODES` / `TIMED_MODES`). Showing both under every dynamic mode
+            // put a speed on Gradient, which does not tick, and a palette on Artwork and Chroma,
+            // which do not read one.
+            if (_timedModes.contains(mode))
               SettingsChoiceRow<AccentSpeed>(
                 label: t(SettingsKeys.appearanceSpeedTitle),
                 description: t(SettingsKeys.appearanceSpeedHint),
@@ -102,12 +137,12 @@ class _AppearanceControls extends ConsumerWidget {
                 ],
                 onChanged: (speed) => write(SettingsPatch(accentSpeed: speed)),
               ),
+            if (_paletteModes.contains(mode))
               _PaletteEditor(
                 palette: palette,
                 onChanged: (stops) =>
                     write(SettingsPatch(accentPalette: stops)),
               ),
-            ],
           ],
         ),
         SettingsSection(
@@ -252,7 +287,12 @@ class _PaletteEditor extends ConsumerWidget {
             children: [
               for (var index = 0; index < palette.length; index++)
                 _Stop(
-                  colour: accentSwatch(palette[index]),
+                  // A stop is a preset name when this phone wrote it and a `#rrggbb` when the web
+                  // or the seed did, and both have to draw: the seed IS hex, so resolving names
+                  // alone would open the editor on two unreadable circles.
+                  colour:
+                      accentSwatch(palette[index]) ??
+                      parseHexColor(palette[index]),
                   label: t(SettingsKeys.appearancePaletteStopAria, {
                     'index': index + 1,
                   }),

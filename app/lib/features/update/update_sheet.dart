@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/theme.dart';
 import '../../i18n/keys.g.dart';
 import '../../i18n/translations_provider.dart';
+import '../../widgets/surface.dart';
+import '../../widgets/tokens.dart';
 import '../library/data/formatting.dart';
 import 'update_check.dart';
 
@@ -67,90 +69,101 @@ class UpdateSheet extends ConsumerWidget {
     final download = release.download;
     final running = ref.watch(appVersionProvider).value;
 
-    return Material(
-      color: ChordiaColors.paneRaised,
-      elevation: 12,
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 10, 20, 16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 36,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: ChordiaColors.line,
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                t(CommonKeys.updateTitle, {'version': release.version}),
-                style: theme.textTheme.titleMedium,
-              ),
-              if (running != null) ...[
-                const SizedBox(height: 4),
-                Text(
-                  t(CommonKeys.updateYouHave, {'version': running}),
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: ChordiaColors.mutedForeground,
-                  ),
-                ),
-              ],
-              const SizedBox(height: 12),
-              Text(
-                t(CommonKeys.updateSideload),
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: ChordiaColors.mutedForeground,
-                ),
-              ),
-              if (download != null && download.sizeBytes > 0) ...[
-                const SizedBox(height: 8),
-                Text(
-                  t(CommonKeys.updateFile, {
-                    'name': download.filename,
-                    'size': formatBytes(download.sizeBytes),
-                  }),
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: ChordiaColors.mutedForeground,
-                  ),
-                ),
-              ],
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  TextButton(
-                    onPressed: () => open(Uri.parse(release.notesUrl)),
-                    child: Text(t(CommonKeys.updateNotes)),
-                  ),
-                  const Spacer(),
-                  TextButton(
-                    onPressed: controller.dismiss,
-                    child: Text(t(CommonKeys.updateLater)),
-                  ),
-                  const SizedBox(width: 8),
-                  // No button at all when the release carries no APK — a "Download" that has
-                  // nothing to download is worse than the notes link beside it.
-                  if (download != null)
-                    FilledButton(
-                      onPressed: () async {
-                        // Hidden rather than dismissed: the browser has the file now, but nothing
-                        // here knows whether the install went through, and a download somebody
-                        // abandoned should still be offered tomorrow.
-                        controller.hide();
-                        await open(Uri.parse(download.url));
-                      },
-                      child: Text(t(CommonKeys.updateDownload)),
+    // The elevated panel material, not a pane fill with a Material elevation under it: the web
+    // draws every sheet and dialog as one element carrying `island-shell island-shell-modal`
+    // (`responsive-dialog.tsx:206`). The shadow moves out to a `DecoratedBox` because [ModalPanel]
+    // deliberately carries none — on the web a dialog separates by being lighter, not by casting —
+    // and this one is stacked straight over the app with no scrim under it, so it still needs the
+    // lift that told the listener it was a layer above.
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        borderRadius: ChordiaRadius.sheetTop,
+        boxShadow: chordiaPanelShadow,
+      ),
+      child: ModalPanel(
+        padding: EdgeInsets.zero,
+        borderRadius: ChordiaRadius.sheetTop,
+        child: SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 10, 20, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 36,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: context.surfaces.line,
+                      borderRadius: ChordiaRadius.pill,
                     ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  t(CommonKeys.updateTitle, {'version': release.version}),
+                  style: theme.textTheme.titleMedium,
+                ),
+                if (running != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    t(CommonKeys.updateYouHave, {'version': running}),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: ChordiaColors.mutedForeground,
+                    ),
+                  ),
                 ],
-              ),
-            ],
+                const SizedBox(height: 12),
+                Text(
+                  t(CommonKeys.updateSideload),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: ChordiaColors.mutedForeground,
+                  ),
+                ),
+                if (download != null && download.sizeBytes > 0) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    t(CommonKeys.updateFile, {
+                      'name': download.filename,
+                      'size': formatBytes(download.sizeBytes),
+                    }),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: ChordiaColors.mutedForeground,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    TextButton(
+                      onPressed: () => open(Uri.parse(release.notesUrl)),
+                      child: Text(t(CommonKeys.updateNotes)),
+                    ),
+                    const Spacer(),
+                    TextButton(
+                      onPressed: controller.dismiss,
+                      child: Text(t(CommonKeys.updateLater)),
+                    ),
+                    const SizedBox(width: 8),
+                    // No button at all when the release carries no APK — a "Download" that has
+                    // nothing to download is worse than the notes link beside it.
+                    if (download != null)
+                      FilledButton(
+                        onPressed: () async {
+                          // Hidden rather than dismissed: the browser has the file now, but nothing
+                          // here knows whether the install went through, and a download somebody
+                          // abandoned should still be offered tomorrow.
+                          controller.hide();
+                          await open(Uri.parse(download.url));
+                        },
+                        child: Text(t(CommonKeys.updateDownload)),
+                      ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),

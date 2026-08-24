@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:chordia_sync/chordia_sync.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -5,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/art/art_cache.dart';
 import '../../i18n/keys.g.dart';
 import '../../i18n/translations_provider.dart';
+import '../catalog/widgets/entity_menu.dart';
 import 'data/formatting.dart';
 import 'data/liked_controller.dart';
 import 'data/library_providers.dart';
@@ -145,10 +148,27 @@ class _LikedScreenState extends ConsumerState<LikedScreen> {
                     startIndex: index - 1,
                     context: playContext,
                   ),
-            trailing: IconButton(
-              icon: const Icon(Icons.favorite_rounded),
-              tooltip: t(LibraryKeys.likedRemove),
-              onPressed: () => controller.unlike(track),
+            // The heart stays as its own button - unliking is what this list is FOR, and burying
+            // the one action a reader came here to use behind a menu costs a tap every time. The
+            // menu beside it carries everything a track row offers anywhere else in the app.
+            onLongPress: () => unawaited(showTrackMenu(context, ref, track)),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  visualDensity: VisualDensity.compact,
+                  icon: const Icon(Icons.favorite_rounded),
+                  tooltip: t(LibraryKeys.likedRemove),
+                  onPressed: () => controller.unlike(track),
+                ),
+                IconButton(
+                  visualDensity: VisualDensity.compact,
+                  icon: const Icon(Icons.more_vert_rounded),
+                  tooltip: t(CommonKeys.actionsMore),
+                  onPressed: () =>
+                      unawaited(showTrackMenu(context, ref, track)),
+                ),
+              ],
             ),
           );
         },

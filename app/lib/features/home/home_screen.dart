@@ -9,10 +9,13 @@ import '../catalog/data/playback.dart';
 import '../catalog/widgets/album_grid.dart';
 import '../catalog/widgets/artist_row.dart';
 import '../catalog/widgets/catalog_state.dart';
+import '../catalog/widgets/entity_menu.dart';
+import '../social/social_routes.dart';
 import 'data/daypart.dart';
 import 'data/discovery_nav.dart';
 import 'data/home_feed.dart';
 import 'widgets/cards.dart';
+import 'widgets/hero.dart';
 import 'widgets/rail.dart';
 
 /// The home tab: a scrolling feed of horizontal shelves.
@@ -71,17 +74,12 @@ class HomeScreen extends ConsumerWidget {
       return const [SliverToBoxAdapter(child: HomeSkeleton())];
     }
 
-    if (feed.isEmpty) {
-      return [
-        SliverFillRemaining(
-          hasScrollBody: false,
-          child: CatalogEmpty(message: ref.t(DiscoveryKeys.homeEmptyState)),
-        ),
-      ];
-    }
-
+    // No empty state below this point, and that is the web's shape rather than an omission: the
+    // hero has a variant for every degree of nothing — no library, no history, no mixes — and each
+    // one hands the listener something to press. `CatalogEmpty` here was a sentence and a shrug.
     final rails = feed.rails;
     return [
+      SliverToBoxAdapter(child: HomeHero(feed: feed)),
       SliverList.builder(
         itemCount: rails.length,
         itemBuilder: (context, index) =>
@@ -116,35 +114,46 @@ class HomeScreen extends ConsumerWidget {
                   PinKind.playlist => context.goToPlaylist(pin.id),
                   PinKind.radio => context.goToArtistRadio(pin.id),
                 },
-              );
-            },
-          ),
-        );
-
-      case HomeRail.jumpBackIn:
-        return RailSection(
-          title: t(DiscoveryKeys.shelfJumpBackIn),
-          child: RailShelf(
-            height: shelfHeight,
-            itemCount: feed.recent.length,
-            itemBuilder: (context, index) {
-              final item = feed.recent[index];
-              return EntityCard(
-                imageUrl: item.imageUrl,
-                title: item.name,
-                subtitle: item.subtitle,
-                shape: item.kind == RecentKind.artist
-                    ? BoxShape.circle
-                    : BoxShape.rectangle,
-                fallbackIcon: switch (item.kind) {
-                  RecentKind.artist => Icons.person_rounded,
-                  RecentKind.playlist => Icons.queue_music_rounded,
-                  RecentKind.album => Icons.album_rounded,
-                },
-                onTap: () => switch (item.kind) {
-                  RecentKind.album => context.goToAlbum(item.id),
-                  RecentKind.artist => context.goToArtist(item.id),
-                  RecentKind.playlist => context.goToPlaylist(item.id),
+                // The kind picks the menu exactly as it picks the destination — and every one of
+                // them carries the pin row, which is the only way to UNPIN anything from the one
+                // place the phone shows pins at all. A pin holds a name and a picture and nothing
+                // else, so the menus that want more (an album's artist, a playlist's tracks) fetch
+                // it themselves.
+                menu: (page, sheetRef) => switch (pin.kind) {
+                  PinKind.album => albumMenu(
+                    page,
+                    sheetRef,
+                    AlbumLike(
+                      id: pin.id,
+                      title: pin.name,
+                      coverUrl: pin.imageUrl,
+                    ),
+                  ),
+                  PinKind.artist => artistMenu(
+                    page,
+                    sheetRef,
+                    ArtistLike(
+                      id: pin.id,
+                      name: pin.name,
+                      imageUrl: pin.imageUrl,
+                    ),
+                  ),
+                  PinKind.playlist => playlistMenu(
+                    page,
+                    sheetRef,
+                    PlaylistLike(
+                      id: pin.id,
+                      name: pin.name,
+                      coverUrl: pin.imageUrl,
+                    ),
+                  ),
+                  PinKind.radio => radioPinMenu(
+                    page,
+                    sheetRef,
+                    seedArtistId: pin.id,
+                    name: pin.name,
+                    imageUrl: pin.imageUrl,
+                  ),
                 },
               );
             },
@@ -154,19 +163,11 @@ class HomeScreen extends ConsumerWidget {
       case HomeRail.madeForYou:
         return RailSection(
           title: t(DiscoveryKeys.madeForYouTitle),
+          onSeeAll: () => context.goToMadeForYou(),
           child: RailShelf(
             height: shelfHeight,
             itemCount: feed.mixes.length,
-            itemBuilder: (context, index) {
-              final mix = feed.mixes[index];
-              return EntityCard(
-                imageUrl: mix.imageUrl,
-                title: mix.title,
-                subtitle: mix.subtitle,
-                fallbackIcon: Icons.radio_rounded,
-                onTap: () => context.goToArtistRadio(mix.seedArtistId),
-              );
-            },
+            itemBuilder: (context, index) => MixCard(mix: feed.mixes[index]),
           ),
         );
 
@@ -216,6 +217,21 @@ class HomeScreen extends ConsumerWidget {
                   index: index,
                   playContext: null,
                 ),
+                // The full browse row, so this is the same menu the track gets in any list —
+                // like, hide, add to playlist, download. `onPlay` is the card's own tap, which the
+                // web passes for the same reason (`TrendingTracksList.tsx`): a menu whose Play
+                // queued only this one song would disagree with the card above it.
+                menu: (page, sheetRef) => trackMenu(
+                  page,
+                  sheetRef,
+                  track,
+                  onPlay: () => playTracksFrom(
+                    ref,
+                    tracks: feed.trendingTracks,
+                    index: index,
+                    playContext: null,
+                  ),
+                ),
               );
             },
           ),
@@ -263,9 +279,9 @@ class _Greeting extends ConsumerWidget {
         children: [
           Text(
             t(part.greetingKey),
-            style: theme.textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
+            // `display-title font-bold text-2xl md:text-3xl` (HomeView.tsx:260) — the phone column
+            // is below `md`, so `text-2xl`, which is the `displaySmall` slot.
+            style: theme.textTheme.displaySmall,
           ),
           const SizedBox(height: 4),
           Text(

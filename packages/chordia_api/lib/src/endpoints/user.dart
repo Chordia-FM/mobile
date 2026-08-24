@@ -1,7 +1,9 @@
+import '../errors.dart';
 import '../hub.dart';
 import '../json.dart';
 import '../models.g.dart';
 import 'decode.dart';
+import 'images.dart';
 
 /// The caller's own account, and other people's public profiles.
 extension UserEndpoints on HubClient {
@@ -61,4 +63,56 @@ extension UserEndpoints on HubClient {
   /// only member of that tag and it is read for profiles.
   Future<List<BadgeCatalogEntry>> badges() =>
       get('/v1/badges', (json) => listOf(json, BadgeCatalogEntry.fromJson));
+}
+
+/// Uploading an image blob to the Hub's content-addressed store.
+///
+/// Separate from [UserEndpoints] because it does **not** send JSON: the body is the raw file, and
+/// the content type is what the Hub's decoder keys off, so it rides [ByteBodyEndpoints.postBytes]
+/// rather than the JSON transport. It lives beside the profile because avatars and banners are the
+/// only reason this client uploads an image at all — a banner is set by hash
+/// (`UpdateProfile.bannerHash`) and an avatar by the path the hash resolves to
+/// (`UpdateProfile.avatarUrl`), and neither can be set without this call first.
+extension ImageEndpoints on HubClient {
+  /// What `POST /v1/images` refuses above — mirrors `MAX_BYTES` in backend/src/api/v1/images.rs.
+  ///
+  /// Checked here as well as there because a phone photo is routinely 10-15 MB: pushing it over a
+  /// mobile uplink only to be told no wastes the whole upload, and the caller can downscale.
+  static const maxImageBytes = 8 * 1024 * 1024;
+
+  /// Stores [bytes] and answers with the sha256 the Hub filed them under.
+  ///
+  /// The Hub decodes the image itself and derives the stored mime from the decoder, so
+  /// [contentType] is a hint rather than a declaration — but sending the picker's own type is what
+  /// lets an animated GIF stay animated for an account entitled to one.
+  Future<String> uploadImage(
+    List<int> bytes, {
+    String contentType = 'application/octet-stream',
+  }) async {
+    // `async` is here for the two guards, not for the send: without it a refused file would be a
+    // synchronous throw, which a caller that holds the future and catches later would miss.
+    if (bytes.isEmpty) {
+      throw const ApiException(
+        status: 0,
+        title: 'That file is empty.',
+        method: 'POST',
+        path: '/v1/images',
+      );
+    }
+    if (bytes.length > maxImageBytes) {
+      throw const ApiException(
+        status: 0,
+        title: 'That image is too large.',
+        method: 'POST',
+        path: '/v1/images',
+      );
+    }
+
+    return postBytes(
+      '/v1/images',
+      (json) => CoverBody.fromJson(asObject(json)).hash,
+      bytes: bytes,
+      contentType: contentType,
+    );
+  }
 }

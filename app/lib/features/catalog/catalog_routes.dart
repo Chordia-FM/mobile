@@ -1,6 +1,8 @@
+import 'package:chordia_api/chordia_api.dart' show EntityKind;
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 
+import '../insights/entity_stats_screen.dart';
 import 'album_screen.dart';
 import 'artist_discography_screen.dart';
 import 'artist_screen.dart';
@@ -8,6 +10,7 @@ import 'genre_screen.dart';
 import 'genres_screen.dart';
 import 'label_screen.dart';
 import 'labels_screen.dart';
+import 'live_album_screen.dart';
 import 'track_screen.dart';
 
 /// The catalog screens, as sub-routes of a tab's root.
@@ -35,17 +38,29 @@ List<RouteBase> catalogRoutes() => [
           artistId: state.pathParameters['artistId']!,
         ),
       ),
+      // `artists/{id}/live` — the synthesized live collection, at the web's own path
+      // (`routes/_authed/app/artists/$artistId/live.tsx`). The screen has existed since the artist
+      // page grew its Live card, but only behind a `MaterialPageRoute`, so a shared link to it
+      // landed on the error page.
+      GoRoute(
+        path: 'live',
+        builder: (context, state) =>
+            ArtistLiveScreen(artistId: state.pathParameters['artistId']!),
+      ),
+      _stats(EntityKind.artist, 'artistId'),
     ],
   ),
   GoRoute(
     path: 'albums/:albumId',
     builder: (context, state) =>
         AlbumScreen(albumId: state.pathParameters['albumId']!),
+    routes: [_stats(EntityKind.album, 'albumId')],
   ),
   GoRoute(
     path: 'tracks/:trackId',
     builder: (context, state) =>
         TrackScreen(trackId: state.pathParameters['trackId']!),
+    routes: [_stats(EntityKind.track, 'trackId')],
   ),
   GoRoute(
     path: 'genres',
@@ -71,6 +86,19 @@ List<RouteBase> catalogRoutes() => [
   ),
 ];
 
+/// `{entity}/{id}/stats` — one entity's listening figures, at the web's own path.
+///
+/// The screen has existed for a while and had exactly one way in: a row inside Insights > Charts.
+/// The web reaches it from the album and artist context menus and from the "On this day" rail, and
+/// those menus live in `features/catalog/widgets/entity_actions.dart` — so this registers the
+/// destination and a shared `/app/albums/{id}/stats` link now lands on it, while the menu entries
+/// are still owed.
+GoRoute _stats(EntityKind kind, String parameter) => GoRoute(
+  path: 'stats',
+  builder: (context, state) =>
+      EntityStatsScreen(kind: kind, id: state.pathParameters[parameter]!),
+);
+
 /// Opening one catalog entity from another, without either knowing which tab it is in.
 ///
 /// The destination is built from the CURRENT location's first segment, because that segment is the
@@ -87,6 +115,10 @@ extension CatalogNavigation on BuildContext {
 
   void goToTrack(String trackId) => _pushInTab('tracks/$trackId');
 
+  /// One entity's listening figures. [kind] decides the path, exactly as it decides the web's.
+  void goToEntityStats(EntityKind kind, String id) =>
+      _pushInTab('${kind.wire}s/$id/stats');
+
   void goToGenres() => _pushInTab('genres');
 
   void goToGenre(String slug) =>
@@ -96,11 +128,17 @@ extension CatalogNavigation on BuildContext {
 
   void goToLabel(String labelId) => _pushInTab('labels/$labelId');
 
-  void _pushInTab(String suffix) {
-    final segments = GoRouterState.of(this).uri.pathSegments;
-    // No segment at all can only happen at "/", which the router redirects away from before any
-    // catalog screen exists to push from — but a crash there would be a poor trade for a guard.
-    if (segments.isEmpty) return;
-    GoRouter.of(this).push('/${segments.first}/$suffix');
-  }
+  void _pushInTab(String suffix) => pushInCurrentTab(this, suffix);
+}
+
+/// Pushes a tab-relative catalog path into whichever tab is showing.
+///
+/// Public because the player navigates too, and it holds a path rather than a call: "Playing from"
+/// resolves a play context to a route, and one function has to be able to push whatever came back.
+void pushInCurrentTab(BuildContext context, String suffix) {
+  final segments = GoRouterState.of(context).uri.pathSegments;
+  // No segment at all can only happen at "/", which the router redirects away from before any
+  // catalog screen exists to push from — but a crash there would be a poor trade for a guard.
+  if (segments.isEmpty) return;
+  GoRouter.of(context).push('/${segments.first}/$suffix');
 }

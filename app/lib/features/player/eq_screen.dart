@@ -7,6 +7,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/providers.dart';
 import '../../app/theme.dart';
 import '../../data/playback/eq.dart';
+import '../../widgets/tokens.dart';
+import '../catalog/widgets/list_row.dart';
 import '../settings/data/settings_providers.dart';
 import '../../i18n/keys.g.dart';
 import '../../i18n/translations_provider.dart';
@@ -88,7 +90,7 @@ class _EqScreenState extends ConsumerState<EqScreen> {
     }
 
     return Scaffold(
-      backgroundColor: ChordiaColors.pane,
+      backgroundColor: context.surfaces.pane,
       appBar: AppBar(title: Text(t(PlayerKeys.equalizerTitle))),
       body: settings.isLoading && _draft == null
           ? const Center(child: CircularProgressIndicator())
@@ -102,15 +104,27 @@ class _EqScreenState extends ConsumerState<EqScreen> {
                       ? t(PlayerKeys.equalizerDeviceApproximation)
                       : t(PlayerKeys.equalizerNotApplied),
                 ),
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
+                // The web's toggle row is a label with the control at the end
+                // (`settings/Toggle.tsx`), which is a `ListRow` with a trailing `Switch` — and the
+                // whole row is the target there, because it is wrapped in a `<label>`.
+                ListRow(
+                  gutter: 0,
                   title: Text(t(PlayerKeys.equalizerEnable)),
-                  value: enabledOf(_config),
-                  onChanged: (on) => _edit(
+                  onTap: () => _edit(
                     EqConfig(
-                      enabled: on,
+                      enabled: !enabledOf(_config),
                       preamp: preampOf(_config),
                       bands: bandsOf(_config),
+                    ),
+                  ),
+                  trailing: Switch(
+                    value: enabledOf(_config),
+                    onChanged: (on) => _edit(
+                      EqConfig(
+                        enabled: on,
+                        preamp: preampOf(_config),
+                        bands: bandsOf(_config),
+                      ),
                     ),
                   ),
                 ),
@@ -169,9 +183,9 @@ class _CurveCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ClipRRect(
-    borderRadius: BorderRadius.circular(12),
+    borderRadius: ChordiaRadius.lgAll,
     child: ColoredBox(
-      color: ChordiaColors.paneRaised,
+      color: context.surfaces.paneRaised,
       child: SizedBox(
         height: 160,
         width: double.infinity,
@@ -180,6 +194,11 @@ class _CurveCard extends StatelessWidget {
             bands: bandsOf(config),
             preamp: preampOf(config),
             dimmed: !enabledOf(config),
+            // A painter has no context of its own, so the two accent-derived colours are handed
+            // in — and compared in `shouldRepaint`, or the curve keeps the old accent after a
+            // colour change until something else invalidates it.
+            accent: context.surfaces.accent,
+            line: context.surfaces.line,
           ),
         ),
       ),
@@ -192,11 +211,15 @@ class _CurvePainter extends CustomPainter {
     required this.bands,
     required this.preamp,
     required this.dimmed,
+    required this.accent,
+    required this.line,
   });
 
   final List<EqBand> bands;
   final double preamp;
   final bool dimmed;
+  final Color accent;
+  final Color line;
 
   /// Half-height of the plot in dB. Wider than the ±12 the sliders reach, so a stack of boosted
   /// neighbours has somewhere to go instead of being clipped flat at the top.
@@ -208,7 +231,7 @@ class _CurvePainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final mid = size.height / 2;
     final zero = Paint()
-      ..color = ChordiaColors.line
+      ..color = line
       ..strokeWidth = 1;
     canvas.drawLine(Offset(0, mid), Offset(size.width, mid), zero);
 
@@ -230,7 +253,7 @@ class _CurvePainter extends CustomPainter {
         ..style = PaintingStyle.stroke
         ..strokeWidth = 2.5
         ..strokeJoin = StrokeJoin.round
-        ..color = ChordiaColors.accent.withValues(alpha: dimmed ? 0.3 : 1),
+        ..color = accent.withValues(alpha: dimmed ? 0.3 : 1),
     );
   }
 
@@ -238,6 +261,8 @@ class _CurvePainter extends CustomPainter {
   bool shouldRepaint(covariant _CurvePainter old) =>
       old.preamp != preamp ||
       old.dimmed != dimmed ||
+      old.accent != accent ||
+      old.line != line ||
       !eqMatches(old.bands, old.preamp, bands, preamp);
 }
 

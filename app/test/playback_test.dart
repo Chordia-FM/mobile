@@ -380,6 +380,7 @@ class _FakeEngine implements PlaybackEngine {
   final _states = StreamController<EngineState>.broadcast(sync: true);
   final _health = StreamController<EngineHealth>.broadcast(sync: true);
   final _completions = StreamController<void>.broadcast(sync: true);
+  final _errors = StreamController<EngineError>.broadcast(sync: true);
 
   /// Every preamp value the service has asked for, in order.
   final List<double> preamps = [];
@@ -431,6 +432,8 @@ class _FakeEngine implements PlaybackEngine {
   Stream<EngineHealth> get health => _health.stream;
   @override
   Stream<void> get completions => _completions.stream;
+  @override
+  Stream<EngineError> get errors => _errors.stream;
   @override
   Future<void> dispose() async {
     await _positions.close();

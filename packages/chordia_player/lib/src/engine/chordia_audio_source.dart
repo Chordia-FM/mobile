@@ -41,6 +41,7 @@ class ChordiaAudioSource extends StreamAudioSource {
     required this.grants,
     required this.factory,
     required this.cache,
+    this.onFailure,
     @visibleForTesting this.openStream,
   }) : super(tag: source.track.qid);
 
@@ -49,15 +50,32 @@ class ChordiaAudioSource extends StreamAudioSource {
   final PinnedHttpClientFactory factory;
   final StreamCache cache;
 
+  /// Told about anything that stopped bytes reaching the player.
+  ///
+  /// The platform player fetches from just_audio's loopback proxy, so a refused grant or an
+  /// unreachable library reaches it as a generic decode failure with the real cause thrown away.
+  /// Handing the cause out here is what lets the engine tell "the library said 403" apart from
+  /// "the connection dropped" — the difference between skipping the track and retrying it.
+  final void Function(Object error)? onFailure;
+
   /// Test seam standing in for the outbound HTTPS leg.
   final Future<UpstreamResponse> Function(Uri url, Map<String, String> headers)?
   openStream;
 
   @override
   Future<StreamAudioResponse> request([int? start, int? end]) async {
-    final s = source;
-    if (s is DownloadedSource) return _fromFile(File(s.filePath), start, end);
-    return _fromLibrary(s as StreamedSource, start, end);
+    try {
+      final s = source;
+      if (s is DownloadedSource) {
+        return await _fromFile(File(s.filePath), start, end);
+      }
+      return await _fromLibrary(s as StreamedSource, start, end);
+    } on Object catch (error) {
+      // Reported, then rethrown: the player still has to be told the range failed, and swallowing
+      // it here would hand it an empty body it would render as a corrupt file.
+      onFailure?.call(error);
+      rethrow;
+    }
   }
 
   Future<StreamAudioResponse> _fromFile(File file, int? start, int? end) async {

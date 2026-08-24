@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/art/art_cache.dart';
 import '../../i18n/keys.g.dart';
 import '../../i18n/translations_provider.dart';
+import '../catalog/widgets/list_row.dart';
 import '../../widgets/cover_art.dart';
 import '../library/data/formatting.dart';
 import '../library/widgets/library_states.dart';
@@ -155,7 +156,7 @@ class _CollaboratorsSheetState extends ConsumerState<_CollaboratorsSheet> {
     Translate t,
   ) {
     final pending = CollaboratorsController.isPending(person);
-    return ListTile(
+    return ListRow(
       leading: CoverArt(
         sha256: artHashOf(person.avatarUrl),
         size: 40,

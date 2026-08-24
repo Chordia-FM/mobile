@@ -10,6 +10,7 @@ import '../../data/auth_repository.dart';
 import '../../data/browser_handoff.dart';
 import '../../i18n/keys.g.dart';
 import '../../i18n/translations_provider.dart';
+import '../catalog/widgets/list_row.dart';
 import 'auth_messages.dart';
 import 'auth_routes.dart';
 import 'auth_scaffold.dart';
@@ -224,12 +225,23 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
         ),
       ),
     ),
-    CheckboxListTile(
-      value: _remember,
-      onChanged: _busy ? null : (v) => setState(() => _remember = v ?? true),
-      contentPadding: EdgeInsets.zero,
-      controlAffinity: ListTileControlAffinity.leading,
-      title: Text(t(AuthKeys.loginKeepSignedIn)),
+    // The web's is a `<label>` wrapping the box and a muted `text-sm` line (`login.tsx:429-436`),
+    // so the whole row is the target and the label is not a heading. `ListRow` is that row; the
+    // box stays in front of the text, which is the side the web puts it on.
+    ListRow(
+      gutter: 0,
+      onTap: _busy ? null : () => setState(() => _remember = !_remember),
+      leading: Checkbox(
+        value: _remember,
+        onChanged: _busy ? null : (v) => setState(() => _remember = v ?? true),
+      ),
+      title: Text(
+        t(AuthKeys.loginKeepSignedIn),
+        style: TextStyle(
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+          fontWeight: FontWeight.w400,
+        ),
+      ),
     ),
     const SizedBox(height: 8),
     FilledButton(

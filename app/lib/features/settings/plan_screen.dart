@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../i18n/keys.g.dart';
 import '../../i18n/translations_provider.dart';
+import '../catalog/widgets/list_row.dart';
 import 'data/settings_messages.dart';
 import 'data/settings_providers.dart';
 import 'data/settings_values.dart';
@@ -95,9 +96,12 @@ class _CurrentPlan extends ConsumerWidget {
     return SettingsSection(
       title: t(SettingsKeys.planCurrent),
       children: [
-        ListTile(
+        ListRow(
+          gutter: 0,
+          subtitleMaxLines: 3,
           leading: Icon(
             Icons.workspace_premium_rounded,
+            size: 20,
             color: Theme.of(context).colorScheme.primary,
           ),
           title: Text(tierName(tier)),
@@ -109,7 +113,6 @@ class _CurrentPlan extends ConsumerWidget {
                 t(BillingKeys.planComplimentary),
             ].join('\n'),
           ),
-          isThreeLine: true,
         ),
         if (account.hasCustomer == true)
           SettingsDisclosureRow(
@@ -151,17 +154,18 @@ class _Entitlements extends ConsumerWidget {
       title: t(SettingsKeys.planIncludes),
       children: [
         for (final feature in features)
-          ListTile(
-            dense: true,
+          ListRow(
+            gutter: 0,
             leading: Icon(
               Icons.check_rounded,
+              size: 20,
               color: Theme.of(context).colorScheme.primary,
             ),
             title: Text(t(featureNameKey(feature))),
           ),
-        ListTile(
-          dense: true,
-          leading: const Icon(Icons.history_rounded),
+        ListRow(
+          gutter: 0,
+          leading: const Icon(Icons.history_rounded, size: 20),
           title: Text(t(BillingKeys.featuresRetentionName)),
           // No limit is the perk, so it is named rather than left blank. Rounded to years exactly
           // as the web's plan table rounds it, so the same account is not told two different
@@ -283,7 +287,8 @@ class _PlanRow extends ConsumerWidget {
       name: plan.currency,
     ).format(cents / 100);
 
-    return ListTile(
+    return ListRow(
+      gutter: 0,
       title: Text(tierName(plan.tier)),
       subtitle: Text(
         t(

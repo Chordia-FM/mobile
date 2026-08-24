@@ -10,6 +10,7 @@ import '../catalog/catalog_routes.dart';
 import '../catalog/widgets/catalog_state.dart';
 import 'data/coverage_format.dart';
 import 'data/manager_providers.dart';
+import 'data/releases.dart';
 import 'manager_routes.dart';
 import 'widgets/manager_widgets.dart';
 
@@ -43,16 +44,38 @@ class DiscoverArtistScreen extends ConsumerWidget {
   }
 }
 
-class _Loaded extends ConsumerWidget {
+class _Loaded extends ConsumerStatefulWidget {
   const _Loaded({required this.artist});
 
   final ExtArtistDetail artist;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_Loaded> createState() => _LoadedState();
+}
+
+class _LoadedState extends ConsumerState<_Loaded> {
+  /// The selected type chip, or null for "All" — the web's `tab === "all"`.
+  String? _type;
+
+  @override
+  Widget build(BuildContext context) {
+    final artist = widget.artist;
     final t = ref.t;
     final theme = Theme.of(context);
     final ownedArtistId = artist.ownedArtistId;
+
+    // Collapsed BEFORE anything is counted or filtered, exactly as the web does: the chips are
+    // derived from the grouped list, so a type that only ever appears on a swallowed edition does
+    // not get a chip that filters to nothing.
+    final releases = groupReleases(artist.releaseGroups);
+    final types = presentReleaseTypes(releases);
+    final selected = _type;
+    final visible = selected == null
+        ? releases
+        : [
+            for (final release in releases)
+              if ((release.primaryType ?? 'Other') == selected) release,
+          ];
 
     return CustomScrollView(
       slivers: [
@@ -122,18 +145,26 @@ class _Loaded extends ConsumerWidget {
               if (artist.refreshing)
                 ManagerNotice(t(ManagerKeys.artistFetching)),
               ManagerSectionHeader(title: t(ManagerKeys.discoverReleases)),
+              // Only worth a control when there is more than one thing to choose between: a chip
+              // row reading "All · Album" filters nothing and costs a line.
+              if (types.length > 1)
+                _TypeChips(
+                  types: types,
+                  selected: selected,
+                  onSelected: (type) => setState(() => _type = type),
+                ),
             ],
           ),
         ),
-        if (artist.releaseGroups.isEmpty)
+        if (releases.isEmpty)
           SliverToBoxAdapter(
             child: CatalogEmpty(message: t(ManagerKeys.discoverNoResults)),
           )
         else
           SliverList.builder(
-            itemCount: artist.releaseGroups.length,
+            itemCount: visible.length,
             itemBuilder: (context, index) {
-              final release = artist.releaseGroups[index];
+              final release = visible[index];
               return ReleaseGroupTile(
                 title: release.title,
                 owned: release.owned,
@@ -152,6 +183,52 @@ class _Loaded extends ConsumerWidget {
           ),
         const SliverToBoxAdapter(child: SizedBox(height: 24)),
       ],
+    );
+  }
+}
+
+/// The release-type filter: All, then whichever of Album / EP / Single / Sessions / Other this
+/// discography actually contains.
+///
+/// The web's `TypeChip` row (`manager/discover/artists/$artistMbid.tsx:150-166`). A row of chips
+/// rather than a segmented control or a dropdown: the list is one to five entries whose labels are
+/// full words in every shipped language, and the count differs per artist.
+class _TypeChips extends ConsumerWidget {
+  const _TypeChips({
+    required this.types,
+    required this.selected,
+    required this.onSelected,
+  });
+
+  final List<String> types;
+
+  /// Null is "All".
+  final String? selected;
+
+  final ValueChanged<String?> onSelected;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = ref.t;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          ChoiceChip(
+            label: Text(t(ManagerKeys.discoverAllTypes)),
+            selected: selected == null,
+            onSelected: (_) => onSelected(null),
+          ),
+          for (final type in types)
+            ChoiceChip(
+              label: Text(t(releaseTypeKey(type))),
+              selected: selected == type,
+              onSelected: (_) => onSelected(type),
+            ),
+        ],
+      ),
     );
   }
 }

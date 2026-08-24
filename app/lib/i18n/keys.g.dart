@@ -486,6 +486,8 @@ abstract final class BillingKeys {
       'billing:features.dynamic_accent.locked';
   static const featuresDynamicAccentName =
       'billing:features.dynamic_accent.name';
+  static const featuresHistoryImportLocked =
+      'billing:features.history_import.locked';
   static const featuresLibrariesName = 'billing:features.libraries.name';
   static const featuresNameAccentLocked = 'billing:features.name_accent.locked';
   static const featuresNameAccentName = 'billing:features.name_accent.name';
@@ -1106,6 +1108,9 @@ abstract final class ErrorsKeys {
   static const oauthMissingCode = 'errors:oauth.missingCode';
   static const pinsUnknownKind = 'errors:pins.unknownKind';
   static const planRequired = 'errors:plan.required';
+  static const playbackRetrying = 'errors:playback.retrying';
+  static const playbackSkipped = 'errors:playback.skipped';
+  static const playbackStopped = 'errors:playback.stopped';
   static const playlistLimitReached = 'errors:playlist.limitReached';
   static const routeMessage = 'errors:route.message';
   static const routeTitle = 'errors:route.title';

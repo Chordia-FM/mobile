@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../i18n/keys.g.dart';
 import '../../../i18n/translations_provider.dart';
+import '../../../widgets/tokens.dart';
+import '../../catalog/widgets/list_row.dart';
 import '../data/insights_providers.dart';
 import '../format.dart';
 import '../widgets/insights_primitives.dart';
@@ -128,18 +130,14 @@ class _NewVsFamiliar extends ConsumerWidget {
     final fresh = 1 - stats.repeatRate;
     final freshPercent = '${(fresh * 100).round()}%';
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+    // The web's `MixPanel` (`DiscoveryReport.tsx:55`) is a `Panel`, so the title comes from the
+    // panel's own heading rather than from a line of text above the figure.
+    return ReportPanel(
+      title: t(InsightsKeys.discoveryMixTitle),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            t(InsightsKeys.discoveryMixTitle),
-            style: theme.textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 8),
           Row(
             crossAxisAlignment: CrossAxisAlignment.baseline,
             textBaseline: TextBaseline.alphabetic,
@@ -165,7 +163,8 @@ class _NewVsFamiliar extends ConsumerWidget {
           Semantics(
             label: t(InsightsKeys.discoveryMixMeterAriaLabel),
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(6),
+              // `rounded-full`, like every other bar on the web (`DownloadStatsPanel.tsx:139`).
+              borderRadius: ChordiaRadius.pill,
               child: LinearProgressIndicator(value: fresh, minHeight: 10),
             ),
           ),
@@ -223,8 +222,7 @@ class _Movers extends ConsumerWidget {
             if (value.newcomers.isNotEmpty) ...[
               ReportHeading(title: t(InsightsKeys.discoveryMoversNewcomers)),
               for (final entry in value.newcomers)
-                ListTile(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                ListRow(
                   leading: SizedBox(
                     width: 32,
                     child: Text(
@@ -269,8 +267,7 @@ class _MoveGroup extends ConsumerWidget {
       children: [
         ReportHeading(title: title),
         for (final move in moves)
-          ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+          ListRow(
             leading: Icon(
               climbing
                   ? Icons.trending_up_rounded

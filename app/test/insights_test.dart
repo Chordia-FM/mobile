@@ -2,7 +2,10 @@ import 'package:chordia_api/chordia_api.dart';
 import 'package:chordia_mobile/app/theme.dart';
 import 'package:chordia_mobile/features/insights/data/insights_api.dart';
 import 'package:chordia_mobile/features/insights/data/insights_providers.dart';
+import 'package:chordia_mobile/features/insights/entity_stats_screen.dart';
 import 'package:chordia_mobile/features/insights/format.dart';
+import 'package:chordia_mobile/features/insights/reports/charts_report.dart';
+import 'package:chordia_mobile/features/insights/reports/records_report.dart';
 import 'package:chordia_mobile/features/insights/widgets/insights_primitives.dart';
 import 'package:chordia_mobile/features/insights/wrapped_card.dart';
 import 'package:chordia_mobile/i18n/keys.g.dart';
@@ -138,6 +141,199 @@ void main() {
     });
   });
 
+  group('the full ranked chart', () {
+    test('asks for the next page and keeps the rows already on screen', () async {
+      // 60 entities and a 25-row page: without an offset, rank 26 was unreachable on a phone while
+      // the line above the list went on saying "of 60".
+      final api = FakeInsightsApi()..chartTotal = 60;
+      final container = ProviderContainer(
+        overrides: [insightsApiProvider.overrideWithValue(api)],
+      );
+      addTearDown(container.dispose);
+      const request = ChartRequest(
+        query: InsightsQuery(),
+        kind: EntityKind.artist,
+      );
+
+      final first = await container.read(topChartProvider(request).future);
+      expect(first.entries, hasLength(chartPageSize));
+      expect(first.total, 60);
+      expect(first.nextOffset, chartPageSize);
+      // The first page asks for no offset at all, which is the Hub's own default.
+      expect(api.topChartOffsets, [null]);
+
+      await container.read(topChartProvider(request).notifier).loadMore();
+
+      final more = container.read(topChartProvider(request)).requireValue;
+      // The second page is asked for at the offset the first one ended at...
+      expect(api.topChartOffsets, [null, chartPageSize]);
+      // ...and lands UNDER the rows already read, rather than replacing them.
+      expect(more.entries, hasLength(50));
+      expect(more.entries.first.rank, 1);
+      expect(more.entries.last.rank, 50);
+      expect(more.nextOffset, 50);
+    });
+
+    test('stops once every row is loaded', () async {
+      final api = FakeInsightsApi()..chartTotal = 30;
+      final container = ProviderContainer(
+        overrides: [insightsApiProvider.overrideWithValue(api)],
+      );
+      addTearDown(container.dispose);
+      const request = ChartRequest(
+        query: InsightsQuery(),
+        kind: EntityKind.track,
+      );
+
+      await container.read(topChartProvider(request).future);
+      final notifier = container.read(topChartProvider(request).notifier);
+      await notifier.loadMore();
+      expect(
+        container.read(topChartProvider(request)).requireValue.nextOffset,
+        isNull,
+      );
+
+      // A second tap on a button that is no longer offered must not spend a request either.
+      await notifier.loadMore();
+      expect(api.topChartOffsets, [null, chartPageSize]);
+    });
+
+    test('a failed page costs the page, not the rows on screen', () async {
+      final api = FakeInsightsApi()..chartTotal = 60;
+      final container = ProviderContainer(
+        overrides: [insightsApiProvider.overrideWithValue(api)],
+      );
+      addTearDown(container.dispose);
+      const request = ChartRequest(
+        query: InsightsQuery(),
+        kind: EntityKind.album,
+      );
+      await container.read(topChartProvider(request).future);
+
+      api.chartFailure = const ApiException(
+        status: 0,
+        title: 'Could not reach the server.',
+        method: 'GET',
+        path: '/v1/insights/top',
+      );
+      await expectLater(
+        container.read(topChartProvider(request).notifier).loadMore(),
+        throwsA(isA<ApiException>()),
+      );
+
+      final feed = container.read(topChartProvider(request)).requireValue;
+      expect(feed.entries, hasLength(chartPageSize));
+      // And the button comes back, rather than the list being stuck mid-load.
+      expect(feed.loadingMore, isFalse);
+    });
+
+    testWidgets('a chart row opens that entity\'s own stats page', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(1200, 3000);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+
+      final api = FakeInsightsApi()..chartTotal = 3;
+      await tester.pumpWidget(
+        _reportApp(api, const ChartsReport(handle: null, own: true)),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      await tester.tap(find.text('Entry 2'));
+      await tester.pump();
+      await tester.pump();
+
+      // Reached, and asking about the row that was tapped rather than about the chart.
+      expect(find.byType(EntityStatsScreen), findsOneWidget);
+      expect(api.entityStatsCalls, [('artist', 'e1')]);
+    });
+  });
+
+  group('the milestone lookup', () {
+    testWidgets('asks the Hub for the position that was typed', (tester) async {
+      tester.view.physicalSize = const Size(1200, 3000);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+
+      // A listener with some history: an account with none renders the "nothing yet" card, and
+      // there is nothing to look a play up in.
+      final api = FakeInsightsApi()..recordsActiveDays = 12;
+      await tester.pumpWidget(
+        _reportApp(api, const RecordsReport(handle: null, own: true)),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      await tester.enterText(
+        find.widgetWithText(
+          TextField,
+          translations(InsightsKeys.recordsMilestonesLookupLabel),
+        ),
+        '5000',
+      );
+      await tester.pump();
+      await tester.tap(
+        find.widgetWithText(
+          OutlinedButton,
+          translations(InsightsKeys.recordsMilestonesLookupSubmit),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      expect(api.milestoneCalls, [5000]);
+      // And the answer is shown, rather than only counted.
+      expect(find.textContaining('Play 5000'), findsOneWidget);
+    });
+
+    testWidgets('past the end of the history says so, in those words', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(1200, 3000);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+
+      final api = FakeInsightsApi()
+        ..recordsActiveDays = 12
+        ..milestoneFailure = const ApiException(
+          status: 404,
+          title: 'Not Found',
+          method: 'GET',
+          path: '/v1/insights/milestone',
+        );
+      await tester.pumpWidget(
+        _reportApp(api, const RecordsReport(handle: null, own: true)),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      await tester.enterText(
+        find.widgetWithText(
+          TextField,
+          translations(InsightsKeys.recordsMilestonesLookupLabel),
+        ),
+        '900000',
+      );
+      await tester.pump();
+      await tester.tap(
+        find.widgetWithText(
+          OutlinedButton,
+          translations(InsightsKeys.recordsMilestonesLookupSubmit),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      // The Hub's bare "Not Found" would tell a reader nothing about what they asked.
+      expect(
+        find.text(translations(InsightsKeys.recordsMilestonesLookupOutOfRange)),
+        findsOneWidget,
+      );
+    });
+  });
+
   group('durations', () {
     test('read the way a listener reads them', () {
       final t = translations.call;
@@ -187,6 +383,21 @@ Widget _app(FakeInsightsApi api) => ProviderScope(
     home: const Scaffold(
       body: Column(children: [PeriodSelector(), _ReportProbe()]),
     ),
+  ),
+);
+
+/// One report, on its own, with a fake Hub behind it.
+///
+/// Scrollable because a report is a `Column` that expects to live inside the profile's own scroll
+/// view, and a 3000px-tall test viewport is still shorter than a full records page.
+Widget _reportApp(FakeInsightsApi api, Widget report) => ProviderScope(
+  overrides: [
+    translationsProvider.overrideWithValue(translations),
+    insightsApiProvider.overrideWithValue(api),
+  ],
+  child: MaterialApp(
+    theme: buildChordiaTheme(),
+    home: Scaffold(body: SingleChildScrollView(child: report)),
   ),
 );
 
@@ -293,6 +504,22 @@ class FakeInsightsApi implements InsightsApi {
   final wrappedCalls = <InsightsQuery>[];
   final chartCalls = <InsightsQuery>[];
 
+  /// Every offset [topChart] was asked for, in order. `null` is "the first page", which is what
+  /// the Hub's own default means.
+  final topChartOffsets = <int?>[];
+  final milestoneCalls = <int>[];
+  final entityStatsCalls = <(String, String)>[];
+
+  /// How many entities the ranked chart holds, across every page.
+  int chartTotal = 0;
+
+  /// Active days in the records window. Zero renders the "nothing yet" card instead of a report.
+  int recordsActiveDays = 0;
+
+  /// Thrown by the NEXT chart page, for the revert test.
+  Object? chartFailure;
+  Object? milestoneFailure;
+
   @override
   Future<WrappedReport> wrapped(InsightsQuery query) async {
     wrappedCalls.add(query);
@@ -318,7 +545,7 @@ class FakeInsightsApi implements InsightsApi {
   @override
   Future<ListeningRecords> records(InsightsQuery query) async =>
       ListeningRecords(
-        activeDays: 0,
+        activeDays: recordsActiveDays,
         avgPlaysPerDay: 0,
         avgPlaysPerDayCompared: const Compared(current: 0, previous: 0),
         biggestDayCompared: const Compared(current: 0, previous: 0),
@@ -368,15 +595,31 @@ class FakeInsightsApi implements InsightsApi {
     EntityKind kind, {
     int? offset,
     int? limit,
-  }) async => ChartPage(
-    entries: const [],
-    kind: kind,
-    offset: offset ?? 0,
-    period: query.period,
-    total: 0,
-    windowEnd: 0,
-    windowStart: 0,
-  );
+  }) async {
+    topChartOffsets.add(offset);
+    if (chartFailure != null) throw chartFailure!;
+    final start = offset ?? 0;
+    final size = limit ?? chartPageSize;
+    final rows = (chartTotal - start).clamp(0, size);
+    return ChartPage(
+      entries: [
+        for (var i = 0; i < rows; i++)
+          ChartEntry(
+            id: 'e${start + i}',
+            msPlayed: 60000,
+            name: 'Entry ${start + i + 1}',
+            plays: 1,
+            rank: start + i + 1,
+          ),
+      ],
+      kind: kind,
+      offset: start,
+      period: query.period,
+      total: chartTotal,
+      windowEnd: 0,
+      windowStart: 0,
+    );
+  }
 
   @override
   Future<HistoryPage> history(HistoryCursor cursor, {int? limit}) async =>
@@ -396,4 +639,38 @@ class FakeInsightsApi implements InsightsApi {
 
   @override
   Future<List<FriendScrobble>> friendsActivity({int? limit}) async => const [];
+
+  @override
+  Future<Milestone> milestone(InsightsQuery query, int n) async {
+    milestoneCalls.add(n);
+    if (milestoneFailure != null) throw milestoneFailure!;
+    return Milestone(
+      artist: 'An Artist',
+      ordinal: n,
+      playedAt: 0,
+      title: 'Play $n',
+    );
+  }
+
+  @override
+  Future<EntityStats> entityStats(
+    EntityKind kind,
+    String id, {
+    Period? period,
+    String? tz,
+  }) async {
+    entityStatsCalls.add((kind.wire, id));
+    return EntityStats(
+      granularity: BucketGranularity.day,
+      id: id,
+      kind: kind,
+      period: period ?? Period.month,
+      totalMsPlayed: 60000,
+      totalPlays: 1,
+      trend: const [],
+      windowEnd: 0,
+      windowStart: 0,
+      firstPlayed: 0,
+    );
+  }
 }

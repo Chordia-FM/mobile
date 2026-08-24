@@ -5,8 +5,12 @@ import 'package:intl/intl.dart';
 
 import '../../../i18n/keys.g.dart';
 import '../../../i18n/translations_provider.dart';
+import '../../catalog/widgets/list_row.dart';
+import '../../social/data/social_messages.dart';
 import '../data/insights_providers.dart';
+import '../entity_stats_screen.dart';
 import '../format.dart';
+import '../widgets/insights_charts.dart';
 import '../widgets/insights_primitives.dart';
 
 /// A day's worth of milliseconds, for reading a window's length off its bounds.
@@ -41,19 +45,31 @@ class _ChartsReportState extends ConsumerState<ChartsReport> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _Activity(charts: value),
-          ReportHeading(title: t(InsightsKeys.panelsListeningClock)),
-          BarChart(bars: _clockBars(value, ref)),
+          ReportPanel(
+            title: t(InsightsKeys.panelsListeningClock),
+            child: BarChart(bars: _clockBars(value, ref)),
+          ),
           // A window shorter than a fortnight spans one or two weekdays, so seven bars would be
           // five empty ones and a claim about a pattern that cannot exist yet.
-          if (_windowDays(value) >= 14) ...[
-            ReportHeading(title: t(InsightsKeys.panelsByWeekday)),
-            BarChart(
-              bars: [
-                for (final (day, plays) in value.weekday.indexed)
-                  BarDatum(weekdayLabel(day, t), plays),
-              ],
+          if (_windowDays(value) >= 14)
+            ReportPanel(
+              title: t(InsightsKeys.panelsByWeekday),
+              child: BarChart(
+                bars: [
+                  for (final (day, plays) in value.weekday.indexed)
+                    BarDatum(weekdayLabel(day, t), plays),
+                ],
+              ),
             ),
-          ],
+          // Below about three weeks each (weekday, hour) cell holds at most a couple of samples —
+          // noise, not a pattern — so the 7x24 grid only appears once the window can feed it. The
+          // clock and weekday bars above always show, so nothing vanishes on a short period; the
+          // grid is their cross, not a replacement for either.
+          if (_windowDays(value) >= 21)
+            ReportPanel(
+              title: t(InsightsKeys.panelsClockHeatmap),
+              child: ClockGridHeatmap(grid: value.clockGrid),
+            ),
           ReportHeading(
             title: t(switch (_kind) {
               EntityKind.artist => InsightsKeys.topArtists,
@@ -122,9 +138,21 @@ class _Activity extends ConsumerWidget {
     if (charts.overTime.every((bucket) => bucket.plays == 0)) {
       return ReportEmpty(title: t(InsightsKeys.chartNoActivityPeriod));
     }
-    // A year of daily buckets is 365 rows, which is a scroll rather than a chart. The tail is what
-    // a reader is actually asking about ("how have I been listening lately"), so the most recent
-    // stretch is what gets drawn.
+    // One over-time view, never two of the same data. Bar rows while individual days still read as
+    // a trend; past about twenty weeks a calendar, because a year of daily cells shows streaks and
+    // seasonality that 365 stacked rows cannot — and the truncation those rows needed was answering
+    // a question nobody asked, since "the last 30 days" is a different report from "this year".
+    final windowDays = (charts.windowEnd - charts.windowStart) ~/ _dayMs;
+    if (charts.granularity == BucketGranularity.day && windowDays >= 140) {
+      return ReportPanel(
+        title: t(InsightsKeys.panelsActivity),
+        child: CalendarHeatmap(
+          buckets: charts.overTime,
+          windowStart: charts.windowStart,
+          windowEnd: charts.windowEnd,
+        ),
+      );
+    }
     final buckets = charts.overTime.length > 30
         ? charts.overTime.sublist(charts.overTime.length - 30)
         : charts.overTime;
@@ -133,25 +161,26 @@ class _Activity extends ConsumerWidget {
         ? DateFormat.yMMM(locale)
         : DateFormat.MMMd(locale);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        ReportHeading(title: t(InsightsKeys.panelsActivity)),
-        BarChart(
-          bars: [
-            for (final bucket in buckets)
-              BarDatum(
-                label.format(DateTime.fromMillisecondsSinceEpoch(bucket.start)),
-                bucket.plays,
-              ),
-          ],
-        ),
-      ],
+    return ReportPanel(
+      title: t(InsightsKeys.panelsActivity),
+      child: BarChart(
+        bars: [
+          for (final bucket in buckets)
+            BarDatum(
+              label.format(DateTime.fromMillisecondsSinceEpoch(bucket.start)),
+              bucket.plays,
+            ),
+        ],
+      ),
     );
   }
 }
 
-/// One page of the listener's full ranked chart, with its rank movement.
+/// The listener's full ranked chart, one page at a time.
+///
+/// The Hub's `offset` is what makes rank 26 reachable at all. It was a parameter this screen never
+/// passed, so the chart stopped dead at 25 rows while the line above it went on claiming "1-25 of
+/// 412" — the count was right and the list was a lie.
 class _FullChart extends ConsumerWidget {
   const _FullChart({required this.request, required this.own});
 
@@ -161,10 +190,10 @@ class _FullChart extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = ref.t;
-    final page = ref.watch(topChartProvider(request));
+    final feed = ref.watch(topChartProvider(request));
 
-    return ReportBody<ChartPage>(
-      value: page,
+    return ReportBody<ChartFeed>(
+      value: feed,
       onRetry: () => ref.invalidate(topChartProvider(request)),
       builder: (context, value) => value.entries.isEmpty
           ? ReportEmpty(
@@ -177,9 +206,12 @@ class _FullChart extends ConsumerWidget {
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                   child: Text(
+                    // Counted from the rows in hand, not from the page that just landed: every
+                    // page loaded so far is still on screen, so "1-50 of 412" is the honest line
+                    // after a second page.
                     t(InsightsKeys.chartsShowing, {
-                      'from': value.offset + 1,
-                      'to': value.offset + value.entries.length,
+                      'from': 1,
+                      'to': value.entries.length,
                       'total': value.total,
                     }),
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -189,9 +221,39 @@ class _FullChart extends ConsumerWidget {
                 ),
                 for (final entry in value.entries)
                   _ChartRow(entry: entry, kind: value.kind),
+                if (value.nextOffset != null)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                    child: Center(
+                      child: OutlinedButton(
+                        onPressed: value.loadingMore
+                            ? null
+                            : () => _loadMore(context, ref),
+                        child: Text(
+                          t(
+                            value.loadingMore
+                                ? CommonKeys.statesLoading
+                                : CommonKeys.actionsSeeMore,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
               ],
             ),
     );
+  }
+
+  Future<void> _loadMore(BuildContext context, WidgetRef ref) async {
+    final t = ref.read(translationsProvider).call;
+    try {
+      await ref.read(topChartProvider(request).notifier).loadMore();
+    } on Object catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(describeSocialError(error, t))));
+    }
   }
 }
 
@@ -205,8 +267,7 @@ class _ChartRow extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final t = ref.t;
     final theme = Theme.of(context);
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+    return ListRow(
       leading: SizedBox(
         width: 32,
         child: Text(
@@ -227,12 +288,20 @@ class _ChartRow extends ConsumerWidget {
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       ),
+      // Drilling from "what did I play" into "how do I play it" is the whole point of the entity
+      // page, and a ranked row is where that question is asked — on anybody's chart. This used to
+      // be gated on the chart being the reader's own, on the grounds that `/v1/insights/entity`
+      // reports on the caller; that left row 87 of a friend's chart with nowhere to go at all,
+      // which is worse. The web links every row for the same reason, and the page it opens is
+      // written throughout in the second person ("of N artists you played"), so it cannot be
+      // mistaken for a report about the profile it was opened from.
+      onTap: () =>
+          showEntityStats(context, kind: kind, id: entry.id, name: entry.name),
       trailing: _RankMove(rank: entry.rank, previous: entry.prevRank),
     );
   }
 }
 
-/// How far this entry moved since the previous window.
 class _RankMove extends ConsumerWidget {
   const _RankMove({required this.rank, required this.previous});
 

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../i18n/keys.g.dart';
 import '../../../i18n/translations_provider.dart';
+import '../../catalog/widgets/list_row.dart';
 
 /// Who can see a playlist, asked once at the moment of naming.
 ///
@@ -33,8 +34,8 @@ class VisibilityChoice extends ConsumerWidget {
           style: theme.textTheme.labelLarge,
         ),
         for (final option in PlaylistVisibility.values)
-          ListTile(
-            contentPadding: EdgeInsets.zero,
+          ListRow(
+            gutter: 0,
             onTap: () => onChanged(option),
             title: Text(t(visibilityLabelKey(option))),
             subtitle: Text(t(visibilityHintKey(option))),

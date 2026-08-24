@@ -7,6 +7,7 @@ import '../../../i18n/keys.g.dart';
 import '../../../i18n/translations_provider.dart';
 import '../../../widgets/cover_art.dart';
 import '../../catalog/widgets/catalog_state.dart';
+import '../../catalog/widgets/list_row.dart';
 import '../data/admin_providers.dart';
 import 'admin_widgets.dart';
 
@@ -280,8 +281,7 @@ class _TopList extends ConsumerWidget {
           CatalogEmpty(message: t(AdminKeys.overviewNoData))
         else
           for (final entity in entities)
-            ListTile(
-              dense: true,
+            ListRow(
               leading: CoverArt(
                 sha256: artHashOf(entity.imageUrl),
                 size: 40,

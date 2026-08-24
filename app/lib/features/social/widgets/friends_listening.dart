@@ -6,6 +6,7 @@ import '../../../data/art/art_cache.dart';
 import '../../../i18n/keys.g.dart';
 import '../../../i18n/translations_provider.dart';
 import '../../../widgets/cover_art.dart';
+import '../../catalog/widgets/list_row.dart';
 import '../data/social_providers.dart';
 import '../social_routes.dart';
 
@@ -55,8 +56,7 @@ class _NowPlayingRow extends ConsumerWidget {
   final FriendNowPlaying entry;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) => ListTile(
-    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+  Widget build(BuildContext context, WidgetRef ref) => ListRow(
     leading: CoverArt(sha256: artHashOf(entry.imageUrl), size: 44),
     title: Text(entry.title, maxLines: 1, overflow: TextOverflow.ellipsis),
     subtitle: Text(

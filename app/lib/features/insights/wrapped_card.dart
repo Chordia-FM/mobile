@@ -5,6 +5,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 
+import '../../widgets/tokens.dart';
+
 /// The card's pixel size. Portrait 4:5, which is what every social surface crops to least.
 const wrappedCardWidth = 1080.0;
 const wrappedCardHeight = 1350.0;
@@ -296,7 +298,7 @@ class _Thumb extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final shape = circular
         ? const CircleBorder()
-        : RoundedRectangleBorder(borderRadius: BorderRadius.circular(10));
+        : const RoundedRectangleBorder(borderRadius: ChordiaRadius.mdAll);
     final bytes = entry.cover;
 
     return ClipPath(

@@ -6,9 +6,11 @@ import 'package:share_plus/share_plus.dart';
 import '../../../app/providers.dart';
 import '../../../i18n/keys.g.dart';
 import '../../../i18n/translations_provider.dart';
+import '../../catalog/widgets/list_row.dart';
 import '../data/social_messages.dart';
 import '../data/social_providers.dart';
 import '../social_routes.dart';
+import 'profile_reads.dart';
 import 'user_identity.dart';
 
 /// Where the viewer stands with the person on a row.
@@ -73,8 +75,7 @@ class PersonRow extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+    return ListRow(
       leading: UserAvatar(user: user),
       title: DisplayName(
         name: user.displayName,
@@ -147,13 +148,13 @@ class _PersonActionsSheet extends ConsumerWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          ListTile(
+          ListRow(
             leading: UserAvatar(user: user, size: 44),
             title: DisplayName(name: user.displayName, flair: user.flair),
             subtitle: Text('@${user.handle}'),
           ),
           const Divider(height: 1),
-          ListTile(
+          ListRow(
             leading: const Icon(Icons.ios_share_rounded),
             title: Text(t(SocialKeys.followShareProfile)),
             onTap: () {
@@ -167,7 +168,7 @@ class _PersonActionsSheet extends ConsumerWidget {
           ),
           if (!isSelf) ...[
             switch (tie) {
-              FriendTie.friends => ListTile(
+              FriendTie.friends => ListRow(
                 leading: const Icon(Icons.person_remove_rounded),
                 title: Text(t(SocialKeys.followRemoveFriend)),
                 onTap: () async {
@@ -182,33 +183,60 @@ class _PersonActionsSheet extends ConsumerWidget {
                   await run(() => friends.remove(user));
                 },
               ),
-              FriendTie.incoming => ListTile(
+              FriendTie.incoming => ListRow(
                 leading: const Icon(Icons.person_add_alt_1_rounded),
                 title: Text(t(SocialKeys.requestsAccept)),
                 subtitle: Text(t(SocialKeys.followFriendIncoming)),
                 onTap: () => run(() => friends.accept(user)),
               ),
-              FriendTie.outgoing => ListTile(
+              FriendTie.outgoing => ListRow(
                 leading: const Icon(Icons.schedule_rounded),
                 title: Text(t(SocialKeys.requestsCancel)),
                 subtitle: Text(t(SocialKeys.followFriendPending)),
                 onTap: () => run(() => friends.cancelRequest(user)),
               ),
-              FriendTie.blocked => ListTile(
+              FriendTie.blocked => ListRow(
                 leading: const Icon(Icons.lock_open_rounded),
                 title: Text(t(SocialKeys.blockUnblock)),
                 onTap: () => run(() => friends.unblock(user)),
               ),
-              FriendTie.none => ListTile(
+              FriendTie.none => ListRow(
                 leading: const Icon(Icons.person_add_alt_1_rounded),
                 title: Text(t(SocialKeys.followAddFriend)),
                 subtitle: Text(t(SocialKeys.followVsFriends)),
-                isThreeLine: true,
+                subtitleMaxLines: 3,
                 onTap: () => run(() => friends.sendRequest(user)),
               ),
             },
+            // Report sits directly above Block, as it does in the web's `UserActionsMenu`. The
+            // Hub answers 204 whether or not it acted on the report, so there is nothing to read
+            // back and nothing to tell the reporter beyond that it was filed.
+            ListRow(
+              leading: const Icon(Icons.flag_outlined),
+              title: Text(t(SocialKeys.modMenuReport)),
+              onTap: () async {
+                final reason = await _prompt(
+                  context,
+                  title: t(SocialKeys.modMenuReport),
+                  message: t(SocialKeys.reportPromptMessage, {
+                    'handle': user.handle,
+                  }),
+                  action: t(SocialKeys.modMenuReport),
+                  cancel: t(CommonKeys.actionsCancel),
+                );
+                if (reason == null || reason.trim().isEmpty) return;
+                await run(() async {
+                  await ref
+                      .read(profileReadsProvider)
+                      .report(user.handle, reason.trim());
+                  if (page.mounted) {
+                    showSocialMessage(page, t(SocialKeys.modMenuReported));
+                  }
+                });
+              },
+            ),
             if (tie != FriendTie.blocked)
-              ListTile(
+              ListRow(
                 leading: Icon(
                   Icons.block_rounded,
                   color: Theme.of(context).colorScheme.error,
@@ -264,6 +292,45 @@ Future<bool> _confirm(
     ),
   );
   return answer ?? false;
+}
+
+/// A line of free text the user has to write before something is filed on their behalf.
+///
+/// The web asks for the same thing with its `prompt` dialog, and for the same reason: a report
+/// with no reason on it is one a moderator cannot act on.
+Future<String?> _prompt(
+  BuildContext context, {
+  required String title,
+  required String message,
+  required String action,
+  required String cancel,
+}) async {
+  final controller = TextEditingController();
+  final answer = await showDialog<String>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      title: Text(title),
+      content: TextField(
+        controller: controller,
+        autofocus: true,
+        maxLines: 3,
+        minLines: 1,
+        decoration: InputDecoration(hintText: message),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(dialogContext).pop(),
+          child: Text(cancel),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(dialogContext).pop(controller.text),
+          child: Text(action),
+        ),
+      ],
+    ),
+  );
+  controller.dispose();
+  return answer;
 }
 
 /// Hands a profile link to the system share sheet.

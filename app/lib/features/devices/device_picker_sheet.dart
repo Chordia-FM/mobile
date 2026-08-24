@@ -10,6 +10,9 @@ import '../../app/theme.dart';
 import '../../data/mesh/providers.dart';
 import '../../i18n/keys.g.dart';
 import '../../i18n/translations_provider.dart';
+import '../../widgets/surface.dart';
+import '../../widgets/tokens.dart';
+import '../catalog/widgets/list_row.dart';
 
 /// Opens the device picker.
 Future<void> showDevicePickerSheet(BuildContext context) =>
@@ -51,74 +54,78 @@ class DevicePickerSheet extends ConsumerWidget {
             !liveDeviceIds.contains(reported.deviceId));
 
     return SafeArea(
-      child: DecoratedBox(
-        decoration: const BoxDecoration(
-          color: ChordiaColors.paneRaised,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  t(PlayerKeys.devicesTitle),
-                  style: theme.textTheme.titleMedium,
-                ),
-              ),
-            ),
-            if (!mesh.available)
-              // Not an error, and not retryable from here. There is one pipe on a phone, and while
-              // it is down this device is a mesh of one that plays its own music perfectly well.
+      // The sheet's own material: a sheet and a dialog are one element on the web, carrying
+      // `island-shell island-shell-modal` (`responsive-dialog.tsx:206`). The inner `Material` is
+      // where the rows' press fill lands — the sheet's own is transparent here.
+      child: ModalPanel(
+        padding: EdgeInsets.zero,
+        borderRadius: ChordiaRadius.sheetTop,
+        child: Material(
+          type: MaterialType.transparency,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
-                child: Row(
-                  children: [
-                    const Icon(
-                      Icons.cloud_off_rounded,
-                      size: 18,
-                      color: ChordiaColors.mutedForeground,
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        t(PlayerKeys.devicesOffline),
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: ChordiaColors.mutedForeground,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              )
-            else if (mesh.devices.isEmpty && !showReported)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
                 child: Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
-                    t(PlayerKeys.devicesNone),
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: ChordiaColors.mutedForeground,
-                    ),
+                    t(PlayerKeys.devicesTitle),
+                    style: theme.textTheme.titleMedium,
                   ),
                 ),
               ),
-            for (final device in mesh.devices)
-              _DeviceRow(
-                device: device,
-                isLocal: device.tabId == tabId,
-                isTarget: device.tabId == mesh.activeTabId,
-                onTap: () {
-                  transport.transferTo(device.tabId);
-                  Navigator.of(context).pop();
-                },
-              ),
-            if (showReported) _UnreachableRow(entry: reported),
-            const SizedBox(height: 12),
-          ],
+              if (!mesh.available)
+                // Not an error, and not retryable from here. There is one pipe on a phone, and while
+                // it is down this device is a mesh of one that plays its own music perfectly well.
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.cloud_off_rounded,
+                        size: 18,
+                        color: ChordiaColors.mutedForeground,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          t(PlayerKeys.devicesOffline),
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: ChordiaColors.mutedForeground,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              else if (mesh.devices.isEmpty && !showReported)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      t(PlayerKeys.devicesNone),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: ChordiaColors.mutedForeground,
+                      ),
+                    ),
+                  ),
+                ),
+              for (final device in mesh.devices)
+                _DeviceRow(
+                  device: device,
+                  isLocal: device.tabId == tabId,
+                  isTarget: device.tabId == mesh.activeTabId,
+                  onTap: () {
+                    transport.transferTo(device.tabId);
+                    Navigator.of(context).pop();
+                  },
+                ),
+              if (showReported) _UnreachableRow(entry: reported),
+              const SizedBox(height: 12),
+            ],
+          ),
         ),
       ),
     );
@@ -141,13 +148,15 @@ class _DeviceRow extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = ref.t;
-    return ListTile(
+    return ListRow(
       // Tapping the device that is already playing is a no-op the protocol also treats as one, so
       // it stays tappable rather than becoming a dead row somebody presses twice.
       onTap: onTap,
       leading: Icon(
         Icons.speaker_rounded,
-        color: isTarget ? ChordiaColors.accent : ChordiaColors.mutedForeground,
+        color: isTarget
+            ? context.surfaces.accent
+            : ChordiaColors.mutedForeground,
       ),
       title: Text(device.label, maxLines: 1, overflow: TextOverflow.ellipsis),
       subtitle: isLocal ? Text(t(PlayerKeys.devicesThisDevice)) : null,
@@ -155,15 +164,15 @@ class _DeviceRow extends ConsumerWidget {
           ? Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(
+                Icon(
                   Icons.check_rounded,
                   size: 18,
-                  color: ChordiaColors.accent,
+                  color: context.surfaces.accent,
                 ),
                 const SizedBox(width: 6),
                 Text(
                   t(PlayerKeys.devicesCurrent),
-                  style: const TextStyle(color: ChordiaColors.accent),
+                  style: TextStyle(color: context.surfaces.accent),
                 ),
               ],
             )
@@ -187,7 +196,7 @@ class _UnreachableRow extends ConsumerWidget {
     final t = ref.t;
     return Opacity(
       opacity: 0.7,
-      child: ListTile(
+      child: ListRow(
         leading: const Icon(
           Icons.speaker_rounded,
           color: ChordiaColors.mutedForeground,

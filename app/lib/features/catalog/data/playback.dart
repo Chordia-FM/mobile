@@ -48,6 +48,22 @@ final catalogPlayerActionsProvider = Provider<CatalogPlayerActions?>(
   (ref) => null,
 );
 
+/// The id of the track playing right now, or null when nothing is.
+///
+/// A second port, declared here for the same reason as [catalogPlayerActionsProvider]: a row draws
+/// itself in the accent when it is the one playing, and reading that from the player's own state
+/// would make every list row in the app stand up the audio engine merely to decide a colour. Rows
+/// are the most-built widgets there are; the engine is the most expensive thing to build.
+///
+/// WIRING (one line, beside the other ports):
+///
+/// ```dart
+/// nowPlayingTrackIdProvider.overrideWith(
+///   (ref) => ref.watch(currentTrackProvider.select((track) => track?.id)),
+/// )
+/// ```
+final nowPlayingTrackIdProvider = Provider<String?>((ref) => null);
+
 /// The app's full player, narrowed to what the catalog drives.
 ///
 /// An adapter rather than making `PlayerActions` implement the interface directly, because the

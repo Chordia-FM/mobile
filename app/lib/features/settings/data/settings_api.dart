@@ -20,6 +20,20 @@ abstract interface class AccountApi {
 
   Future<UserProfile> updateProfile(UpdateProfile changes);
 
+  /// The account's own public profile — bio, banner and links, which [profile] does not carry.
+  ///
+  /// `UserProfile` (what `/v1/me` and `PATCH /v1/me` answer with) has no bio, banner or links, so
+  /// the public read is the only place the Account screen can seed those fields from. Asking about
+  /// one's own handle always passes the visibility gate.
+  Future<PublicProfile> publicProfile(String handle);
+
+  /// Stores an image and answers with the content hash to reference it by.
+  ///
+  /// Two different fields consume it and they spell it differently: a banner takes the bare hash
+  /// (`UpdateProfile.bannerHash`) and an avatar takes the path it resolves to
+  /// (`UpdateProfile.avatarUrl`). Sending the wrong one of the two is a silent no-op server-side.
+  Future<String> uploadImage(List<int> bytes, {String contentType});
+
   /// Which credentials exist and whether the address is confirmed.
   Future<AccountInfo> account();
 
@@ -105,6 +119,16 @@ class HubAccountApi implements AccountApi {
   @override
   Future<UserProfile> updateProfile(UpdateProfile changes) =>
       _hub.updateProfile(changes);
+
+  @override
+  Future<PublicProfile> publicProfile(String handle) =>
+      _hub.userProfile(handle);
+
+  @override
+  Future<String> uploadImage(
+    List<int> bytes, {
+    String contentType = 'application/octet-stream',
+  }) => _hub.uploadImage(bytes, contentType: contentType);
 
   @override
   Future<AccountInfo> account() => _hub.account();

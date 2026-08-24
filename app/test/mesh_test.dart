@@ -122,6 +122,7 @@ class FakeEngine implements PlaybackEngine {
   final positionsCtl = StreamController<EnginePosition>.broadcast();
   final healthCtl = StreamController<EngineHealth>.broadcast();
   final completionsCtl = StreamController<void>.broadcast();
+  final errorsCtl = StreamController<EngineError>.broadcast();
 
   final calls = <String>[];
 
@@ -133,6 +134,8 @@ class FakeEngine implements PlaybackEngine {
   Stream<EngineHealth> get health => healthCtl.stream;
   @override
   Stream<void> get completions => completionsCtl.stream;
+  @override
+  Stream<EngineError> get errors => errorsCtl.stream;
 
   @override
   Future<void> load(

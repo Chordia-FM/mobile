@@ -14,9 +14,16 @@ import 'hub_cache.dart';
 abstract interface class HomeSource {
   Future<List<PinnedItem>> pins();
 
-  Future<List<RecentItem>> jumpBackIn();
+  /// [limit] is the shelf's by default and the full page's when one asks — the "See all" pages are
+  /// home's own, so they read through home's seam rather than opening a second one.
+  Future<List<RecentItem>> jumpBackIn({int? limit});
 
-  Future<List<DailyMix>> dailyMixes();
+  Future<List<DailyMix>> dailyMixes({int? limit});
+
+  /// The libraries this account can reach. Read as part of the feed rather than watched separately,
+  /// because the hero's variant turns on it: a card that resolves a beat later swaps the page's
+  /// focal point under the listener's thumb.
+  Future<List<LibrarySummary>> libraries();
 
   Future<List<BrowseAlbum>> recentlyAdded();
 
@@ -32,7 +39,11 @@ abstract interface class HomeSource {
 /// The limits are the shelf's, not the screen's: a rail is a single horizontal row, and asking for
 /// more rows than a thumb will ever reach costs the phone a bigger response on every launch.
 class HubHomeSource implements HomeSource {
-  const HubHomeSource(this._hub, {this.railLength = 12});
+  const HubHomeSource(this._hub, {this.railLength = railLengthDefault});
+
+  /// One horizontal row's worth. Asking for more rows than a thumb will ever reach costs the phone
+  /// a bigger response on every launch; the "See all" pages ask for their own length instead.
+  static const railLengthDefault = 12;
 
   final HubClient _hub;
   final int railLength;
@@ -41,10 +52,15 @@ class HubHomeSource implements HomeSource {
   Future<List<PinnedItem>> pins() => _hub.pins();
 
   @override
-  Future<List<RecentItem>> jumpBackIn() => _hub.jumpBackIn(limit: railLength);
+  Future<List<RecentItem>> jumpBackIn({int? limit}) =>
+      _hub.jumpBackIn(limit: limit ?? railLength);
 
   @override
-  Future<List<DailyMix>> dailyMixes() => _hub.dailyMixes(limit: railLength);
+  Future<List<DailyMix>> dailyMixes({int? limit}) =>
+      _hub.dailyMixes(limit: limit ?? railLength);
+
+  @override
+  Future<List<LibrarySummary>> libraries() => _hub.libraries();
 
   @override
   Future<List<BrowseAlbum>> recentlyAdded() =>
@@ -69,9 +85,13 @@ class HubHomeSource implements HomeSource {
 /// listening. The web client permutes this by time of day; here the clock only picks the greeting.
 /// A phone home screen is scrolled by thumb from a fixed starting point, and a rail that moves
 /// between launches reads as content that disappeared.
+///
+/// There is deliberately no "Jump back in" rail: [HomeFeed.recent] is the HERO's, and the web says
+/// why in `HomeHero.tsx` — "There is deliberately no separate 'Jump back in' rail downstream — the
+/// header's 'See all' covers the rest." Listing it twice is how it ended up as an ordinary shelf
+/// here in the first place.
 enum HomeRail {
   quickAccess,
-  jumpBackIn,
   madeForYou,
   recentlyAdded,
   recommended,
@@ -88,6 +108,7 @@ class HomeFeed {
     this.pins = const [],
     this.recent = const [],
     this.mixes = const [],
+    this.libraries = const [],
     this.recentlyAdded = const [],
     this.recommended = const [],
     this.trendingTracks = const [],
@@ -99,6 +120,12 @@ class HomeFeed {
   final List<PinnedItem> pins;
   final List<RecentItem> recent;
   final List<DailyMix> mixes;
+
+  /// Not a rail of its own — the hero reads it to decide whether this account has ever paired
+  /// anything, which is the difference between "here is what you were listening to" and "here is
+  /// how to get some music in".
+  final List<LibrarySummary> libraries;
+
   final List<BrowseAlbum> recentlyAdded;
   final List<BrowseAlbum> recommended;
   final List<BrowseTrack> trendingTracks;
@@ -109,7 +136,6 @@ class HomeFeed {
   /// How many cards [rail] holds.
   int count(HomeRail rail) => switch (rail) {
     HomeRail.quickAccess => pins.length,
-    HomeRail.jumpBackIn => recent.length,
     HomeRail.madeForYou => mixes.length,
     HomeRail.recentlyAdded => recentlyAdded.length,
     HomeRail.recommended => recommended.length,
@@ -128,7 +154,18 @@ class HomeFeed {
   List<HomeRail> get rails =>
       HomeRail.values.where((r) => count(r) > 0).toList(growable: false);
 
-  bool get isEmpty => rails.isEmpty;
+  /// Nothing worth painting. [recent] is counted even though it is not a rail: it is the hero, and
+  /// a cached feed holding only listening history is a page with a focal point on it.
+  bool get isEmpty => rails.isEmpty && recent.isEmpty;
+
+  /// This account has nothing to play yet and no library to play it from — the hero's onboarding
+  /// case.
+  ///
+  /// Deliberately stricter than `libraries.isEmpty`, which is what the web tests. Each rail here
+  /// is fetched independently and a failed one falls back to whatever was cached, so the directory
+  /// call alone timing out would otherwise hang a "pair a library" card over a page full of music.
+  /// Anything else having answered is proof enough that a library was reachable.
+  bool get needsLibrary => libraries.isEmpty && isEmpty;
 }
 
 /// What the home tab is showing right now.
@@ -269,6 +306,11 @@ class HomeFeedController extends Notifier<HomeState> {
         source.friendsNowPlaying,
         (v) => v.map((e) => e.toJson()).toList(),
       ),
+      one(
+        'libraries',
+        source.libraries,
+        (v) => v.map((e) => e.toJson()).toList(),
+      ),
     ]);
     if (generation != _generation || !ref.mounted) return;
 
@@ -297,6 +339,7 @@ class HomeFeedController extends Notifier<HomeState> {
         trendingArtists:
             trending?.artists ?? previous?.trendingArtists ?? const [],
         friends: _pick(results[6], previous?.friends),
+        libraries: _pick(results[7], previous?.libraries),
       ),
     );
   }
@@ -336,6 +379,7 @@ class HomeFeedController extends Notifier<HomeState> {
       trendingAlbums: trending?.albums ?? const [],
       trendingArtists: trending?.artists ?? const [],
       friends: await list('friends', FriendNowPlaying.fromJson) ?? const [],
+      libraries: await list('libraries', LibrarySummary.fromJson) ?? const [],
     );
   }
 }

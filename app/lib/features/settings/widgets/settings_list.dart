@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../i18n/keys.g.dart';
 import '../../../i18n/translations_provider.dart';
+import '../../../widgets/surface.dart';
+import '../../catalog/widgets/list_row.dart';
 import '../data/settings_controller.dart';
 import '../data/settings_messages.dart';
 import '../data/settings_patch.dart';
@@ -87,13 +89,13 @@ class SettingsSection extends StatelessWidget {
             ],
           ),
         ),
-        Container(
+        // The web's settings group is `island-shell rounded-2xl p-3` (`settings/Section.tsx:15`) —
+        // the panel material, not a flat `surfaceContainer` fill. The vertical padding is small
+        // because the rows inside carry their own gutter; the web's `p-3` sits on a section whose
+        // rows have none.
+        IslandPanel(
           margin: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.surfaceContainer,
-            borderRadius: BorderRadius.circular(16),
-          ),
-          clipBehavior: Clip.antiAlias,
+          padding: const EdgeInsets.symmetric(vertical: 4),
           child: Column(children: children),
         ),
       ],
@@ -130,13 +132,17 @@ class SettingsDisclosureRow extends StatelessWidget {
     final tint = destructive
         ? theme.colorScheme.error
         : theme.colorScheme.primary;
-    return ListTile(
+    // The catalog's row, not a `ListTile`: a settings screen is the densest list in the app, and
+    // Material's 72px two-line height with its `bodyLarge`-over-`bodyMedium` scale is the single
+    // biggest place the phone stopped looking like the web client.
+    return ListRow(
       onTap: onTap,
-      leading: icon == null ? null : Icon(icon, color: tint),
-      title: Text(
-        label,
-        style: destructive ? TextStyle(color: theme.colorScheme.error) : null,
-      ),
+      enabled: onTap != null,
+      destructive: destructive,
+      // Zero, because [SettingsSection] already inset and clipped the card these sit in.
+      gutter: 0,
+      leading: icon == null ? null : Icon(icon, color: tint, size: 20),
+      title: Text(label),
       subtitle: description == null ? null : Text(description!),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
@@ -148,12 +154,9 @@ class SettingsDisclosureRow extends StatelessWidget {
                 value!,
                 textAlign: TextAlign.end,
                 overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
               ),
             ),
-          const Icon(Icons.chevron_right_rounded),
+          listRowChevron,
         ],
       ),
     );
@@ -179,11 +182,14 @@ class SettingsSwitchRow extends StatelessWidget {
   final ValueChanged<bool>? onChanged;
 
   @override
-  Widget build(BuildContext context) => SwitchListTile.adaptive(
-    value: value,
-    onChanged: onChanged,
+  Widget build(BuildContext context) => ListRow(
+    // `settings/Toggle.tsx` is a `<label>` holding a `font-medium text-sm` line over a muted
+    // `text-xs` hint, with the control at the end — which is this row plus a switch, and NOT
+    // `SwitchListTile`, whose 56/72px heights and `bodyLarge` title are Material's own.
     title: Text(label),
     subtitle: description == null ? null : Text(description!),
+    onTap: onChanged == null ? null : () => onChanged!(!value),
+    trailing: Switch.adaptive(value: value, onChanged: onChanged),
   );
 }
 

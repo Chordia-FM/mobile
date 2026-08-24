@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/art/art_cache.dart';
 import '../../i18n/keys.g.dart';
 import '../../i18n/translations_provider.dart';
+import '../catalog/widgets/list_row.dart';
 import '../../widgets/cover_art.dart';
 import 'data/library_providers.dart';
 import 'widgets/library_states.dart';
@@ -113,18 +114,14 @@ class _ArtistsScreenState extends ConsumerState<ArtistsScreen> {
                   itemCount: rows.length,
                   itemBuilder: (context, index) {
                     final artist = rows[index];
-                    return ListTile(
+                    return ListRow(
                       leading: CoverArt(
                         sha256: artHashOf(artist.imageUrl),
-                        size: 48,
+                        size: 40,
                         shape: BoxShape.circle,
                         fallbackIcon: Icons.person_rounded,
                       ),
-                      title: Text(
-                        artist.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                      title: Text(artist.name),
                       subtitle: Text(
                         [
                           t(CatalogKeys.artistCardAlbumCount, {
@@ -214,24 +211,18 @@ class RecentAlbumsScreen extends ConsumerWidget {
                   itemCount: rows.length,
                   itemBuilder: (context, index) {
                     final album = rows[index];
-                    return ListTile(
+                    return ListRow(
                       leading: CoverArt(
                         sha256: artHashOf(album.coverUrl),
-                        size: 48,
+                        size: 40,
                         fallbackIcon: Icons.album_rounded,
                       ),
-                      title: Text(
-                        album.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                      title: Text(album.title),
                       subtitle: Text(
                         [
                           album.artist,
                           if (album.year != null) '${album.year}',
                         ].join(' · '),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                       ),
                       onTap: handoff == null
                           ? null

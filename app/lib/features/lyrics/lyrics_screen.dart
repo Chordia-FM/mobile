@@ -9,66 +9,72 @@ import 'package:flutter/rendering.dart' show ScrollDirection;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/providers.dart';
-import '../../app/theme.dart';
 import '../../i18n/keys.g.dart';
 import '../../i18n/translations_provider.dart';
+import '../catalog/widgets/artist_links.dart';
 import 'data/lyrics_providers.dart';
 import 'data/lyrics_repository.dart';
 
-/// Opens the lyrics for whatever is playing.
-Future<void> showLyricsSheet(BuildContext context) =>
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => const LyricsSheet(),
-    );
-
-/// The lyrics view, sized as a sheet over the player.
-class LyricsSheet extends ConsumerWidget {
-  const LyricsSheet({super.key});
+/// The lyrics of whatever is playing, as a tab of the full player.
+///
+/// A tab rather than a sheet stacked over the player, which is where the web client puts it on a
+/// phone. As a sheet behind a text button it was a feature you had to already know existed.
+class LyricsPanel extends ConsumerWidget {
+  const LyricsPanel({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = ref.t;
-    final theme = Theme.of(context);
     final track = ref.watch(currentTrackProvider);
+    if (track == null) return _Message(t(PlayerKeys.lyricsNothingPlaying));
 
-    // A fixed height rather than a `DraggableScrollableSheet`: that widget resizes the sheet from
-    // the scroll position of a controller it supplies, and this view owns its own scrolling to
-    // follow the song. Two controllers over one list means the sheet fights the auto-scroll.
-    return FractionallySizedBox(
-      heightFactor: 0.9,
-      child: DecoratedBox(
-        decoration: const BoxDecoration(
-          color: ChordiaColors.paneRaised,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _LyricsHeader(track: track),
+        Expanded(
+          // Keyed by track, so moving to the next song rebuilds the view from scratch instead of
+          // animating the old song's scroll offset onto new words.
+          child: LyricsBody(track: track, key: ValueKey(track.id)),
         ),
-        child: SafeArea(
-          top: false,
-          child: Column(
-            children: [
-              const _Grabber(),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    t(PlayerKeys.lyricsTitle),
-                    style: theme.textTheme.titleMedium,
-                  ),
-                ),
-              ),
-              Expanded(
-                child: track == null
-                    ? _Message(t(PlayerKeys.lyricsNothingPlaying))
-                    // Keyed by track, so moving to the next song rebuilds the view from scratch
-                    // instead of animating the old song's scroll offset onto new words.
-                    : LyricsBody(track: track, key: ValueKey(track.id)),
-              ),
-            ],
+      ],
+    );
+  }
+}
+
+/// What is being read, above the words.
+///
+/// The now-playing tab is one tap away but not on screen, and lyrics with no title over them read
+/// as a page that has lost track of the song. The credited names are links here for the same
+/// reason they are everywhere else — the guest verse you just heard is the one you want to open.
+class _LyricsHeader extends StatelessWidget {
+  const _LyricsHeader({required this.track});
+
+  final PlayerTrack track;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            track.title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.titleSmall,
           ),
-        ),
+          ArtistLinks(
+            artists: playerArtistRefs(track.artists),
+            fallbackName: track.artist,
+            fallbackId: track.artistId,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -102,6 +108,23 @@ class LyricsBody extends ConsumerWidget {
   }
 }
 
+/// The size lyrics are set at, from `LyricsView.tsx:219`.
+///
+/// The web wraps the whole lyric block in `font-bold text-3xl leading-snug tracking-tight
+/// md:text-4xl`. `md:` is the desktop step, so a phone renders the base: `text-3xl` is 30px,
+/// `leading-snug` is 1.375, and `tracking-tight` is -0.025em, which at 30px is -0.75.
+///
+/// Not a detail. This view was set at `titleMedium` — 16sp, the same as a track row's subtitle —
+/// and type size is the entire read of a lyrics surface: at body size the same words are a
+/// paragraph of text that happens to be in the player, and at 30/700 they are a lyrics screen.
+/// Colour is deliberately absent, because it is the one thing that varies per line.
+const _lyricType = TextStyle(
+  fontSize: 30,
+  height: 1.375,
+  fontWeight: FontWeight.w700,
+  letterSpacing: -0.75,
+);
+
 /// Lyrics with no timing: a page of text, scrolled by hand.
 class _PlainLyrics extends StatelessWidget {
   const _PlainLyrics({required this.lines});
@@ -110,13 +133,16 @@ class _PlainLyrics extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final style = Theme.of(context).textTheme.titleMedium?.copyWith(
-      color: ChordiaColors.foreground,
-      height: 1.6,
+    final theme = Theme.of(context);
+    // `text-foreground/90` (LyricsView.tsx:229). Nothing is active in an untimed document, so
+    // every line sits at the same strength rather than one being picked out of the others.
+    final style = _lyricType.copyWith(
+      color: theme.colorScheme.onSurface.withValues(alpha: 0.9),
     );
     return ListView.builder(
       padding: const EdgeInsets.fromLTRB(24, 0, 24, 40),
       itemCount: lines.length,
+      // `space-y-3`: 12px between lines, which is half of 12 on each of two neighbours.
       itemBuilder: (context, i) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 6),
         child: Text(lines[i].text, style: style),
@@ -164,6 +190,19 @@ class _SyncedLyricsState extends ConsumerState<_SyncedLyrics> {
   void dispose() {
     _controller.dispose();
     super.dispose();
+  }
+
+  /// Jumps to where a line starts.
+  ///
+  /// The one thing synced lyrics are for beyond reading along: the chorus is four taps away rather
+  /// than a scrub-and-guess on a 3px-per-second bar. Following resumes, because a seek IS a
+  /// statement about where the listener wants to be.
+  void _seekToLine(int index) {
+    if (index < 0 || index >= _starts.length) return;
+    ref
+        .read(playerActionsProvider)
+        .seek(Duration(milliseconds: _starts[index]));
+    if (!_following) setState(() => _following = true);
   }
 
   void _scrollToActive({required bool animate}) {
@@ -226,23 +265,28 @@ class _SyncedLyricsState extends ConsumerState<_SyncedLyrics> {
             itemCount: widget.lines.length,
             itemBuilder: (context, i) {
               final isActive = i == _active;
-              return Padding(
+              return _SeekableLine(
                 key: _keys[i],
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                child: AnimatedDefaultTextStyle(
-                  duration: const Duration(milliseconds: 200),
-                  style:
-                      theme.textTheme.titleMedium?.copyWith(
-                        height: 1.5,
-                        color: isActive
-                            ? ChordiaColors.foreground
-                            : ChordiaColors.mutedForeground,
-                        fontWeight: isActive
-                            ? FontWeight.w700
-                            : FontWeight.w500,
-                      ) ??
-                      const TextStyle(),
-                  child: Text(widget.lines[i].text),
+                onTap: () => _seekToLine(i),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  child: AnimatedDefaultTextStyle(
+                    // `transition-colors duration-300` (LyricsView.tsx:224). Colour is the only
+                    // thing that moves between the two states — the weight is 700 throughout, so
+                    // a line does not reflow as it becomes current.
+                    duration: const Duration(milliseconds: 300),
+                    style: _lyricType.copyWith(
+                      color: isActive
+                          ? theme.colorScheme.onSurface
+                          // `text-muted-foreground/50` (:230). The lines around the one being
+                          // sung recede hard, which is what makes the current line findable
+                          // without reading any of them.
+                          : theme.colorScheme.onSurfaceVariant.withValues(
+                              alpha: 0.5,
+                            ),
+                    ),
+                    child: Text(widget.lines[i].text),
+                  ),
                 ),
               );
             },
@@ -275,31 +319,37 @@ class _Message extends StatelessWidget {
   final String text;
 
   @override
-  Widget build(BuildContext context) => Center(
-    child: Padding(
-      padding: const EdgeInsets.all(32),
-      child: Text(
-        text,
-        textAlign: TextAlign.center,
-        style: Theme.of(
-          context,
-        ).textTheme.bodyMedium?.copyWith(color: ChordiaColors.mutedForeground),
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Text(
+          text,
+          textAlign: TextAlign.center,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
       ),
-    ),
-  );
+    );
+  }
 }
 
-class _Grabber extends StatelessWidget {
-  const _Grabber();
+/// One tappable lyric line.
+///
+/// A `GestureDetector` rather than an `InkWell`: a ripple across a full-width line of lyrics reads
+/// as the view breaking, and the feedback that matters is the playhead moving.
+class _SeekableLine extends StatelessWidget {
+  const _SeekableLine({required this.onTap, required this.child, super.key});
+
+  final VoidCallback onTap;
+  final Widget child;
 
   @override
-  Widget build(BuildContext context) => Container(
-    width: 36,
-    height: 4,
-    margin: const EdgeInsets.only(top: 10, bottom: 6),
-    decoration: BoxDecoration(
-      color: ChordiaColors.line,
-      borderRadius: BorderRadius.circular(2),
-    ),
+  Widget build(BuildContext context) => GestureDetector(
+    behavior: HitTestBehavior.opaque,
+    onTap: onTap,
+    child: child,
   );
 }

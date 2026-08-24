@@ -11,12 +11,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/theme.dart';
+import '../../data/accent/accent_scope.dart';
 import '../../data/mesh/mirror.dart';
 import '../../data/mesh/providers.dart';
 import '../../data/playback/notification_art.dart';
 import '../../i18n/keys.g.dart';
 import '../../i18n/translations_provider.dart';
 import '../../widgets/cover_art.dart';
+import '../../widgets/tokens.dart';
 import '../player/player_format.dart';
 import 'device_picker_sheet.dart';
 
@@ -62,9 +64,9 @@ class MirrorPlayerScreen extends ConsumerWidget {
     final transport = ref.watch(meshTransportProvider);
 
     return Scaffold(
-      backgroundColor: ChordiaColors.pane,
+      backgroundColor: context.surfaces.pane,
       appBar: AppBar(
-        backgroundColor: ChordiaColors.pane,
+        backgroundColor: context.surfaces.pane,
         title: Text(
           t(PlayerKeys.devicesPlayingOn, {
             'device': mirror.deviceLabel ?? t(PlayerKeys.remoteUnnamedDevice),
@@ -97,7 +99,7 @@ class MirrorPlayerScreen extends ConsumerWidget {
                           constraints.maxWidth,
                           constraints.maxHeight,
                         ),
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: ChordiaRadius.xlAll,
                       ),
                     ),
                   ),
@@ -164,7 +166,7 @@ class MirrorBar extends ConsumerWidget {
     final transport = ref.watch(meshTransportProvider);
 
     return Material(
-      color: ChordiaColors.paneRaised,
+      color: context.surfaces.paneRaised,
       child: InkWell(
         onTap: () => openMirrorPlayer(context),
         child: SizedBox(
@@ -196,7 +198,7 @@ class MirrorBar extends ConsumerWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color: ChordiaColors.accent,
+                        color: context.surfaces.accent,
                       ),
                     ),
                   ],
@@ -286,7 +288,7 @@ class _MirrorScrubberState extends ConsumerState<_MirrorScrubber> {
             trackHeight: 3,
             overlayShape: const RoundSliderOverlayShape(overlayRadius: 16),
             thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
-            inactiveTrackColor: ChordiaColors.line,
+            inactiveTrackColor: context.surfaces.line,
           ),
           child: Slider(
             value: currentMs,
@@ -348,7 +350,7 @@ class _MirrorTransport extends ConsumerWidget {
           icon: Icon(
             Icons.shuffle_rounded,
             color: mirror.shuffle
-                ? ChordiaColors.accent
+                ? context.surfaces.accent
                 : ChordiaColors.mutedForeground,
           ),
         ),
@@ -364,13 +366,19 @@ class _MirrorTransport extends ConsumerWidget {
           child: Stack(
             alignment: Alignment.center,
             children: [
+              // The live accent, not the resting one, for the reason the local player's ring
+              // carries: the disc inside it is a `FilledButton` whose fill follows every tick, so
+              // a ring pinned to the resting colour spends each fade disagreeing with the control
+              // it is drawn around.
               if (mirror.buffering)
-                const SizedBox(
+                SizedBox(
                   width: 68,
                   height: 68,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: ChordiaColors.accent,
+                  child: AccentBuilder(
+                    builder: (context, frame, _) => CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: frame.accent,
+                    ),
                   ),
                 ),
               FilledButton(
@@ -418,7 +426,7 @@ class _MirrorTransport extends ConsumerWidget {
                 : Icons.repeat_rounded,
             color: mirror.repeat == sync.RepeatMode.off
                 ? ChordiaColors.mutedForeground
-                : ChordiaColors.accent,
+                : context.surfaces.accent,
           ),
         ),
       ],
