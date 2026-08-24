@@ -2,6 +2,8 @@ import 'package:chordia_api/chordia_api.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../../../widgets/surface.dart';
+
 /// One number with its label, as the overview and system tabs stack them.
 class AdminStat extends StatelessWidget {
   const AdminStat({
@@ -20,12 +22,10 @@ class AdminStat extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainer,
-        borderRadius: BorderRadius.circular(14),
-      ),
+    // The admin overview and system tabs render the web's `StatTile`
+    // (`admin/overview.tsx:83`, `admin/system.tsx:51`), which is `island-shell rounded-xl p-4`.
+    // The 14px corner and the 14px padding this carried are on no scale at all.
+    return IslandPanel(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,

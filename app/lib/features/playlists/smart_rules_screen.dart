@@ -320,12 +320,18 @@ class _SmartRulesScreenState extends ConsumerState<SmartRulesScreen> {
             ],
             onChanged: draft.setRefreshIntervalMinutes,
           ),
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            value: draft.refreshOnComplete,
+          // Label over hint with the control at the end — `settings/Toggle.tsx`, which is
+          // `ListRow` plus a `Switch`, not Material's own row.
+          ListRow(
+            gutter: 0,
             title: Text(t(PlaylistsKeys.smartRefreshOnCompleteLabel)),
             subtitle: Text(t(PlaylistsKeys.smartRefreshOnCompleteHint)),
-            onChanged: (value) => draft.setRefreshOnComplete(value: value),
+            onTap: () =>
+                draft.setRefreshOnComplete(value: !draft.refreshOnComplete),
+            trailing: Switch(
+              value: draft.refreshOnComplete,
+              onChanged: (value) => draft.setRefreshOnComplete(value: value),
+            ),
           ),
         ],
       ),

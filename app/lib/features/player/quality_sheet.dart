@@ -10,6 +10,9 @@ import '../../data/playback/adaptive.dart';
 import '../../data/playback/quality.dart';
 import '../../i18n/keys.g.dart';
 import '../../i18n/translations_provider.dart';
+import '../../widgets/surface.dart';
+import '../../widgets/tokens.dart';
+import '../catalog/widgets/list_row.dart';
 import '../settings/data/settings_controller.dart';
 import '../settings/data/settings_patch.dart';
 import '../settings/widgets/settings_list.dart' show applySettingsPatch;
@@ -113,52 +116,56 @@ class QualitySheet extends ConsumerWidget {
         ?.streamingQuality;
 
     return SafeArea(
-      // A `Material`, not a painted box: the tier rows are now tappable, and a plain decoration
-      // between a row and the nearest Material is where its ink splash goes to die — Flutter
-      // asserts on exactly that arrangement.
-      child: Material(
-        color: context.surfaces.paneRaised,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-        child: ValueListenableBuilder<QualityStatus>(
-          valueListenable: control.status,
-          builder: (context, status, _) => Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 4),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    t(SettingsKeys.qualityTitle),
-                    style: theme.textTheme.titleMedium,
-                  ),
-                ),
-              ),
-              QualityNote(status: status),
-              for (final profile in qualityLadder)
-                _TierRow(
-                  profile: profile,
-                  status: status,
-                  // Before the settings read lands there is still a defensible answer: the tier
-                  // the adaptive service was built with. It is the same document, one read older.
-                  chosen: chosen ?? status.chosen,
-                ),
-              if (status.restorable)
+      // The sheet's own material: `responsive-dialog.tsx:206` draws a sheet and a dialog as one
+      // element carrying `island-shell island-shell-modal`, which is [ModalPanel]. A `Material`
+      // still has to sit between that and the tier rows — a plain decoration between a row and the
+      // nearest Material is where its press fill goes to die, and Flutter asserts on exactly that.
+      child: ModalPanel(
+        padding: EdgeInsets.zero,
+        borderRadius: ChordiaRadius.sheetTop,
+        child: Material(
+          type: MaterialType.transparency,
+          child: ValueListenableBuilder<QualityStatus>(
+            valueListenable: control.status,
+            builder: (context, status, _) => Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: FilledButton(
-                      onPressed: () async {
-                        await control.restore();
-                        if (context.mounted) Navigator.of(context).pop();
-                      },
-                      child: Text(t(PlayerKeys.qualityRestore)),
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 4),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      t(SettingsKeys.qualityTitle),
+                      style: theme.textTheme.titleMedium,
                     ),
                   ),
                 ),
-              const SizedBox(height: 12),
-            ],
+                QualityNote(status: status),
+                for (final profile in qualityLadder)
+                  _TierRow(
+                    profile: profile,
+                    status: status,
+                    // Before the settings read lands there is still a defensible answer: the tier
+                    // the adaptive service was built with. It is the same document, one read older.
+                    chosen: chosen ?? status.chosen,
+                  ),
+                if (status.restorable)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: FilledButton(
+                        onPressed: () async {
+                          await control.restore();
+                          if (context.mounted) Navigator.of(context).pop();
+                        },
+                        child: Text(t(PlayerKeys.qualityRestore)),
+                      ),
+                    ),
+                  ),
+                const SizedBox(height: 12),
+              ],
+            ),
           ),
         ),
       ),
@@ -250,12 +257,10 @@ class _TierRow extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = ref.t;
-    final theme = Theme.of(context);
     final playing = profile == status.playing && !status.fixed;
     final selected = profile == chosen;
 
-    return ListTile(
-      selected: selected,
+    return ListRow(
       onTap: selected
           ? null
           : () => unawaited(
@@ -274,19 +279,15 @@ class _TierRow extends ConsumerWidget {
             : ChordiaColors.mutedForeground.withValues(alpha: 0.7),
         size: 22,
       ),
+      // The row's own type scale carries the rest: `ListRow` is `text-sm` over a muted `text-xs`,
+      // which is the web's list row. Only the chosen tier's weight is this row's business — the
+      // Material `selected:` tint it used to lean on has no counterpart on the web, where a picked
+      // option is marked by its radio and nothing else.
       title: Text(
         t(qualityLabelKeyOf(profile)),
-        style: theme.textTheme.bodyLarge?.copyWith(
-          color: ChordiaColors.foreground,
-          fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-        ),
+        style: selected ? const TextStyle(fontWeight: ChordiaType.bold) : null,
       ),
-      subtitle: Text(
-        t(_descKeyOf(profile)),
-        style: theme.textTheme.bodySmall?.copyWith(
-          color: ChordiaColors.mutedForeground,
-        ),
-      ),
+      subtitle: Text(t(_descKeyOf(profile))),
       // The meter marks the tier the bytes NOW SOUNDING were fetched at, which is not always the
       // one chosen — that divergence is the whole reason this sheet exists, and putting it in the
       // radio's own column would have made the two claims look like one.

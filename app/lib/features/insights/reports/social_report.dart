@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../i18n/keys.g.dart';
 import '../../../i18n/translations_provider.dart';
+import '../../catalog/widgets/list_row.dart';
 import '../../social/social_routes.dart';
 import '../../social/widgets/friends_listening.dart';
 import '../data/insights_providers.dart';
@@ -130,7 +131,7 @@ class _Compatibility extends ConsumerWidget {
       builder: (context, value) => Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          ListTile(
+          ListRow(
             title: Text(
               t(InsightsKeys.compatibilityYouAnd, {'name': value.displayName}),
             ),

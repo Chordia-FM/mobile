@@ -7,6 +7,7 @@ import '../../data/hub_probe.dart';
 import '../../app/theme.dart';
 import '../../i18n/keys.g.dart';
 import '../../i18n/translations_provider.dart';
+import '../../widgets/tokens.dart';
 import 'auth_messages.dart';
 
 /// Picks which Chordia server to sign in to, and adds new ones.
@@ -41,7 +42,7 @@ class HubPicker extends ConsumerWidget {
               child: DropdownButton<String>(
                 value: active?.id,
                 isExpanded: true,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: ChordiaRadius.lgAll,
                 hint: Text(t(AuthKeys.hubNone)),
                 items: [
                   for (final hub in hubs)

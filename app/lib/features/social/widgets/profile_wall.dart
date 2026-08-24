@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../widgets/surface.dart';
+
 /// One lock card. Three copies use it: the whole-page lock, the activity-only wall, and a follow
 /// list the viewer may not open.
 ///
@@ -21,13 +23,11 @@ class ProfileWall extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Container(
+    // `island-shell rounded-2xl p-6 text-center` (`u/$handle/route.tsx:422`, and the same block
+    // in `social/FollowList.tsx:69`) — the panel material, not a flat fill at the same corner.
+    return IslandPanel(
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(16),
-      ),
       child: Column(
         children: [
           Icon(

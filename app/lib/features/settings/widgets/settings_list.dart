@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../i18n/keys.g.dart';
 import '../../../i18n/translations_provider.dart';
+import '../../../widgets/surface.dart';
 import '../../catalog/widgets/list_row.dart';
 import '../data/settings_controller.dart';
 import '../data/settings_messages.dart';
@@ -88,13 +89,13 @@ class SettingsSection extends StatelessWidget {
             ],
           ),
         ),
-        Container(
+        // The web's settings group is `island-shell rounded-2xl p-3` (`settings/Section.tsx:15`) —
+        // the panel material, not a flat `surfaceContainer` fill. The vertical padding is small
+        // because the rows inside carry their own gutter; the web's `p-3` sits on a section whose
+        // rows have none.
+        IslandPanel(
           margin: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.surfaceContainer,
-            borderRadius: BorderRadius.circular(16),
-          ),
-          clipBehavior: Clip.antiAlias,
+          padding: const EdgeInsets.symmetric(vertical: 4),
           child: Column(children: children),
         ),
       ],
@@ -181,11 +182,14 @@ class SettingsSwitchRow extends StatelessWidget {
   final ValueChanged<bool>? onChanged;
 
   @override
-  Widget build(BuildContext context) => SwitchListTile.adaptive(
-    value: value,
-    onChanged: onChanged,
+  Widget build(BuildContext context) => ListRow(
+    // `settings/Toggle.tsx` is a `<label>` holding a `font-medium text-sm` line over a muted
+    // `text-xs` hint, with the control at the end — which is this row plus a switch, and NOT
+    // `SwitchListTile`, whose 56/72px heights and `bodyLarge` title are Material's own.
     title: Text(label),
     subtitle: description == null ? null : Text(description!),
+    onTap: onChanged == null ? null : () => onChanged!(!value),
+    trailing: Switch.adaptive(value: value, onChanged: onChanged),
   );
 }
 

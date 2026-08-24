@@ -183,7 +183,7 @@ class _Tile extends StatelessWidget {
     final bytes = tile.cover;
     // "Include borders" rounds every tile on every side and separates them, so the grid reads as a
     // set of records rather than as one sliced image.
-    final radius = borders ? BorderRadius.circular(16) : BorderRadius.zero;
+    final radius = borders ? ChordiaRadius.xlAll : BorderRadius.zero;
     return Padding(
       padding: EdgeInsets.all(borders ? _borderInset : 0),
       child: ClipRRect(

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../i18n/keys.g.dart';
 import '../../i18n/translations_provider.dart';
+import '../catalog/widgets/list_row.dart';
 import 'admin_routes.dart';
 import 'data/admin_providers.dart';
 
@@ -22,7 +23,7 @@ class AdminEntryTile extends ConsumerWidget {
     if (ref.watch(isAdminProvider).value != true) {
       return const SizedBox.shrink();
     }
-    return ListTile(
+    return ListRow(
       leading: const Icon(Icons.shield_outlined),
       title: Text(t(CommonKeys.userMenuAdmin)),
       subtitle: Text(t(AdminKeys.title)),

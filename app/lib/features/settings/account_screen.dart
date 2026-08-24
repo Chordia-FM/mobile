@@ -6,6 +6,7 @@ import '../../app/providers.dart';
 import '../../data/art/art_cache.dart';
 import '../../i18n/keys.g.dart';
 import '../../i18n/translations_provider.dart';
+import '../../widgets/tokens.dart';
 import '../catalog/widgets/list_row.dart';
 import '../../widgets/cover_art.dart';
 import '../social/widgets/user_identity.dart';
@@ -624,14 +625,14 @@ class _BannerRow extends ConsumerWidget {
             child: hash == null
                 ? DecoratedBox(
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: ChordiaRadius.lgAll,
                       border: Border.all(color: theme.colorScheme.outline),
                     ),
                   )
                 : CoverArt(
                     sha256: hash,
                     size: MediaQuery.sizeOf(context).width,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: ChordiaRadius.lgAll,
                     fallbackIcon: Icons.image_outlined,
                   ),
           ),

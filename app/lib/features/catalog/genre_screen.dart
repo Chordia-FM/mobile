@@ -94,9 +94,9 @@ class _GenreView extends ConsumerWidget {
                 ),
                 Text(
                   name,
-                  style: theme.textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
+                  // `display-title font-bold text-4xl` (`genres/$slug.tsx:42`) — the serif at the
+                  // `displayLarge` size, the same H1 treatment an album title gets.
+                  style: theme.textTheme.displayLarge,
                 ),
                 const SizedBox(height: 4),
                 Text(

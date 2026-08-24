@@ -241,9 +241,9 @@ class _StationHeader extends ConsumerWidget {
           Text(
             heading,
             textAlign: TextAlign.center,
-            style: theme.textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
+            // `display-title break-words font-bold text-3xl sm:text-4xl` (StationView.tsx:85),
+            // which on a phone-width column is `text-3xl` — the `displayMedium` slot.
+            style: theme.textTheme.displayMedium,
           ),
           if (subtitle.isNotEmpty) ...[
             const SizedBox(height: 8),

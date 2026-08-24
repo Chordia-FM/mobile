@@ -231,9 +231,9 @@ class _Header extends ConsumerWidget {
           child: DisplayName(
             name: user.displayName,
             flair: user.flair,
-            style: theme.textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
+            // `display-title break-words font-bold text-2xl sm:text-4xl`
+            // (`u/$handle/route.tsx:204`) — `text-2xl` at phone width, which is `displaySmall`.
+            style: theme.textTheme.displaySmall,
             maxLines: 2,
           ),
         ),

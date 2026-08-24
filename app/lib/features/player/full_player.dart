@@ -12,6 +12,7 @@ import '../../data/playback/notification_art.dart';
 import '../../i18n/keys.g.dart';
 import '../../i18n/translations_provider.dart';
 import '../../widgets/cover_art.dart';
+import '../../widgets/tokens.dart';
 import '../catalog/data/catalog_providers.dart';
 import '../catalog/widgets/artist_links.dart';
 import '../devices/device_picker_sheet.dart';
@@ -163,7 +164,7 @@ class _NowPlaying extends StatelessWidget {
                   constraints.maxWidth,
                   math.min(MediaQuery.sizeOf(context).width * 0.78, 416),
                 ),
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: ChordiaRadius.xlAll,
               ),
             ),
           ),
@@ -389,7 +390,9 @@ class _Tab extends StatelessWidget {
                   height: 2,
                   decoration: BoxDecoration(
                     color: theme.colorScheme.primary,
-                    borderRadius: BorderRadius.circular(2),
+                    // A 2px rule reads as a capsule at any corner the scale offers; the web writes
+                    // exactly this mark as `h-0.5 rounded-full` (`charts.tsx:1362`).
+                    borderRadius: ChordiaRadius.pill,
                   ),
                 ),
               ),

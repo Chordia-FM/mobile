@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../../../i18n/keys.g.dart';
 import '../../../i18n/translations_provider.dart';
+import '../../catalog/widgets/list_row.dart';
 import '../../social/data/social_messages.dart';
 import '../data/insights_api.dart';
 import '../data/insights_providers.dart';
@@ -124,8 +125,7 @@ class _Records extends ConsumerWidget {
         if (records.topSessions.isNotEmpty) ...[
           ReportHeading(title: t(InsightsKeys.recordsSessionsTitle)),
           for (final session in records.topSessions)
-            ListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+            ListRow(
               leading: const Icon(Icons.timelapse_rounded),
               title: Text(msToTime(session.msPlayed, t)),
               subtitle: Text(
@@ -203,8 +203,7 @@ class _StreakTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = ref.t;
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+    return ListRow(
       leading: Icon(
         longest
             ? Icons.emoji_events_rounded
@@ -241,15 +240,14 @@ class _MilestoneTile extends StatelessWidget {
   final DateFormat date;
 
   @override
-  Widget build(BuildContext context) => ListTile(
-    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+  Widget build(BuildContext context) => ListRow(
     leading: const Icon(Icons.flag_rounded),
     title: Text(label, style: Theme.of(context).textTheme.labelMedium),
     subtitle: Text(
       '${milestone.title} · ${milestone.artist}\n'
       '${date.format(DateTime.fromMillisecondsSinceEpoch(milestone.playedAt))}',
     ),
-    isThreeLine: true,
+    subtitleMaxLines: 3,
   );
 }
 

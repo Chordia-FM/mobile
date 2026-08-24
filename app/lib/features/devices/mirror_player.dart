@@ -17,6 +17,7 @@ import '../../data/playback/notification_art.dart';
 import '../../i18n/keys.g.dart';
 import '../../i18n/translations_provider.dart';
 import '../../widgets/cover_art.dart';
+import '../../widgets/tokens.dart';
 import '../player/player_format.dart';
 import 'device_picker_sheet.dart';
 
@@ -97,7 +98,7 @@ class MirrorPlayerScreen extends ConsumerWidget {
                           constraints.maxWidth,
                           constraints.maxHeight,
                         ),
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: ChordiaRadius.xlAll,
                       ),
                     ),
                   ),

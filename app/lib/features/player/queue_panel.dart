@@ -14,6 +14,7 @@ import '../../i18n/translations_provider.dart';
 import '../../widgets/cover_art.dart';
 import '../catalog/widgets/artist_links.dart';
 import '../catalog/widgets/entity_menu.dart';
+import '../catalog/widgets/list_row.dart';
 import 'player_badges.dart';
 import 'player_format.dart';
 import 'player_menu.dart';
@@ -327,7 +328,7 @@ class QueueRow extends ConsumerWidget {
     final theme = Theme.of(context);
     final drag = dragIndex;
 
-    return ListTile(
+    return ListRow(
       // The row plays the entry and the credited names open their artists. Two tap targets in one
       // row, never nested: the names are spans with their own recognizers, which win the gesture
       // arena over the tile because they are deeper in the hit test.

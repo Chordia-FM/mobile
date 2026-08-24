@@ -222,9 +222,9 @@ class _Greeting extends ConsumerWidget {
         children: [
           Text(
             t(part.greetingKey),
-            style: theme.textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
+            // `display-title font-bold text-2xl md:text-3xl` (HomeView.tsx:260) — the phone column
+            // is below `md`, so `text-2xl`, which is the `displaySmall` slot.
+            style: theme.textTheme.displaySmall,
           ),
           const SizedBox(height: 4),
           Text(

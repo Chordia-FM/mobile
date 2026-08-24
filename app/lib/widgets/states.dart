@@ -201,7 +201,10 @@ class ErrorState extends StatelessWidget {
               Text(
                 title,
                 textAlign: TextAlign.center,
-                style: ChordiaType.lg.copyWith(
+                // The web's own failure block is `display-title font-semibold text-2xl`
+                // (`ErrorState.tsx:402`) — the serif, one of the 19 page H1s that carry it. This
+                // is the same component: `live.tsx:22` hands a page's load failure to it.
+                style: Theme.of(context).textTheme.displaySmall?.copyWith(
                   fontWeight: ChordiaType.semibold,
                   color: scheme.onSurface,
                 ),

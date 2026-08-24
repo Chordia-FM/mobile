@@ -7,6 +7,7 @@ import '../../i18n/keys.g.dart';
 import '../../i18n/translations_provider.dart';
 import '../../widgets/cover_art.dart';
 import '../catalog/widgets/catalog_state.dart';
+import '../catalog/widgets/list_row.dart';
 import 'data/admin_providers.dart';
 import 'widgets/admin_audit_view.dart';
 import 'widgets/admin_widgets.dart';
@@ -158,8 +159,7 @@ class _Loaded extends ConsumerWidget {
           CatalogEmpty(message: t(AdminKeys.userDetailNoLibraries))
         else
           for (final library in profile.libraries)
-            ListTile(
-              dense: true,
+            ListRow(
               leading: Icon(
                 library.online
                     ? Icons.cloud_done_rounded
@@ -179,8 +179,7 @@ class _Loaded extends ConsumerWidget {
           CatalogEmpty(message: t(AdminKeys.userDetailNoSessions))
         else
           for (final session in profile.sessions)
-            ListTile(
-              dense: true,
+            ListRow(
               leading: Icon(
                 session.longLived
                     ? Icons.smartphone_rounded

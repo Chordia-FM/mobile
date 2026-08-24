@@ -10,6 +10,7 @@ import '../../../i18n/translations_provider.dart';
 import '../../../widgets/cover_art.dart';
 import '../../catalog/catalog_routes.dart';
 import '../../catalog/widgets/catalog_state.dart';
+import '../../catalog/widgets/list_row.dart';
 import '../data/admin_providers.dart';
 import 'admin_widgets.dart';
 
@@ -111,7 +112,7 @@ class _Results extends ConsumerWidget {
             itemCount: artists.length,
             itemBuilder: (context, index) {
               final artist = artists[index];
-              return ListTile(
+              return ListRow(
                 onTap: () => context.goToArtist(artist.id),
                 leading: CoverArt(
                   sha256: artHashOf(artist.imageUrl),
@@ -142,7 +143,7 @@ class _Results extends ConsumerWidget {
             itemCount: albums.length,
             itemBuilder: (context, index) {
               final album = albums[index];
-              return ListTile(
+              return ListRow(
                 onTap: () => context.goToAlbum(album.id),
                 leading: CoverArt(sha256: artHashOf(album.coverUrl), size: 44),
                 title: Text(

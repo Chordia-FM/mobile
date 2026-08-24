@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../i18n/keys.g.dart';
 import '../../../i18n/translations_provider.dart';
+import '../../../widgets/tokens.dart';
+import '../../catalog/widgets/list_row.dart';
 import '../data/insights_providers.dart';
 import '../format.dart';
 import '../widgets/insights_primitives.dart';
@@ -165,7 +167,8 @@ class _NewVsFamiliar extends ConsumerWidget {
           Semantics(
             label: t(InsightsKeys.discoveryMixMeterAriaLabel),
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(6),
+              // `rounded-full`, like every other bar on the web (`DownloadStatsPanel.tsx:139`).
+              borderRadius: ChordiaRadius.pill,
               child: LinearProgressIndicator(value: fresh, minHeight: 10),
             ),
           ),
@@ -223,8 +226,7 @@ class _Movers extends ConsumerWidget {
             if (value.newcomers.isNotEmpty) ...[
               ReportHeading(title: t(InsightsKeys.discoveryMoversNewcomers)),
               for (final entry in value.newcomers)
-                ListTile(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                ListRow(
                   leading: SizedBox(
                     width: 32,
                     child: Text(
@@ -269,8 +271,7 @@ class _MoveGroup extends ConsumerWidget {
       children: [
         ReportHeading(title: title),
         for (final move in moves)
-          ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+          ListRow(
             leading: Icon(
               climbing
                   ? Icons.trending_up_rounded

@@ -93,9 +93,8 @@ class _LabelView extends ConsumerWidget {
                 ),
                 Text(
                   label.name,
-                  style: theme.textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
+                  // `display-title font-bold text-4xl` (`labels/$labelId.tsx:73`).
+                  style: theme.textTheme.displayLarge,
                 ),
                 const SizedBox(height: 6),
                 Text(

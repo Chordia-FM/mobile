@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../widgets/tokens.dart';
 import '../catalog_routes.dart';
 import '../format.dart';
 
@@ -22,13 +23,13 @@ class GenreChips extends StatelessWidget {
       children: [
         for (final genre in genres)
           InkWell(
-            borderRadius: BorderRadius.circular(999),
+            borderRadius: ChordiaRadius.pill,
             onTap: () => context.goToGenre(genreSlug(genre)),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
                 border: Border.all(color: theme.colorScheme.outline),
-                borderRadius: BorderRadius.circular(999),
+                borderRadius: ChordiaRadius.pill,
               ),
               child: Text(
                 titleCaseGenre(genre),

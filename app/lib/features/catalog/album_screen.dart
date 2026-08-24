@@ -192,12 +192,10 @@ class AlbumHeader extends ConsumerWidget {
               ),
             Text(
               album.title,
-              // `display-title font-bold text-4xl`.
-              style: theme.textTheme.headlineLarge?.copyWith(
-                fontSize: 36,
-                height: 1.1,
-                fontWeight: FontWeight.w700,
-              ),
+              // `display-title font-bold text-4xl` — the serif, at the size `displayLarge`
+              // already carries. It reached for `headlineLarge` and then re-sized it to 36, which
+              // is `displayLarge`'s size in the sans: the same number, the wrong face.
+              style: theme.textTheme.displayLarge,
             ),
             const SizedBox(height: 8),
             // ONE line: the credited artist, then the facts. `Wrap` rather than a single rich span

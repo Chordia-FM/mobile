@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../i18n/keys.g.dart';
 import '../../../i18n/translations_provider.dart';
+import '../../../widgets/tokens.dart';
 import '../../catalog/catalog_routes.dart';
 import '../../catalog/widgets/catalog_state.dart';
 import '../../home/data/discovery_nav.dart';
@@ -106,7 +107,7 @@ class _PlaylistShelfState extends ConsumerState<PlaylistShelf> {
               return SizedBox(
                 width: shelfCardWidth,
                 child: InkWell(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: ChordiaRadius.lgAll,
                   onTap: () => context.goToPlaylist(playlist.id),
                   child: Padding(
                     padding: const EdgeInsets.all(6),

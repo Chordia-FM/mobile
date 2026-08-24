@@ -8,7 +8,9 @@ import '../../../data/art/art_cache.dart';
 import '../../../i18n/keys.g.dart';
 import '../../../i18n/translations_provider.dart';
 import '../../../widgets/cover_art.dart';
+import '../../../widgets/tokens.dart';
 import '../../catalog/widgets/catalog_state.dart';
+import '../../catalog/widgets/list_row.dart';
 import '../admin_routes.dart';
 import '../data/admin_models.dart';
 import '../data/admin_providers.dart';
@@ -179,7 +181,7 @@ class _UserRow extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final t = ref.t;
     final theme = Theme.of(context);
-    return ListTile(
+    return ListRow(
       onTap: () => context.goToAdminUser(user.id),
       leading: CoverArt(
         sha256: artHashOf(user.avatarUrl),
@@ -234,7 +236,7 @@ class _Tag extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
         color: color ?? scheme.secondaryContainer,
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: ChordiaRadius.pill,
       ),
       child: Text(
         label,

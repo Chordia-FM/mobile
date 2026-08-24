@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../i18n/keys.g.dart';
 import '../../i18n/translations_provider.dart';
+import '../../widgets/tokens.dart';
 
 /// The markers that qualify the playing recording: explicit, and whatever was lifted out of the
 /// title — live, acoustic, remix.
@@ -40,7 +41,7 @@ class PlayerTrackBadges extends ConsumerWidget {
               ? theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.25)
               : null,
           border: solid ? null : Border.all(color: theme.colorScheme.outline),
-          borderRadius: BorderRadius.circular(3),
+          borderRadius: ChordiaRadius.badgeAll,
         ),
         child: Text(
           label,

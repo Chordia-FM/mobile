@@ -8,6 +8,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import '../../app/providers.dart';
 import '../../i18n/keys.g.dart';
 import '../../i18n/translations_provider.dart';
+import '../../widgets/tokens.dart';
 import '../catalog/widgets/list_row.dart';
 import 'data/settings_messages.dart';
 import 'data/settings_providers.dart';
@@ -360,9 +361,9 @@ class _TwoFactorSectionState extends ConsumerState<_TwoFactorSection> {
         child: Center(
           child: Container(
             padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: ChordiaRadius.lgAll,
             ),
             // Drawn from the `otpauth://` URI rather than the SVG the Hub also returns: rendering
             // that would mean shipping an SVG engine to display a picture of a string we already

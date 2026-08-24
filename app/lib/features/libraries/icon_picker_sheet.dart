@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../i18n/keys.g.dart';
 import '../../i18n/translations_provider.dart';
+import '../../widgets/tokens.dart';
 import '../library/widgets/library_states.dart';
 import 'library_icons.dart';
 
@@ -178,11 +179,11 @@ class _Tile extends StatelessWidget {
       button: true,
       child: InkWell(
         onTap: () => onPick(value),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: ChordiaRadius.mdAll,
         child: Container(
           margin: const EdgeInsets.all(4),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: ChordiaRadius.mdAll,
             border: Border.all(
               color: selected ? scheme.primary : scheme.outlineVariant,
               width: selected ? 2 : 1,

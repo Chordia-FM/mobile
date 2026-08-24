@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../i18n/keys.g.dart';
 import '../../i18n/translations_provider.dart';
+import '../catalog/widgets/list_row.dart';
 import '../library/widgets/library_states.dart';
 import 'data/libraries_api.dart';
 import 'data/libraries_providers.dart';
@@ -210,14 +211,21 @@ class _OverrideEditorState extends ConsumerState<_OverrideEditor> {
                     ),
                     const SizedBox(height: 12),
                   ],
-                  SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    value: _overrideMain,
+                  // `Toggle` on the web is a label over a hint with the control at the end
+                  // (`settings/Toggle.tsx`), which is `ListRow` with a `Switch` trailing — not
+                  // Material's own row, whose insets and type scale are its own.
+                  ListRow(
+                    gutter: 0,
+                    onTap: () => setState(() => _overrideMain = !_overrideMain),
                     title: Text(t(LibraryKeys.metadataOverridesApplyToCatalog)),
                     subtitle: Text(
                       t(LibraryKeys.metadataOverridesApplyToCatalogHint),
                     ),
-                    onChanged: (value) => setState(() => _overrideMain = value),
+                    trailing: Switch(
+                      value: _overrideMain,
+                      onChanged: (value) =>
+                          setState(() => _overrideMain = value),
+                    ),
                   ),
                   const SizedBox(height: 8),
                   FilledButton(

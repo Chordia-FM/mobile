@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../i18n/keys.g.dart';
 import '../../../i18n/translations_provider.dart';
+import '../../../widgets/tokens.dart';
 import '../../catalog/widgets/catalog_state.dart';
 import '../data/admin_api.dart';
 import '../data/admin_models.dart';
@@ -125,7 +126,11 @@ class _ReportCard extends ConsumerWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: theme.colorScheme.surfaceContainer,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: ChordiaRadius.xlAll,
+        // `rounded-xl border border-border bg-card p-3` (`admin/moderation.tsx:121`). The
+        // hairline is not decoration: on this palette a card and the page behind it are close
+        // enough in lightness that an edgeless card reads as no card at all.
+        border: Border.all(color: theme.colorScheme.line),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

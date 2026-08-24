@@ -40,6 +40,31 @@ abstract final class ChordiaRadius {
 
   /// A pill. The web writes `rounded-full`, which on a non-square box is "as round as it goes".
   static const pill = BorderRadius.all(Radius.circular(999));
+
+  /// The two corners the web writes as ARBITRARY values, because nothing on the scale fits a mark
+  /// this small: `--radius-sm` is 8px, which on a 10px square is a circle.
+  ///
+  /// They live here rather than at their call sites for the same reason as the four above — a
+  /// number in a widget is a number nobody can check against the stylesheet. Both are cited.
+
+  /// A chart mark: a heatmap cell or a legend swatch. `rx={2}` (`charts.tsx:539`) and
+  /// `dayRadius={2}` (`charts.tsx:739`).
+  static const mark = 2.0;
+
+  /// A badge square: the explicit "E" and the variant chips beside a track title.
+  /// `rounded-[3px]` (`ExplicitBadge.tsx:24`, and the variant chip in `TrackList.tsx`).
+  static const badge = 3.0;
+
+  static const markAll = BorderRadius.all(Radius.circular(mark));
+  static const badgeAll = BorderRadius.all(Radius.circular(badge));
+
+  /// A bottom sheet's top corners.
+  ///
+  /// `responsive-dialog.tsx:221` gives the sheet `rounded-t-2xl` — [xl], the same corner a dialog
+  /// gets, because on the web a sheet and a dialog are one element. The phone's sheets had settled
+  /// on 20, which is neither that nor Material's 28: a corner from nowhere, on the surface the app
+  /// opens most.
+  static const sheetTop = BorderRadius.vertical(top: Radius.circular(xl));
 }
 
 /// How tall an interactive control is.

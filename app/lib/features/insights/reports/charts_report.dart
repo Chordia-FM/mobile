@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../../../i18n/keys.g.dart';
 import '../../../i18n/translations_provider.dart';
+import '../../catalog/widgets/list_row.dart';
 import '../../social/data/social_messages.dart';
 import '../data/insights_providers.dart';
 import '../entity_stats_screen.dart';
@@ -268,8 +269,7 @@ class _ChartRow extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final t = ref.t;
     final theme = Theme.of(context);
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+    return ListRow(
       leading: SizedBox(
         width: 32,
         child: Text(

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../i18n/keys.g.dart';
 import '../../../i18n/translations_provider.dart';
+import '../../catalog/widgets/list_row.dart';
 import '../data/downloads_providers.dart';
 import '../downloads_api.dart';
 
@@ -149,7 +150,7 @@ class DownloadMenuTile extends ConsumerWidget {
     );
     final held = tracks.isNotEmpty && tracks.every((v) => ids.contains(v.id));
 
-    return ListTile(
+    return ListRow(
       leading: Icon(
         held
             ? Icons.download_done_rounded

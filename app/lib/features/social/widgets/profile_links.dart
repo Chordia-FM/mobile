@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../i18n/keys.g.dart';
 import '../../../i18n/translations_provider.dart';
+import '../../catalog/widgets/list_row.dart';
 
 /// Platform slug → icon, label and display order.
 ///
@@ -92,7 +93,7 @@ class ProfileLinkBar extends ConsumerWidget {
               ),
             ),
             for (final link in shown)
-              ListTile(
+              ListRow(
                 leading: Icon(link.icon),
                 title: Text(link.label),
                 trailing: const Icon(Icons.open_in_new_rounded, size: 18),

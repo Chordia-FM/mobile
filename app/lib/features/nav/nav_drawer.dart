@@ -11,6 +11,7 @@ import '../../widgets/tokens.dart';
 import '../admin/admin_routes.dart';
 import '../admin/data/admin_providers.dart';
 import '../catalog/catalog_routes.dart';
+import '../catalog/widgets/list_row.dart';
 import '../home/data/discovery_nav.dart';
 import '../library/data/library_providers.dart';
 import '../manager/manager_routes.dart';
@@ -271,7 +272,7 @@ class NavDrawerRow extends StatelessWidget {
   final void Function(BuildContext context) onSelected;
 
   @override
-  Widget build(BuildContext context) => ListTile(
+  Widget build(BuildContext context) => ListRow(
     leading: Icon(icon),
     title: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
     onTap: () {
@@ -306,7 +307,7 @@ class NavDrawerEntityRow extends StatelessWidget {
   final void Function(BuildContext context) onSelected;
 
   @override
-  Widget build(BuildContext context) => ListTile(
+  Widget build(BuildContext context) => ListRow(
     leading: CoverArt(
       sha256: artHashOf(imageUrl),
       // The web's sidebar rows are `size-9`.

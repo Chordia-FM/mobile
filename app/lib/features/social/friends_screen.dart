@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../i18n/keys.g.dart';
 import '../../i18n/translations_provider.dart';
 import '../catalog/widgets/catalog_state.dart';
+import '../catalog/widgets/list_row.dart';
 import 'data/social_messages.dart';
 import 'data/social_providers.dart';
 import 'widgets/friends_listening.dart';
@@ -361,7 +362,7 @@ class _AddByHandle extends ConsumerWidget {
     );
     if (!looksLikeHandle || alreadyListed) return const SizedBox.shrink();
 
-    return ListTile(
+    return ListRow(
       leading: const Icon(Icons.person_add_alt_1_rounded),
       title: Text(t(SocialKeys.friendsRequestByHandle, {'handle': handle})),
       onTap: () async {

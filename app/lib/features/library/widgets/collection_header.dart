@@ -189,11 +189,12 @@ class CollectionHeader extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final heading = Text(
       title,
-      // `display-title break-words font-bold text-3xl`.
-      style: ChordiaType.xl3.copyWith(
-        fontWeight: ChordiaType.bold,
-        color: scheme.onSurface,
-      ),
+      // `display-title break-words font-bold text-3xl`. The class is the serif, so this reads the
+      // `displayMedium` slot rather than restating `text-3xl` in the sans — `.display-title` is on
+      // 19 elements on the web and every one is a page H1, which is exactly what this is.
+      style: Theme.of(
+        context,
+      ).textTheme.displayMedium?.copyWith(color: scheme.onSurface),
     );
 
     return Padding(

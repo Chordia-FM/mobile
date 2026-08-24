@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:chordia_api/chordia_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -176,23 +178,26 @@ class _LibraryScope extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final t = ref.t;
     final prefs = ref.watch(managerPrefsControllerProvider);
-    return SwitchListTile.adaptive(
+    final included = prefs.value?.includeShared ?? true;
+    // Disabled until the document has arrived: a confident "on" for something that is off is a lie
+    // the next launch silently corrects.
+    Future<void> set(bool include) async {
+      final controller = ref.read(managerPrefsControllerProvider.notifier);
+      if (await controller.setIncludeShared(include: include)) return;
+      final failure = controller.failure;
+      if (failure != null && context.mounted) {
+        showManagerFailure(context, failure, t);
+      }
+    }
+
+    // `settings/Toggle.tsx`: the label reads as the row and the control sits at its end.
+    return ListRow(
       title: Text(t(ManagerKeys.librariesIncludeShared)),
-      value: prefs.value?.includeShared ?? true,
-      // Disabled until the document has arrived: a confident "on" for something that is off is a
-      // lie the next launch silently corrects.
-      onChanged: prefs.hasValue
-          ? (include) async {
-              final controller = ref.read(
-                managerPrefsControllerProvider.notifier,
-              );
-              if (await controller.setIncludeShared(include: include)) return;
-              final failure = controller.failure;
-              if (failure != null && context.mounted) {
-                showManagerFailure(context, failure, t);
-              }
-            }
-          : null,
+      onTap: prefs.hasValue ? () => unawaited(set(!included)) : null,
+      trailing: Switch.adaptive(
+        value: included,
+        onChanged: prefs.hasValue ? (v) => unawaited(set(v)) : null,
+      ),
     );
   }
 }
@@ -209,13 +214,19 @@ class _ExclusionList extends ConsumerWidget {
     if (summary.perLibrary.isEmpty) {
       return CatalogEmpty(message: t(ManagerKeys.coverageEmpty));
     }
+    Future<void> exclude(String libraryId, {required bool excluded}) async {
+      final controller = ref.read(coverageControllerProvider.notifier);
+      if (await controller.setExcluded(libraryId, excluded: excluded)) return;
+      final failure = controller.failure;
+      if (failure != null && context.mounted) {
+        showManagerFailure(context, failure, t);
+      }
+    }
+
     return Column(
       children: [
         for (final library in summary.perLibrary)
-          CheckboxListTile(
-            // The stored flag is "excluded"; the checkbox asks the positive question, because a
-            // list of boxes you tick to leave things OUT is the one nobody reads correctly.
-            value: !library.excluded,
+          ListRow(
             title: Row(
               children: [
                 Flexible(
@@ -240,18 +251,17 @@ class _ExclusionList extends ConsumerWidget {
                 'artists': library.artistCount,
               }),
             ),
-            onChanged: (included) async {
-              final controller = ref.read(coverageControllerProvider.notifier);
-              final ok = await controller.setExcluded(
-                library.libraryId,
-                excluded: !(included ?? true),
-              );
-              if (ok) return;
-              final failure = controller.failure;
-              if (failure != null && context.mounted) {
-                showManagerFailure(context, failure, t);
-              }
-            },
+            // The stored flag is "excluded"; the box asks the positive question, because a list
+            // of boxes you tick to leave things OUT is the one nobody reads correctly.
+            trailing: Checkbox(
+              value: !library.excluded,
+              onChanged: (included) => unawaited(
+                exclude(library.libraryId, excluded: !(included ?? true)),
+              ),
+            ),
+            onTap: () => unawaited(
+              exclude(library.libraryId, excluded: !library.excluded),
+            ),
           ),
       ],
     );

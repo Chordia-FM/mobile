@@ -11,6 +11,7 @@ import '../../i18n/translations_provider.dart';
 import '../../widgets/cover_art.dart';
 import '../../widgets/tokens.dart';
 import '../admin/data/admin_providers.dart';
+import '../catalog/widgets/list_row.dart';
 import '../social/data/social_providers.dart';
 
 /// The account control the web keeps in its top bar on every `/app` page, phones included
@@ -114,7 +115,7 @@ class _AccountSheet extends ConsumerWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        ListTile(
+        ListRow(
           leading: CoverArt(
             sha256: artHashOf(viewer.avatarUrl),
             size: 40,
@@ -220,7 +221,7 @@ class AccountMenuRow extends StatelessWidget {
   final Color? colour;
 
   @override
-  Widget build(BuildContext context) => ListTile(
+  Widget build(BuildContext context) => ListRow(
     leading: Icon(icon, color: colour),
     title: Text(
       label,

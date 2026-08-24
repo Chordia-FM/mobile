@@ -109,7 +109,7 @@ class _TabItem extends StatelessWidget {
       button: true,
       child: PressFill(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(ChordiaRadius.lg),
+        borderRadius: ChordiaRadius.lgAll,
         child: Padding(
           padding: const EdgeInsets.only(left: 4, right: 4, top: 4),
           child: Column(

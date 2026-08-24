@@ -7,6 +7,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/providers.dart';
 import '../../app/theme.dart';
 import '../../data/playback/eq.dart';
+import '../../widgets/tokens.dart';
+import '../catalog/widgets/list_row.dart';
 import '../settings/data/settings_providers.dart';
 import '../../i18n/keys.g.dart';
 import '../../i18n/translations_provider.dart';
@@ -102,15 +104,27 @@ class _EqScreenState extends ConsumerState<EqScreen> {
                       ? t(PlayerKeys.equalizerDeviceApproximation)
                       : t(PlayerKeys.equalizerNotApplied),
                 ),
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
+                // The web's toggle row is a label with the control at the end
+                // (`settings/Toggle.tsx`), which is a `ListRow` with a trailing `Switch` — and the
+                // whole row is the target there, because it is wrapped in a `<label>`.
+                ListRow(
+                  gutter: 0,
                   title: Text(t(PlayerKeys.equalizerEnable)),
-                  value: enabledOf(_config),
-                  onChanged: (on) => _edit(
+                  onTap: () => _edit(
                     EqConfig(
-                      enabled: on,
+                      enabled: !enabledOf(_config),
                       preamp: preampOf(_config),
                       bands: bandsOf(_config),
+                    ),
+                  ),
+                  trailing: Switch(
+                    value: enabledOf(_config),
+                    onChanged: (on) => _edit(
+                      EqConfig(
+                        enabled: on,
+                        preamp: preampOf(_config),
+                        bands: bandsOf(_config),
+                      ),
                     ),
                   ),
                 ),
@@ -169,7 +183,7 @@ class _CurveCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ClipRRect(
-    borderRadius: BorderRadius.circular(12),
+    borderRadius: ChordiaRadius.lgAll,
     child: ColoredBox(
       color: context.surfaces.paneRaised,
       child: SizedBox(

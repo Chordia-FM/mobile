@@ -395,7 +395,7 @@ class TrackBadges extends ConsumerWidget {
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: scheme.onSurfaceVariant.withValues(alpha: 0.85),
-          borderRadius: const BorderRadius.all(Radius.circular(3)),
+          borderRadius: ChordiaRadius.badgeAll,
         ),
         child: Text(
           label,
@@ -419,7 +419,7 @@ class TrackBadges extends ConsumerWidget {
         padding: const EdgeInsets.symmetric(horizontal: 4),
         decoration: BoxDecoration(
           border: Border.all(color: scheme.line),
-          borderRadius: const BorderRadius.all(Radius.circular(3)),
+          borderRadius: ChordiaRadius.badgeAll,
         ),
         child: Text(
           label,
