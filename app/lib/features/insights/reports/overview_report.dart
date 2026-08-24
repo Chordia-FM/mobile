@@ -166,87 +166,102 @@ class _Overview extends ConsumerWidget {
         // Genre mix needs enough buckets to read as a flow rather than as a couple of columns;
         // over a day or two the series is too short to show drift, and the top-genre list below
         // says it better.
-        if (_windowDays(report) >= 7) ...[
-          ReportHeading(title: t(InsightsKeys.panelsGenreFlow)),
-          GenreFlow(
-            trend: report.genreTrend,
-            granularity: report.period == Period.overall
-                ? BucketGranularity.month
-                : BucketGranularity.day,
-            windowStart: report.windowStart,
-            windowEnd: report.windowEnd,
+        if (_windowDays(report) >= 7)
+          ReportPanel(
+            title: t(InsightsKeys.panelsGenreFlow),
+            child: GenreFlow(
+              trend: report.genreTrend,
+              granularity: report.period == Period.overall
+                  ? BucketGranularity.month
+                  : BucketGranularity.day,
+              windowStart: report.windowStart,
+              windowEnd: report.windowEnd,
+            ),
           ),
-        ],
-        ReportHeading(title: t(InsightsKeys.panelsFingerprint)),
-        FingerprintRadar(
-          you: report.fingerprint.you,
-          average: report.fingerprint.globalAverage,
-          // The legend contrasts this listener against the hub average, so on somebody else's
-          // profile the primary series has to be named as theirs rather than as "You".
-          youLabel: handle == null ? null : '@$handle',
+        ReportPanel(
+          title: t(InsightsKeys.panelsFingerprint),
+          child: FingerprintRadar(
+            you: report.fingerprint.you,
+            average: report.fingerprint.globalAverage,
+            // The legend contrasts this listener against the hub average, so on somebody else's
+            // profile the primary series has to be named as theirs rather than as "You".
+            youLabel: handle == null ? null : '@$handle',
+          ),
         ),
-        ReportHeading(title: t(InsightsKeys.panelsMusicRatio)),
-        MusicRatioRings(
-          ariaLabel: t(InsightsKeys.ratioAriaLabel, {
-            'tracks': report.uniqueTracks,
-            'albums': report.uniqueAlbums,
-            'artists': report.uniqueArtists,
-          }),
-          items: [
-            RatioItem(
-              label: t(InsightsKeys.discoveryKindsTrack),
-              value: report.uniqueTracks,
-              compared: report.uniqueTracksCompared,
-              showDelta: showDelta,
-            ),
-            RatioItem(
-              label: t(InsightsKeys.discoveryKindsAlbum),
-              value: report.uniqueAlbums,
-              compared: report.uniqueAlbumsCompared,
-              showDelta: showDelta,
-            ),
-            RatioItem(
-              label: t(InsightsKeys.discoveryKindsArtist),
-              value: report.uniqueArtists,
-              compared: report.uniqueArtistsCompared,
-              showDelta: showDelta,
-            ),
-          ],
-        ),
-        if (report.topGenres.isNotEmpty) ...[
-          ReportHeading(title: t(InsightsKeys.topGenres)),
-          TopList.genres(items: report.topGenres, limit: 8),
-        ],
-        if (report.decades.any((bucket) => bucket.plays > 0)) ...[
-          ReportHeading(title: t(InsightsKeys.panelsDecades)),
-          BarChart(
-            bars: [
-              for (final bucket in report.decades)
-                BarDatum(
-                  t(InsightsKeys.decadesLabel, {'decade': bucket.decade}),
-                  bucket.plays,
-                ),
+        ReportPanel(
+          title: t(InsightsKeys.panelsMusicRatio),
+          child: MusicRatioRings(
+            ariaLabel: t(InsightsKeys.ratioAriaLabel, {
+              'tracks': report.uniqueTracks,
+              'albums': report.uniqueAlbums,
+              'artists': report.uniqueArtists,
+            }),
+            items: [
+              RatioItem(
+                label: t(InsightsKeys.discoveryKindsTrack),
+                value: report.uniqueTracks,
+                compared: report.uniqueTracksCompared,
+                showDelta: showDelta,
+              ),
+              RatioItem(
+                label: t(InsightsKeys.discoveryKindsAlbum),
+                value: report.uniqueAlbums,
+                compared: report.uniqueAlbumsCompared,
+                showDelta: showDelta,
+              ),
+              RatioItem(
+                label: t(InsightsKeys.discoveryKindsArtist),
+                value: report.uniqueArtists,
+                compared: report.uniqueArtistsCompared,
+                showDelta: showDelta,
+              ),
             ],
           ),
-          // Without this line the bars imply a fully dated catalog. A fifth of a collection with
-          // no release date is a normal state, and saying so is what stops the decade shape being
-          // read as the whole story.
-          if (report.undatedReleaseShare >= 0.005)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-              child: Text(
-                t(InsightsKeys.decadesUndated, {
-                  'pct': NumberFormat.decimalPercentPattern(
-                    locale: ref.watch(translationsProvider).locale,
-                    decimalDigits: 0,
-                  ).format(report.undatedReleaseShare),
-                }),
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+        ),
+        // The one ranked list on this page that IS panelled, because the web panels it too
+        // (`ListenerReport.tsx:542`) — there it is a chip cloud rather than a list of rows, and a
+        // chip cloud has no edges of its own to sit on.
+        if (report.topGenres.isNotEmpty)
+          ReportPanel(
+            title: t(InsightsKeys.topGenres),
+            child: TopList.genres(items: report.topGenres, limit: 8),
+          ),
+        if (report.decades.any((bucket) => bucket.plays > 0))
+          ReportPanel(
+            title: t(InsightsKeys.panelsDecades),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                BarChart(
+                  bars: [
+                    for (final bucket in report.decades)
+                      BarDatum(
+                        t(InsightsKeys.decadesLabel, {'decade': bucket.decade}),
+                        bucket.plays,
+                      ),
+                  ],
                 ),
-              ),
+                // Without this line the bars imply a fully dated catalog. A fifth of a collection
+                // with no release date is a normal state, and saying so is what stops the decade
+                // shape being read as the whole story.
+                if (report.undatedReleaseShare >= 0.005)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                    child: Text(
+                      t(InsightsKeys.decadesUndated, {
+                        'pct': NumberFormat.decimalPercentPattern(
+                          locale: ref.watch(translationsProvider).locale,
+                          decimalDigits: 0,
+                        ).format(report.undatedReleaseShare),
+                      }),
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+              ],
             ),
-        ],
+          ),
         if (recent.isNotEmpty) ...[
           ReportHeading(title: t(InsightsKeys.recentlyPlayed)),
           for (final play in recent.take(10))

@@ -130,18 +130,14 @@ class _NewVsFamiliar extends ConsumerWidget {
     final fresh = 1 - stats.repeatRate;
     final freshPercent = '${(fresh * 100).round()}%';
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+    // The web's `MixPanel` (`DiscoveryReport.tsx:55`) is a `Panel`, so the title comes from the
+    // panel's own heading rather than from a line of text above the figure.
+    return ReportPanel(
+      title: t(InsightsKeys.discoveryMixTitle),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            t(InsightsKeys.discoveryMixTitle),
-            style: theme.textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 8),
           Row(
             crossAxisAlignment: CrossAxisAlignment.baseline,
             textBaseline: TextBaseline.alphabetic,

@@ -203,5 +203,95 @@ void main() {
         findsOneWidget,
       );
     });
+
+    /// The insights reports were the largest remaining case of this: the web wraps every chart in
+    /// `Panel` (`insights/primitives.tsx:132`) and the phone had the heading without the panel, so
+    /// six tabs of charts scrolled past as one flat column with labels floating between them.
+    ///
+    /// The regression this catches is the exact shape the flat column had — a `ReportHeading`
+    /// with a chart under it, where a `ReportPanel` was the answer.
+    group('a chart sits on the panel material', () {
+      final charts = RegExp(
+        r'(?<![A-Za-z])(BarChart|GenreFlow|FingerprintRadar|MusicRatioRings'
+        r'|ClockGridHeatmap|CalendarHeatmap)\s*\(',
+      );
+
+      /// How far below a heading a chart still reads as belonging to it. Six covers a heading
+      /// wrapped over an `if`, a spread and a `Column` opener.
+      const reach = 6;
+
+      final reports = features
+          .where((file) => rel(file).contains('/features/insights/'))
+          .toList(growable: false);
+
+      setUpAll(() {
+        // Without this the scan below passes by reading nothing at all.
+        expect(reports.length, greaterThan(5));
+      });
+
+      test('no report puts a chart under a bare heading', () {
+        final offenders = <String>[];
+        for (final file in reports) {
+          final lines = codeOf(file).split('\n');
+          for (var i = 0; i < lines.length; i++) {
+            if (!lines[i].contains('ReportHeading(')) continue;
+            final end = (i + reach).clamp(0, lines.length - 1);
+            for (var j = i + 1; j <= end; j++) {
+              if (charts.hasMatch(lines[j])) {
+                offenders.add('${rel(file)}:${j + 1}  ${lines[j].trim()}');
+                break;
+              }
+            }
+          }
+        }
+        expect(
+          offenders,
+          isEmpty,
+          reason:
+              'use ReportPanel — a chart under a floating label is the flat '
+              'column the web draws as an island-shell section',
+        );
+      });
+
+      test('the rule would actually catch a violation', () {
+        expect(charts.hasMatch('          BarChart(bars: bars),'), isTrue);
+        expect(charts.hasMatch('        ClockGridHeatmap(grid: g),'), isTrue);
+        // The panel's own name must not read as a chart, or the rule would fire on the fix.
+        expect(charts.hasMatch('        ReportPanel(title: x),'), isFalse);
+      });
+    });
+  });
+
+  group('a sheet wears the theme, not a panel', () {
+    // The decision recorded on `bottomSheetTheme`: Flutter's `BottomSheet` already owns the
+    // Material a sheet is drawn on, so the modal material lives on the theme and the content
+    // inside stays plain. Both halves are pinned here, because either one alone is a regression —
+    // a flat pane colour loses the material, and a missing side loses the accent hairline that
+    // separates the sheet from the dimmed page behind it.
+    test('the sheet pane IS the modal material', () {
+      final theme = buildChordiaTheme();
+      final scheme = theme.colorScheme;
+
+      expect(
+        theme.bottomSheetTheme.backgroundColor,
+        Color.lerp(scheme.modalTop, scheme.modalBottom, 0.5),
+        reason: 'a sheet is `island-shell island-shell-modal` on the web',
+      );
+      // A dialog is the same element on the web, so it cannot be a different colour here.
+      expect(
+        theme.dialogTheme.backgroundColor,
+        theme.bottomSheetTheme.backgroundColor,
+      );
+
+      final shape = theme.bottomSheetTheme.shape;
+      expect(shape, isA<RoundedRectangleBorder>());
+      final box = shape! as RoundedRectangleBorder;
+      expect(
+        box.side.color,
+        scheme.panelBorder,
+        reason: '`.island-shell` is a border as much as it is a fill',
+      );
+      expect(box.borderRadius, ChordiaRadius.sheetTop);
+    });
   });
 }

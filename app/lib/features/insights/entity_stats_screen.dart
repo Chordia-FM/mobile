@@ -192,10 +192,12 @@ class _Stats extends ConsumerWidget {
             title: t(InsightsKeys.entityQuietTitle),
             body: t(InsightsKeys.entityQuietCta),
           )
-        else ...[
-          ReportHeading(title: t(InsightsKeys.panelsActivity)),
-          BarChart(bars: _trendBars(stats, locale)),
-        ],
+        else
+          // `EntityStatsView.tsx:527` — the same `Panel` the dashboard's activity chart sits in.
+          ReportPanel(
+            title: t(InsightsKeys.panelsActivity),
+            child: BarChart(bars: _trendBars(stats, locale)),
+          ),
       ],
     );
   }

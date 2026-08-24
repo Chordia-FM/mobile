@@ -45,27 +45,31 @@ class _ChartsReportState extends ConsumerState<ChartsReport> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _Activity(charts: value),
-          ReportHeading(title: t(InsightsKeys.panelsListeningClock)),
-          BarChart(bars: _clockBars(value, ref)),
+          ReportPanel(
+            title: t(InsightsKeys.panelsListeningClock),
+            child: BarChart(bars: _clockBars(value, ref)),
+          ),
           // A window shorter than a fortnight spans one or two weekdays, so seven bars would be
           // five empty ones and a claim about a pattern that cannot exist yet.
-          if (_windowDays(value) >= 14) ...[
-            ReportHeading(title: t(InsightsKeys.panelsByWeekday)),
-            BarChart(
-              bars: [
-                for (final (day, plays) in value.weekday.indexed)
-                  BarDatum(weekdayLabel(day, t), plays),
-              ],
+          if (_windowDays(value) >= 14)
+            ReportPanel(
+              title: t(InsightsKeys.panelsByWeekday),
+              child: BarChart(
+                bars: [
+                  for (final (day, plays) in value.weekday.indexed)
+                    BarDatum(weekdayLabel(day, t), plays),
+                ],
+              ),
             ),
-          ],
           // Below about three weeks each (weekday, hour) cell holds at most a couple of samples —
           // noise, not a pattern — so the 7x24 grid only appears once the window can feed it. The
           // clock and weekday bars above always show, so nothing vanishes on a short period; the
           // grid is their cross, not a replacement for either.
-          if (_windowDays(value) >= 21) ...[
-            ReportHeading(title: t(InsightsKeys.panelsClockHeatmap)),
-            ClockGridHeatmap(grid: value.clockGrid),
-          ],
+          if (_windowDays(value) >= 21)
+            ReportPanel(
+              title: t(InsightsKeys.panelsClockHeatmap),
+              child: ClockGridHeatmap(grid: value.clockGrid),
+            ),
           ReportHeading(
             title: t(switch (_kind) {
               EntityKind.artist => InsightsKeys.topArtists,
@@ -140,16 +144,13 @@ class _Activity extends ConsumerWidget {
     // a question nobody asked, since "the last 30 days" is a different report from "this year".
     final windowDays = (charts.windowEnd - charts.windowStart) ~/ _dayMs;
     if (charts.granularity == BucketGranularity.day && windowDays >= 140) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          ReportHeading(title: t(InsightsKeys.panelsActivity)),
-          CalendarHeatmap(
-            buckets: charts.overTime,
-            windowStart: charts.windowStart,
-            windowEnd: charts.windowEnd,
-          ),
-        ],
+      return ReportPanel(
+        title: t(InsightsKeys.panelsActivity),
+        child: CalendarHeatmap(
+          buckets: charts.overTime,
+          windowStart: charts.windowStart,
+          windowEnd: charts.windowEnd,
+        ),
       );
     }
     final buckets = charts.overTime.length > 30
@@ -160,20 +161,17 @@ class _Activity extends ConsumerWidget {
         ? DateFormat.yMMM(locale)
         : DateFormat.MMMd(locale);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        ReportHeading(title: t(InsightsKeys.panelsActivity)),
-        BarChart(
-          bars: [
-            for (final bucket in buckets)
-              BarDatum(
-                label.format(DateTime.fromMillisecondsSinceEpoch(bucket.start)),
-                bucket.plays,
-              ),
-          ],
-        ),
-      ],
+    return ReportPanel(
+      title: t(InsightsKeys.panelsActivity),
+      child: BarChart(
+        bars: [
+          for (final bucket in buckets)
+            BarDatum(
+              label.format(DateTime.fromMillisecondsSinceEpoch(bucket.start)),
+              bucket.plays,
+            ),
+        ],
+      ),
     );
   }
 }

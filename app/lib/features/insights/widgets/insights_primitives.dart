@@ -52,6 +52,9 @@ class PeriodSelector extends ConsumerWidget {
 }
 
 /// A section heading inside a report.
+///
+/// For a section that is a LIST of rows. A chart or a figure block gets [ReportPanel], which
+/// carries this same heading on the panel material.
 class ReportHeading extends StatelessWidget {
   const ReportHeading({required this.title, super.key, this.trailing});
 
@@ -61,17 +64,76 @@ class ReportHeading extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
-    child: Row(
+    child: _headingRow(context, title, trailing),
+  );
+}
+
+/// The heading itself, shared by [ReportHeading] and [ReportPanel] so a section head reads the
+/// same whether or not it sits on a panel.
+Widget _headingRow(BuildContext context, String title, Widget? trailing) => Row(
+  children: [
+    Expanded(
+      child: Text(
+        title,
+        style: Theme.of(
+          context,
+        ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+      ),
+    ),
+    ?trailing,
+  ],
+);
+
+/// A titled report section, on the panel material.
+///
+/// `insights/primitives.tsx:132` is `island-shell space-y-4 rounded-xl p-5`, and the web wraps
+/// every chart and figure block of a report in it — that component plus its per-report variants
+/// (DiscoveryReport:112, RecordsReport:82/124/558, SocialReport:187) is thirteen of the client's
+/// ~40 island-shell call sites. The phone had the headings and none of the material, so a report
+/// was a single flat scroll with labels floating between the charts.
+///
+/// Ranked LISTS deliberately stay outside a panel. `TopList.tsx:29` is a bare `<section>` on the
+/// web too, because there it is the individual ROWS that carry a border; the phone's [ListRow] is
+/// the same bargain the other way round — it is full-bleed, and a panel would be a second box
+/// drawn round a list that already reads as one.
+///
+/// The horizontal gutter belongs to the child, for the reason the settings group leaves it to its
+/// rows: every chart in `insights_charts.dart`, and [BarChart]'s own rows, already indent
+/// themselves by 16, and a panel that indented them again would draw a 375px chart in a 311px box.
+/// A child that does not pad itself passes [padding].
+class ReportPanel extends StatelessWidget {
+  const ReportPanel({
+    required this.title,
+    required this.child,
+    super.key,
+    this.trailing,
+    this.padding = EdgeInsets.zero,
+  });
+
+  final String title;
+  final Widget child;
+
+  /// A control on the heading row — a selector, a share button.
+  final Widget? trailing;
+
+  /// Around [child] only.
+  final EdgeInsetsGeometry padding;
+
+  @override
+  Widget build(BuildContext context) => IslandPanel(
+    // Every panel owns the gap ABOVE itself, so a section can never end up flush against the one
+    // before it whatever order a report composes them in.
+    margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+    padding: EdgeInsets.zero,
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Expanded(
-          child: Text(
-            title,
-            style: Theme.of(
-              context,
-            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
-          ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+          child: _headingRow(context, title, trailing),
         ),
-        ?trailing,
+        Padding(padding: padding, child: child),
+        const SizedBox(height: 16),
       ],
     ),
   );
@@ -450,16 +512,25 @@ class BarDatum {
 
 /// "Nothing to report yet" — a statement, not a failure.
 class ReportEmpty extends StatelessWidget {
-  const ReportEmpty({required this.title, super.key, this.body});
+  const ReportEmpty({
+    required this.title,
+    super.key,
+    this.body,
+    this.padding = const EdgeInsets.symmetric(horizontal: 16, vertical: 32),
+  });
 
   final String title;
   final String? body;
+
+  /// The default is the standing-on-the-page case. Inside a [ReportPanel] the panel already owns
+  /// the vertical space, so those callers pass the gutter alone.
+  final EdgeInsetsGeometry padding;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 32),
+      padding: padding,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

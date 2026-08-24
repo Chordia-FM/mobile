@@ -137,6 +137,11 @@ ThemeData buildChordiaTheme([ChordiaSurfaces? surfaces]) {
         error: ChordiaColors.danger,
       );
 
+  // `.island-shell-modal` flattened to one colour, for the two surfaces Material paints with a
+  // `Color` and gives no decoration to: a bottom sheet and a dialog. See `bottomSheetTheme` below
+  // for why the material belongs to the theme rather than to a `ModalPanel` inside the content.
+  final modalSurface = Color.lerp(scheme.modalTop, scheme.modalBottom, 0.5);
+
   return ThemeData(
     useMaterial3: true,
     brightness: Brightness.dark,
@@ -270,26 +275,40 @@ ThemeData buildChordiaTheme([ChordiaSurfaces? surfaces]) {
     // resolves to Tailwind's own 16px because the `@theme` block stops at `--radius-xl`. Flutter's
     // Material 3 default is 28, a corner the web has nowhere.
     //
-    // The MATERIAL is still missing: `.island-shell-modal` is an accent border over a two-stop
-    // gradient, and `BottomSheetThemeData` has no decoration to hang either on. That belongs to
-    // `ModalPanel` at the 26 `showModalBottomSheet` call sites, which live outside this file.
+    // ONE element is the load-bearing word, and it is why a sheet does NOT wrap its content in a
+    // `ModalPanel`. Flutter's `BottomSheet` already owns a `Material`: the background, the corner
+    // and the clip below all hang off it, and so does the drag handle that 21 of the 22
+    // `showModalBottomSheet` call sites ask for. A panel inside that Material is a second
+    // bordered, rounded surface inside the first — two hairlines a pixel apart down the corners,
+    // and a handle sitting on the outer pane while the panel curves away underneath it. So the
+    // modal material moves HERE, onto the element that already exists, and a sheet stays content.
+    //
+    // What cannot make the move is `.island-shell-modal`'s 165° gradient: `BottomSheetThemeData`
+    // has nowhere to hang a decoration, and a `ShapeBorder` paints an edge, not a fill. The
+    // midpoint of the two stops is a gradient's honest single-colour stand-in — lighter than its
+    // bottom, darker than its top, and never claiming a sweep that is not being drawn.
     bottomSheetTheme: BottomSheetThemeData(
-      backgroundColor: s.paneRaised,
+      backgroundColor: modalSurface,
       surfaceTintColor: Colors.transparent,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(ChordiaRadius.xl),
-        ),
+      shape: RoundedRectangleBorder(
+        side: BorderSide(color: scheme.panelBorder),
+        borderRadius: ChordiaRadius.sheetTop,
       ),
       // `h-1 w-9 rounded-full bg-muted-foreground/40`. At full strength the handle reads as a
       // component; at 40% it reads as the grab affordance it is.
       dragHandleColor: ChordiaColors.mutedForeground.withValues(alpha: 0.4),
       dragHandleSize: const Size(36, 4),
     ),
+    // The same panel, because on the web it is literally the same class pair. `s.popover` was a
+    // MENU surface: darker than the modal material and with no edge at all, so a dialog and the
+    // sheet that replaces it on a narrow screen arrived as two different materials.
     dialogTheme: DialogThemeData(
-      backgroundColor: s.popover,
+      backgroundColor: modalSurface,
       surfaceTintColor: Colors.transparent,
-      shape: const RoundedRectangleBorder(borderRadius: ChordiaRadius.xlAll),
+      shape: RoundedRectangleBorder(
+        side: BorderSide(color: scheme.panelBorder),
+        borderRadius: ChordiaRadius.xlAll,
+      ),
     ),
   );
 }

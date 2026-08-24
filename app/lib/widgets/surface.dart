@@ -61,11 +61,21 @@ class IslandPanel extends StatelessWidget {
   }
 }
 
-/// An elevated panel for a sheet or a dialog: `.island-shell-modal` (styles.css:648-666).
+/// An elevated panel for content the app floats over the page: `.island-shell-modal`
+/// (styles.css:648-666).
 ///
 /// Reads one step lighter and one step more saturated than [IslandPanel], so a dialog separates
 /// from the page it covers by being elevated rather than by being a different material. Opaque, for
 /// the reason at the top of this file.
+///
+/// **Not for a `showModalBottomSheet` or a `showDialog`.** Both of those already own a `Material`
+/// that the theme dresses — `bottomSheetTheme`/`dialogTheme` in `app/theme.dart` now carry this
+/// same modal colour and the accent hairline — so a panel inside one paints a second bordered,
+/// rounded surface inside the first, and a sheet's drag handle ends up on the outer pane with the
+/// panel curving away below it. The web draws a sheet and a dialog as ONE element
+/// (`responsive-dialog.tsx:206`), and on the phone that element is Material's. This widget is for
+/// the overlays the app builds itself, where there is no such Material to dress — `update_sheet`
+/// is the case that exists.
 class ModalPanel extends StatelessWidget {
   const ModalPanel({
     required this.child,

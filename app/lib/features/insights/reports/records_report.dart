@@ -106,80 +106,108 @@ class _Records extends ConsumerWidget {
             ),
           ),
 
-        ReportHeading(title: t(InsightsKeys.recordsStreaksCurrent)),
-        if (records.currentStreak case final streak?)
-          _StreakTile(streak: streak, date: date, longest: false)
-        else
-          ReportEmpty(
-            title: t(InsightsKeys.recordsStreaksNoCurrentTitle),
-            body: t(
-              InsightsKeys.recordsStreaksNoCurrentBody,
-              personArg(own: own),
+        // `RecordsReport.tsx:82` and :124 — a streak is a CARD on the web, present or absent, so
+        // both states get the panel rather than only the one with a number in it.
+        ReportPanel(
+          title: t(InsightsKeys.recordsStreaksCurrent),
+          child: switch (records.currentStreak) {
+            final streak? => _StreakTile(
+              streak: streak,
+              date: date,
+              longest: false,
+            ),
+            null => ReportEmpty(
+              title: t(InsightsKeys.recordsStreaksNoCurrentTitle),
+              body: t(
+                InsightsKeys.recordsStreaksNoCurrentBody,
+                personArg(own: own),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+            ),
+          },
+        ),
+        if (records.longestStreak case final streak?)
+          ReportPanel(
+            title: t(InsightsKeys.recordsStreaksLongest),
+            child: _StreakTile(streak: streak, date: date, longest: true),
+          ),
+
+        if (records.topSessions.isNotEmpty)
+          ReportPanel(
+            title: t(InsightsKeys.recordsSessionsTitle),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (final session in records.topSessions)
+                  ListRow(
+                    leading: const Icon(Icons.timelapse_rounded),
+                    title: Text(msToTime(session.msPlayed, t)),
+                    subtitle: Text(
+                      [
+                        session.topArtist == null
+                            ? t(InsightsKeys.recordsSessionsMeta, {
+                                'tracks': session.tracks,
+                              })
+                            : t(InsightsKeys.recordsSessionsMetaWithArtist, {
+                                'tracks': session.tracks,
+                                'artist': session.topArtist,
+                              }),
+                        date.format(
+                          DateTime.fromMillisecondsSinceEpoch(
+                            session.startedAt,
+                          ),
+                        ),
+                      ].join(' · '),
+                      maxLines: 2,
+                    ),
+                  ),
+              ],
             ),
           ),
-        if (records.longestStreak case final streak?) ...[
-          ReportHeading(title: t(InsightsKeys.recordsStreaksLongest)),
-          _StreakTile(streak: streak, date: date, longest: true),
-        ],
 
-        if (records.topSessions.isNotEmpty) ...[
-          ReportHeading(title: t(InsightsKeys.recordsSessionsTitle)),
-          for (final session in records.topSessions)
-            ListRow(
-              leading: const Icon(Icons.timelapse_rounded),
-              title: Text(msToTime(session.msPlayed, t)),
-              subtitle: Text(
-                [
-                  session.topArtist == null
-                      ? t(InsightsKeys.recordsSessionsMeta, {
-                          'tracks': session.tracks,
-                        })
-                      : t(InsightsKeys.recordsSessionsMetaWithArtist, {
-                          'tracks': session.tracks,
-                          'artist': session.topArtist,
-                        }),
-                  date.format(
-                    DateTime.fromMillisecondsSinceEpoch(session.startedAt),
+        // One panel for the whole milestone story, lookup included — `RecordsReport.tsx:558` wraps
+        // the curve, the cards and the lookup in a single island for the same reason: the question
+        // "what was my 4,242nd play" belongs to the list it is asked about, not beside it.
+        ReportPanel(
+          title: t(InsightsKeys.recordsMilestonesTitle),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (records.milestones.isEmpty && records.firstScrobble == null)
+                ReportEmpty(
+                  title: t(
+                    InsightsKeys.recordsMilestonesBeginning,
+                    personArg(own: own),
                   ),
-                ].join(' · '),
-                maxLines: 2,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                )
+              else ...[
+                if (records.firstScrobble case final first?)
+                  _MilestoneTile(
+                    milestone: first,
+                    label: t(InsightsKeys.recordsMilestonesFirst),
+                    date: date,
+                  ),
+                for (final milestone in records.milestones)
+                  _MilestoneTile(
+                    milestone: milestone,
+                    label: t(InsightsKeys.recordsMilestonesOrdinal, {
+                      'ordinal': milestone.ordinal,
+                    }),
+                    date: date,
+                  ),
+              ],
+              // The tiles above land on round numbers only, and the number somebody actually has
+              // in mind is rarely one of them. The Hub can answer for any position, so this asks.
+              _MilestoneLookup(
+                handle: handle,
+                date: date,
+                hint: records.milestones.isEmpty
+                    ? 1
+                    : records.milestones.last.ordinal,
               ),
-            ),
-        ],
-
-        ReportHeading(title: t(InsightsKeys.recordsMilestonesTitle)),
-        if (records.milestones.isEmpty && records.firstScrobble == null)
-          ReportEmpty(
-            title: t(
-              InsightsKeys.recordsMilestonesBeginning,
-              personArg(own: own),
-            ),
-          )
-        else ...[
-          if (records.firstScrobble case final first?)
-            _MilestoneTile(
-              milestone: first,
-              label: t(InsightsKeys.recordsMilestonesFirst),
-              date: date,
-            ),
-          for (final milestone in records.milestones)
-            _MilestoneTile(
-              milestone: milestone,
-              label: t(InsightsKeys.recordsMilestonesOrdinal, {
-                'ordinal': milestone.ordinal,
-              }),
-              date: date,
-            ),
-        ],
-
-        // The tiles above land on round numbers only, and the number somebody actually has in mind
-        // is rarely one of them. The Hub can answer for any position, so this asks it.
-        _MilestoneLookup(
-          handle: handle,
-          date: date,
-          hint: records.milestones.isEmpty
-              ? 1
-              : records.milestones.last.ordinal,
+            ],
+          ),
         ),
 
         _OnThisDay(handle: handle, own: own),

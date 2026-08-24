@@ -10,9 +10,9 @@ import '../transport.dart';
 /// [HubClient]'s own verbs all go through `JsonTransport`, which encodes what it is handed and sets
 /// `Content-Type: application/json`. Two endpoints refuse that shape: `POST /v1/images` uploads an
 /// avatar and `POST /v1/me/imports` uploads a listening-history export, and both key their decoder
-/// off the raw bytes. So they need a socket of their own, and it belongs here rather than beside
-/// one caller — the first copy of it lives privately inside `ImageEndpoints` in `user.dart`, which
-/// is why starting an import was unreachable from this client at all.
+/// off the raw bytes. So they need a socket of their own, and it belongs here rather than private
+/// to one caller — `ImageEndpoints` in `user.dart` had the first copy, and while it stayed private
+/// starting an import was unreachable from this client at all.
 ///
 /// Everything the JSON path does around a request happens here too: a bearer token, one retry when
 /// the token turned out to be stale mid-flight, a certificate mismatch reported as a mismatch, and
