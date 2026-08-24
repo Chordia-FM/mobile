@@ -9,6 +9,7 @@ import 'package:chordia_mobile/data/accent/accent_providers.dart';
 import 'package:chordia_mobile/data/accent/accent_scope.dart';
 import 'package:chordia_mobile/data/accent/accent_surfaces.dart';
 import 'package:chordia_mobile/data/accent/oklab.dart';
+import 'package:chordia_mobile/widgets/cover_art.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -238,6 +239,217 @@ void main() {
       expect(decoration(tester).color, isNull);
       expect(gradient.colors.first, crimson);
       expect(gradient.colors.last, blue);
+    });
+  });
+
+  group('placeholder artwork', () {
+    final resting = ChordiaSurfaces.of(crimson);
+
+    ({Color start, Color end}) stopsFor(AccentFrame frame) => accentArtStops(
+      frame,
+      restingAccent: resting.accent,
+      restingElevated: resting.paneElevated,
+    );
+
+    test('at rest it is the accent over the lightest surface', () {
+      final still = stopsFor(
+        AccentFrame(accent: crimson, foreground: foregroundFor(crimson)),
+      );
+      expect(still.start, crimson.withValues(alpha: 0.35));
+      expect(still.end, resting.paneElevated.withValues(alpha: 0.22));
+    });
+
+    test('a moving accent drags the far end with it', () {
+      // `--accent` is a `color-mix` off `--primary`, so a browser moves both ends of the tile in
+      // the frame the accent moves in. Pinning the theme's copy would leave every placeholder in a
+      // browse grid half-lit by a colour the app stopped wearing several seconds ago.
+      final mid = stopsFor(
+        AccentFrame(accent: blue, foreground: foregroundFor(blue)),
+      );
+      expect(mid.start, blue.withValues(alpha: 0.35));
+      expect(mid.end, paneElevatedFor(blue).withValues(alpha: 0.22));
+      expect(mid.end, isNot(resting.paneElevated.withValues(alpha: 0.22)));
+    });
+
+    test('gradient mode paints the palette, not its blend', () {
+      // `--accent-a` / `--accent-b`, and the reason the stylesheet publishes them at all: these
+      // tiles are the largest accent-derived area in the app, so a palette that reached the buttons
+      // and stopped there would be missing from most of what someone looks at.
+      final palette = stopsFor(
+        AccentFrame(
+          accent: blendStops([crimson, blue])!,
+          foreground: foregroundFor(crimson),
+          gradient: [crimson, blue],
+        ),
+      );
+      expect(palette.start, crimson.withValues(alpha: 0.35));
+      expect(palette.end, blue.withValues(alpha: 0.22));
+    });
+
+    List<Color> washUnder(WidgetTester tester, Finder of) =>
+        (tester
+                    .widget<DecoratedBox>(
+                      find.descendant(
+                        of: of,
+                        matching: find.byType(DecoratedBox),
+                      ),
+                    )
+                    .decoration
+                as BoxDecoration)
+            .gradient!
+            .colors;
+
+    testWidgets('a tick moves the wash and leaves the glyph on it alone', (
+      tester,
+    ) async {
+      var builds = 0;
+      final frame = ValueNotifier(
+        AccentFrame(accent: crimson, foreground: foregroundFor(crimson)),
+      );
+      addTearDown(frame.dispose);
+
+      await tester.pumpWidget(
+        wrap(
+          frame,
+          Scaffold(
+            body: Center(
+              child: SizedBox.square(
+                dimension: 96,
+                child: AccentArt(
+                  child: Builder(
+                    builder: (context) {
+                      builds++;
+                      return const SizedBox.expand();
+                    },
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      expect(builds, 1);
+      expect(
+        washUnder(tester, find.byType(AccentArt)).first,
+        crimson.withValues(alpha: 0.35),
+      );
+
+      frame.value = AccentFrame(accent: blue, foreground: foregroundFor(blue));
+      await tester.pump();
+
+      expect(
+        washUnder(tester, find.byType(AccentArt)).first,
+        blue.withValues(alpha: 0.35),
+      );
+      expect(
+        builds,
+        1,
+        reason: 'the tile subscribes; what is drawn on it has no reason to',
+      );
+    });
+
+    testWidgets('a coverless tile and its monogram both follow the accent', (
+      tester,
+    ) async {
+      // Through `CoverArt` rather than `AccentArt` directly, because the wiring is the thing that
+      // was missing: the tile had a gradient of its own and read the theme, so it was the one large
+      // accent surface a cross-fade never reached.
+      final frame = ValueNotifier(
+        AccentFrame(accent: crimson, foreground: foregroundFor(crimson)),
+      );
+      addTearDown(frame.dispose);
+
+      Future<void> pump(String? initial) async {
+        await tester.pumpWidget(
+          ProviderScope(
+            child: wrap(
+              frame,
+              Scaffold(
+                body: Center(
+                  child: CoverArt(
+                    sha256: null,
+                    size: 96,
+                    fallbackInitial: initial,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+
+      await pump(null);
+      expect(find.byType(AccentArt), findsOneWidget);
+      frame.value = AccentFrame(accent: blue, foreground: foregroundFor(blue));
+      await tester.pump();
+      expect(
+        washUnder(tester, find.byType(CoverArt)).first,
+        blue.withValues(alpha: 0.35),
+      );
+
+      // `MONOGRAM_BG` is three mixes of `var(--primary)` and the letter is
+      // `fill-primary-foreground`, so the sphere moves for the same reason the tile does.
+      await pump('björk');
+      expect(find.text('B'), findsOneWidget);
+      expect(washUnder(tester, find.byType(CoverArt))[1], blue);
+      expect(
+        tester.widget<Text>(find.text('B')).style?.color,
+        foregroundFor(blue),
+      );
+    });
+
+    testWidgets('a hand-rolled accent fill can opt in the same way', (
+      tester,
+    ) async {
+      // The seam for the fills the theme's button style cannot reach. Without it each one either
+      // stays on the resting accent or hand-rolls its own subscription, and the second of those is
+      // how a colour ends up moving in five places at four different rates.
+      final frame = ValueNotifier(
+        AccentFrame(accent: crimson, foreground: foregroundFor(crimson)),
+      );
+      addTearDown(frame.dispose);
+
+      await tester.pumpWidget(
+        wrap(
+          frame,
+          const Scaffold(
+            body: Center(
+              child: SizedBox.square(
+                dimension: 56,
+                child: AccentSurface(
+                  shape: BoxShape.circle,
+                  child: Icon(Icons.play_arrow_rounded),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      BoxDecoration fill() =>
+          tester
+                  .widget<DecoratedBox>(
+                    find.descendant(
+                      of: find.byType(AccentSurface),
+                      matching: find.byType(DecoratedBox),
+                    ),
+                  )
+                  .decoration
+              as BoxDecoration;
+
+      expect(fill().color, crimson);
+      expect(fill().shape, BoxShape.circle);
+
+      frame.value = AccentFrame(accent: blue, foreground: foregroundFor(blue));
+      await tester.pump();
+      expect(fill().color, blue);
+      // `--primary-foreground` moves with `--primary`, or a palette whose ends want opposite
+      // foregrounds goes unreadable halfway through the fade.
+      expect(
+        IconTheme.of(tester.element(find.byType(Icon))).color,
+        foregroundFor(blue),
+      );
     });
   });
 

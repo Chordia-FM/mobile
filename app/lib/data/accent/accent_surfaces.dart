@@ -43,6 +43,15 @@ import 'oklab.dart';
 Color ambientCoolFor(Color accent) =>
     mixOklab(accent, 0.45, oklch(0.79, 0.10, 210));
 
+/// `--accent`, the lightest of the shadcn surfaces, for one accent.
+///
+/// A free function for the same reason [ambientCoolFor] is one, and with the same second caller:
+/// `--accent` is a `color-mix` off `--primary`, so a browser recomputes it in the frame the accent
+/// moves in. `accent_fill.dart` needs that per-frame value for the far end of `.accent-art`, where
+/// the stylesheet writes `var(--accent-b, var(--accent))`.
+Color paneElevatedFor(Color accent) =>
+    mixOklab(accent, 0.08, oklch(0.145, 0.009, 285));
+
 @immutable
 class ChordiaSurfaces extends ThemeExtension<ChordiaSurfaces> {
   const ChordiaSurfaces._({
@@ -79,7 +88,7 @@ class ChordiaSurfaces extends ThemeExtension<ChordiaSurfaces> {
       pane: mixOklab(accent, 0.04, oklch(0.075, 0.018, 282)),
       paneRaised: mixOklab(accent, 0.05, oklch(0.105, 0.024, 282)),
       // `--accent`, the lightest of the shadcn surfaces: a control resting on a raised pane.
-      paneElevated: mixOklab(accent, 0.08, oklch(0.145, 0.009, 285)),
+      paneElevated: paneElevatedFor(accent),
       background: mixOklab(accent, 0.03, oklch(0.048, 0.006, 285)),
       card: mixOklab(accent, 0.05, oklch(0.115, 0.008, 285)),
       popover: mixOklab(accent, 0.04, oklch(0.088, 0.007, 285)),

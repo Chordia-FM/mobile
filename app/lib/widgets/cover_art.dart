@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../app/providers.dart';
+import '../data/accent/accent_fill.dart';
+import '../data/accent/accent_scope.dart';
 import 'tokens.dart';
 
 /// Album, artist or playlist artwork.
@@ -160,6 +162,11 @@ class _CoverArtState extends ConsumerState<CoverArt> {
 ///   this is so an imageless artist "reads as a bold, distinct chip rather than a flat wash".
 /// - Without one: `.accent-art` (styles.css:1050-1056), a 135° accent gradient, under the fallback
 ///   glyph at `size-1/3` and 30% of the foreground.
+///
+/// Both are written in `var(--primary)`, which the accent engine repaints, so both move with the
+/// accent on the web and both do here — through [AccentArt] and [_Monogram]. They subscribe
+/// separately, and one level below this widget on purpose: a tick then rebuilds the one leaf that
+/// draws the colour, not the tile, the cover it is standing in for, or the grid around it.
 class _Placeholder extends StatelessWidget {
   const _Placeholder({
     required this.size,
@@ -175,64 +182,76 @@ class _Placeholder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     final monogram = initial?.trim();
     final letter = (monogram == null || monogram.isEmpty)
         ? null
         : monogram.characters.first.toUpperCase();
 
-    if (letter != null && settled) {
-      return DecoratedBox(
-        decoration: BoxDecoration(
-          gradient: RadialGradient(
-            // `125% 125% at 30% 24%` — 30%/24% of the box maps onto Flutter's -1..1 alignment.
-            center: const Alignment(-0.4, -0.52),
-            radius: 1.25,
-            colors: [
-              Color.lerp(scheme.primary, Colors.white, 0.26)!,
-              scheme.primary,
-              Color.lerp(scheme.primary, Colors.black, 0.44)!,
-            ],
-            stops: const [0, 0.42, 1],
-          ),
-        ),
-        child: Center(
-          child: Text(
-            letter,
-            style: TextStyle(
-              // `fontSize: 44` in a 100-unit viewBox, so it scales with the frame.
-              fontSize: size * 0.44,
-              height: 1,
-              fontWeight: ChordiaType.semibold,
-              letterSpacing: size * 0.0044,
-              color: scheme.onPrimary,
-            ),
-          ),
-        ),
-      );
-    }
+    if (letter != null && settled) return _Monogram(size: size, letter: letter);
 
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainer,
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            scheme.primary.withValues(alpha: 0.35),
-            scheme.surfaceContainerHigh.withValues(alpha: 0.22),
-          ],
-        ),
-      ),
+    return AccentArt(
       child: settled
           ? Center(
               child: Icon(
                 icon,
                 size: size / 3,
-                color: scheme.onSurface.withValues(alpha: 0.3),
+                // `text-foreground/30`, and deliberately not an accent role: the glyph is the one
+                // mark on the tile that has to stay legible whatever the wash under it is doing.
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withValues(alpha: 0.3),
               ),
             )
           : const SizedBox.expand(),
+    );
+  }
+}
+
+/// `MONOGRAM_BG` (`CoverArt.tsx:36`): an imageless artist as a glossy accent sphere.
+///
+/// A leaf that subscribes to the frame directly rather than an [AccentBuilder], because everything
+/// it draws moves — the sphere is three mixes of `--primary` and the letter is
+/// `fill-primary-foreground`, which in Fade can flip to the other side of the crossover between one
+/// stop and the next. There is nothing under it worth keeping across a tick.
+class _Monogram extends StatelessWidget {
+  const _Monogram({required this.size, required this.letter});
+
+  final double size;
+  final String letter;
+
+  @override
+  Widget build(BuildContext context) {
+    final frame = AccentScope.of(context);
+    // The blend, in Gradient mode: `--primary` stays one colour, and a three-stop sphere lit by a
+    // palette as well would have nothing left to read the letter against.
+    final accent = frame.accent;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: RadialGradient(
+          // `125% 125% at 30% 24%` — 30%/24% of the box maps onto Flutter's -1..1 alignment.
+          center: const Alignment(-0.4, -0.52),
+          radius: 1.25,
+          colors: [
+            Color.lerp(accent, Colors.white, 0.26)!,
+            accent,
+            Color.lerp(accent, Colors.black, 0.44)!,
+          ],
+          stops: const [0, 0.42, 1],
+        ),
+      ),
+      child: Center(
+        child: Text(
+          letter,
+          style: TextStyle(
+            // `fontSize: 44` in a 100-unit viewBox, so it scales with the frame.
+            fontSize: size * 0.44,
+            height: 1,
+            fontWeight: ChordiaType.semibold,
+            letterSpacing: size * 0.0044,
+            color: frame.foreground,
+          ),
+        ),
+      ),
     );
   }
 }
