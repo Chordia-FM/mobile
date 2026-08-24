@@ -1,6 +1,7 @@
 import 'package:chordia_api/chordia_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../../i18n/keys.g.dart';
 import '../../../i18n/translations_provider.dart';
@@ -77,8 +78,8 @@ class AdminSystemView extends ConsumerWidget {
                   ),
                   trailing: Icon(
                     rollup.lagSeconds <= 60
-                        ? Icons.check_circle_rounded
-                        : Icons.schedule_rounded,
+                        ? PhosphorIconsFill.checkCircle
+                        : PhosphorIconsRegular.clock,
                     color: rollup.lagSeconds <= 60
                         ? Theme.of(context).colorScheme.primary
                         : Theme.of(context).colorScheme.onSurfaceVariant,
@@ -174,7 +175,7 @@ class _DesktopOnlyNote extends ConsumerWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.desktop_windows_rounded, size: 18),
+              const Icon(PhosphorIconsRegular.monitor, size: 18),
               const SizedBox(width: 8),
               Text(
                 t(AdminKeys.desktopOnlyTitle),

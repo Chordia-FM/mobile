@@ -1,6 +1,7 @@
 import 'package:chordia_api/chordia_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../i18n/keys.g.dart';
 import '../../i18n/translations_provider.dart';
@@ -114,8 +115,8 @@ class _CreateSheetState extends ConsumerState<_CreateSheet> {
                     ),
                     trailing: Icon(
                       _kind == kind
-                          ? Icons.radio_button_checked
-                          : Icons.radio_button_unchecked,
+                          ? PhosphorIconsFill.checkCircle
+                          : PhosphorIconsRegular.circle,
                       color: _kind == kind ? theme.colorScheme.primary : null,
                     ),
                   ),

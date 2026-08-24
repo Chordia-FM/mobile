@@ -1,6 +1,7 @@
 import 'package:chordia_api/chordia_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../../data/art/art_cache.dart';
 import '../../../i18n/keys.g.dart';
@@ -76,7 +77,7 @@ class AdminAuditView extends ConsumerWidget {
                           padding: const EdgeInsets.all(16),
                           child: Center(
                             child: state.loadingMore
-                                ? const CircularProgressIndicator.adaptive()
+                                ? const CircularProgressIndicator()
                                 : OutlinedButton(
                                     onPressed: () => ref
                                         .read(
@@ -126,7 +127,7 @@ class AuditEntryTile extends ConsumerWidget {
       leading: CoverArt(
         sha256: artHashOf(entry.targetImageUrl),
         size: 40,
-        fallbackIcon: Icons.history_rounded,
+        fallbackIcon: PhosphorIconsFill.clockCounterClockwise,
       ),
       title: Text(action, maxLines: 1, overflow: TextOverflow.ellipsis),
       subtitle: Text(

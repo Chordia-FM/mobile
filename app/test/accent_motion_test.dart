@@ -17,6 +17,7 @@ import 'package:flutter/material.dart' hide RepeatMode;
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 /// The hand-rolled accent surfaces, and whether a tick actually reaches them.
 ///
@@ -141,7 +142,7 @@ void main() {
         frame,
         Scaffold(
           body: GradientArtwork(
-            icon: Icons.favorite_rounded,
+            icon: PhosphorIconsFill.heart,
             size: collectionArtSize,
             colors: colors,
           ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../../data/accent/accent_scope.dart';
 import '../../../data/accent/accent_surfaces.dart';
@@ -47,7 +48,7 @@ class MosaicCover extends StatelessWidget {
       // Nothing to build a mosaic from — the web's `CoverArt` fallback, which is the accent
       // gradient with a music glyph on it rather than an empty grey frame.
       return GradientArtwork(
-        icon: Icons.queue_music_rounded,
+        icon: PhosphorIconsFill.musicNotes,
         size: size,
         semanticLabel: semanticLabel,
       );

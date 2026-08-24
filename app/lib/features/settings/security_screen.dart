@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../app/providers.dart';
@@ -196,8 +197,8 @@ class _PasswordSectionState extends ConsumerState<_PasswordSection> {
                     onPressed: () => setState(() => _obscure = !_obscure),
                     icon: Icon(
                       _obscure
-                          ? Icons.visibility_rounded
-                          : Icons.visibility_off_rounded,
+                          ? PhosphorIconsRegular.eye
+                          : PhosphorIconsRegular.eyeSlash,
                     ),
                   ),
                 ),
@@ -341,7 +342,7 @@ class _TwoFactorSectionState extends ConsumerState<_TwoFactorSection> {
       gutter: 0,
       title: Text(t(SettingsKeys.twoFactorStatusOff)),
       subtitle: Text(t(SettingsKeys.twoFactorAddHint)),
-      leading: const Icon(Icons.shield_outlined, size: 20),
+      leading: const Icon(PhosphorIconsRegular.shield, size: 20),
     ),
     Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -384,7 +385,7 @@ class _TwoFactorSectionState extends ConsumerState<_TwoFactorSection> {
         title: Text(
           t(SettingsKeys.twoFactorSecretManual, {'secret': setup.secret}),
         ),
-        trailing: const Icon(Icons.copy_rounded),
+        trailing: const Icon(PhosphorIconsRegular.copy),
         onTap: () async {
           await Clipboard.setData(ClipboardData(text: setup.secret));
           if (!mounted) return;
@@ -432,7 +433,7 @@ class _TwoFactorSectionState extends ConsumerState<_TwoFactorSection> {
                 if (!mounted) return;
                 showSettingsMessage(context, t(SettingsKeys.twoFactorCopied));
               },
-              icon: const Icon(Icons.copy_rounded),
+              icon: const Icon(PhosphorIconsRegular.copy),
               label: Text(t(SettingsKeys.twoFactorCopyAll)),
             ),
             const Spacer(),
@@ -452,7 +453,7 @@ class _TwoFactorSectionState extends ConsumerState<_TwoFactorSection> {
       title: Text(t(SettingsKeys.twoFactorStatusOn)),
       subtitle: Text(t(SettingsKeys.twoFactorEnabledHint)),
       leading: Icon(
-        Icons.shield_rounded,
+        PhosphorIconsFill.shieldCheck,
         size: 20,
         color: Theme.of(context).colorScheme.primary,
       ),
@@ -530,7 +531,7 @@ class _SessionsSection extends ConsumerWidget {
           ),
         ),
         SettingsDisclosureRow(
-          icon: Icons.logout_rounded,
+          icon: PhosphorIconsRegular.signOut,
           label: t(SettingsKeys.sessionsSignOutEverywhere),
           destructive: true,
           onTap: () => _signOutEverywhere(context, ref),
@@ -590,7 +591,9 @@ class _SessionRow extends ConsumerWidget {
       gutter: 0,
       subtitleMaxLines: 3,
       leading: Icon(
-        session.current ? Icons.smartphone_rounded : Icons.devices_rounded,
+        session.current
+            ? PhosphorIconsRegular.deviceMobile
+            : PhosphorIconsRegular.devices,
         size: 20,
         color: session.current ? Theme.of(context).colorScheme.primary : null,
       ),

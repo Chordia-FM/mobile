@@ -1,6 +1,7 @@
 import 'package:chordia_api/chordia_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../i18n/keys.g.dart';
 import '../../i18n/translations_provider.dart';
@@ -207,7 +208,7 @@ class HomeScreen extends ConsumerWidget {
                 imageUrl: track.coverUrl,
                 title: track.title,
                 subtitle: track.artist,
-                fallbackIcon: Icons.music_note_rounded,
+                fallbackIcon: PhosphorIconsFill.musicNotes,
                 // The whole shelf becomes the queue, so what is trending keeps playing after the
                 // song that was tapped. There is no `PlayContext` kind for a chart, and inventing
                 // one here would put a name on the wire the other clients do not know.

@@ -1,5 +1,6 @@
 import 'package:chordia_api/chordia_api.dart';
 import 'package:flutter/material.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
@@ -33,7 +34,7 @@ class UserAvatar extends StatelessWidget {
         sha256: hash,
         size: size,
         shape: BoxShape.circle,
-        fallbackIcon: Icons.person_rounded,
+        fallbackIcon: PhosphorIcons.user(),
         semanticLabel: user.displayName,
       );
     }
@@ -334,10 +335,10 @@ class _BadgeDetail extends ConsumerWidget {
             // appear nowhere in a catalogue of badges in general.
             ListRow(
               gutter: 0,
-              leading: const Icon(Icons.workspace_premium_rounded),
+              leading: Icon(PhosphorIcons.medal()),
               title: Text(t(SocialKeys.badgesDirectoryTitle)),
               subtitle: Text(t(SocialKeys.badgesDirectorySubtitle)),
-              trailing: const Icon(Icons.chevron_right_rounded),
+              trailing: Icon(PhosphorIcons.caretRight()),
               onTap: () {
                 Navigator.of(context).pop();
                 showBadgeDirectory(page, highlightKind: badge.kind);

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../i18n/keys.g.dart';
 import '../../i18n/translations_provider.dart';
@@ -24,10 +25,10 @@ class AdminEntryTile extends ConsumerWidget {
       return const SizedBox.shrink();
     }
     return ListRow(
-      leading: const Icon(Icons.shield_outlined),
+      leading: const Icon(PhosphorIconsRegular.shieldCheck),
       title: Text(t(CommonKeys.userMenuAdmin)),
       subtitle: Text(t(AdminKeys.title)),
-      trailing: const Icon(Icons.chevron_right_rounded),
+      trailing: const Icon(PhosphorIconsRegular.caretRight),
       onTap: context.goToAdmin,
     );
   }

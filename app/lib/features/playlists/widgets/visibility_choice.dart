@@ -1,6 +1,7 @@
 import 'package:chordia_api/chordia_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../../i18n/keys.g.dart';
 import '../../../i18n/translations_provider.dart';
@@ -44,8 +45,8 @@ class VisibilityChoice extends ConsumerWidget {
             // same thing without carrying a deprecation into a new screen.
             trailing: Icon(
               value == option
-                  ? Icons.radio_button_checked
-                  : Icons.radio_button_unchecked,
+                  ? PhosphorIconsFill.checkCircle
+                  : PhosphorIconsRegular.circle,
               color: value == option ? theme.colorScheme.primary : null,
             ),
           ),

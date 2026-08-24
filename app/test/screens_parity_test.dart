@@ -17,6 +17,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 /// The per-screen omissions against the web client, each fixed and each pinned here.
 ///
@@ -42,14 +43,14 @@ void main() {
 
       // Two rows, two hearts — the second already filled.
       expect(find.byType(LikeHeart), findsNWidgets(2));
-      expect(find.byIcon(Icons.favorite_border_rounded), findsOneWidget);
+      expect(find.byIcon(PhosphorIcons.heart()), findsOneWidget);
       expect(
-        find.byIcon(Icons.favorite_rounded),
+        find.byIcon(PhosphorIcons.heart(PhosphorIconsStyle.fill)),
         findsOneWidget,
         reason: 'the row shows liked state at a glance, as the web does',
       );
 
-      await tester.tap(find.byIcon(Icons.favorite_border_rounded));
+      await tester.tap(find.byIcon(PhosphorIcons.heart()));
       await tester.pump();
 
       // One tap, no sheet. Before this the only route was a long press, a sheet and a scan.

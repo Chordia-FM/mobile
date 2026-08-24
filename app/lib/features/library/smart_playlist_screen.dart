@@ -4,6 +4,7 @@ import 'package:chordia_api/chordia_api.dart';
 import 'package:chordia_sync/chordia_sync.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../data/art/art_cache.dart';
 import '../../i18n/keys.g.dart';
@@ -61,7 +62,7 @@ class _SmartPlaylistScreenState extends ConsumerState<SmartPlaylistScreen> {
             PopupMenuButton<_SmartAction>(
               // Explicit rather than the adaptive default, so this button is the same glyph as the
               // hand-built playlist's: the two pages are the same shape and must not differ here.
-              icon: const Icon(Icons.more_vert_rounded),
+              icon: const Icon(PhosphorIconsBold.dotsThree),
               tooltip: t(CommonKeys.actionsMore),
               onSelected: (action) => unawaited(_runAction(action, playlist)),
               itemBuilder: (menuContext) => [
@@ -132,7 +133,7 @@ class _SmartPlaylistScreenState extends ConsumerState<SmartPlaylistScreen> {
             // other, and offering none of that here made them read as a lesser kind of song.
             onLongPress: () => unawaited(showTrackMenu(context, ref, track)),
             trailing: IconButton(
-              icon: const Icon(Icons.more_vert_rounded),
+              icon: const Icon(PhosphorIconsBold.dotsThree),
               tooltip: ref.t(CommonKeys.actionsMore),
               onPressed: () => unawaited(showTrackMenu(context, ref, track)),
             ),
@@ -185,7 +186,7 @@ class _SmartPlaylistScreenState extends ConsumerState<SmartPlaylistScreen> {
                       dimension: 16,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Icon(Icons.refresh_rounded),
+                  : const Icon(PhosphorIconsBold.arrowsClockwise),
               label: Text(t(PlaylistsKeys.smartRefreshAction)),
             ),
           ],
@@ -194,7 +195,7 @@ class _SmartPlaylistScreenState extends ConsumerState<SmartPlaylistScreen> {
         if (playlist.tracks.isEmpty)
           EmptyNote(
             message: t(PlaylistsKeys.smartEmpty),
-            icon: Icons.auto_awesome_rounded,
+            icon: PhosphorIcons.sparkle(),
           ),
       ],
     );

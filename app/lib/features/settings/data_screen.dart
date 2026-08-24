@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../app/providers.dart' show hubClientProvider;
@@ -89,7 +90,7 @@ class _ExportSectionState extends ConsumerState<_ExportSection> {
       description: t(SettingsKeys.dataBody),
       children: [
         SettingsDisclosureRow(
-          icon: Icons.download_rounded,
+          icon: PhosphorIconsRegular.export,
           label: t(
             _busy ? CommonKeys.statesLoading : SettingsKeys.dataExportMyData,
           ),
@@ -234,7 +235,7 @@ class _ImportSectionState extends ConsumerState<_ImportSection> {
                       setState(() => _source = ImportSource.tryFromWire(wire)),
           ),
           SettingsDisclosureRow(
-            icon: Icons.upload_file_rounded,
+            icon: PhosphorIconsRegular.uploadSimple,
             label: t(
               _busy
                   ? SettingsKeys.importUploading

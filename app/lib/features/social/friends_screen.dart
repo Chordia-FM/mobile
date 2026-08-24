@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:chordia_api/chordia_api.dart';
 import 'package:flutter/material.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../i18n/keys.g.dart';
@@ -108,12 +109,12 @@ class _FriendsBody extends ConsumerWidget {
             textInputAction: TextInputAction.search,
             autocorrect: false,
             decoration: InputDecoration(
-              prefixIcon: const Icon(Icons.search_rounded),
+              prefixIcon: Icon(PhosphorIcons.magnifyingGlass()),
               hintText: t(SocialKeys.searchPlaceholder),
               border: const OutlineInputBorder(),
               suffixIcon: searching
                   ? IconButton(
-                      icon: const Icon(Icons.clear_rounded),
+                      icon: Icon(PhosphorIcons.x()),
                       tooltip: t(CommonKeys.actionsClearAll),
                       onPressed: () {
                         query.clear();
@@ -363,7 +364,7 @@ class _AddByHandle extends ConsumerWidget {
     if (!looksLikeHandle || alreadyListed) return const SizedBox.shrink();
 
     return ListRow(
-      leading: const Icon(Icons.person_add_alt_1_rounded),
+      leading: Icon(PhosphorIcons.userPlus()),
       title: Text(t(SocialKeys.friendsRequestByHandle, {'handle': handle})),
       onTap: () async {
         final controller = ref.read(friendsControllerProvider.notifier);

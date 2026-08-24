@@ -1,5 +1,6 @@
 import 'package:chordia_api/chordia_api.dart';
 import 'package:flutter/material.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
@@ -140,7 +141,7 @@ class _Records extends ConsumerWidget {
               children: [
                 for (final session in records.topSessions)
                   ListRow(
-                    leading: const Icon(Icons.timelapse_rounded),
+                    leading: Icon(PhosphorIcons.clock()),
                     title: Text(msToTime(session.msPlayed, t)),
                     subtitle: Text(
                       [
@@ -232,11 +233,7 @@ class _StreakTile extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final t = ref.t;
     return ListRow(
-      leading: Icon(
-        longest
-            ? Icons.emoji_events_rounded
-            : Icons.local_fire_department_rounded,
-      ),
+      leading: Icon(longest ? PhosphorIcons.trophy() : PhosphorIcons.fire()),
       title: Text(t(InsightsKeys.recordsStreaksDays, {'count': streak.days})),
       subtitle: Text(
         t(InsightsKeys.recordsStreaksDetail, {
@@ -269,7 +266,7 @@ class _MilestoneTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ListRow(
-    leading: const Icon(Icons.flag_rounded),
+    leading: Icon(PhosphorIcons.flagBanner()),
     title: Text(label, style: Theme.of(context).textTheme.labelMedium),
     subtitle: Text(
       '${milestone.title} · ${milestone.artist}\n'

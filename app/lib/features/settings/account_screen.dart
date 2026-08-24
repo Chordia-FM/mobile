@@ -1,6 +1,7 @@
 import 'package:chordia_api/chordia_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../app/providers.dart';
 import '../../data/art/art_cache.dart';
@@ -57,7 +58,7 @@ class AccountScreen extends ConsumerWidget {
           title: t(SettingsKeys.securityTitle),
           children: [
             SettingsDisclosureRow(
-              icon: Icons.lock_rounded,
+              icon: PhosphorIconsRegular.lock,
               label: t(SettingsKeys.securityPasswordTitle),
               description: t(SettingsKeys.sectionsSecurity),
               onTap: () => openSettingsScreen(context, const SecurityScreen()),
@@ -633,7 +634,7 @@ class _BannerRow extends ConsumerWidget {
                     sha256: hash,
                     size: MediaQuery.sizeOf(context).width,
                     borderRadius: ChordiaRadius.lgAll,
-                    fallbackIcon: Icons.image_outlined,
+                    fallbackIcon: PhosphorIconsRegular.image,
                   ),
           ),
           const SizedBox(height: 8),
@@ -739,7 +740,7 @@ class _LinksEditor extends ConsumerWidget {
                         ),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.delete_outline_rounded),
+                        icon: const Icon(PhosphorIconsRegular.trash),
                         tooltip: t(SettingsKeys.profileRemoveLink),
                         onPressed: !enabled
                             ? null
@@ -780,7 +781,7 @@ class _LinksEditor extends ConsumerWidget {
           const SizedBox(height: 12),
           OutlinedButton.icon(
             onPressed: enabled ? onAdd : null,
-            icon: const Icon(Icons.add_rounded),
+            icon: const Icon(PhosphorIconsRegular.plus),
             label: Text(t(SettingsKeys.profileAddLink)),
           ),
           const SizedBox(height: 4),
@@ -895,7 +896,9 @@ class _EmailSectionState extends ConsumerState<_EmailSection> {
             ),
           ),
           trailing: Icon(
-            verified ? Icons.verified_rounded : Icons.error_outline_rounded,
+            verified
+                ? PhosphorIconsFill.checkCircle
+                : PhosphorIconsRegular.warningCircle,
             color: verified
                 ? Theme.of(context).colorScheme.primary
                 : Theme.of(context).colorScheme.error,
@@ -936,12 +939,12 @@ class _DangerSection extends ConsumerWidget {
       description: t(SettingsKeys.accountLeaveDesc),
       children: [
         SettingsDisclosureRow(
-          icon: Icons.logout_rounded,
+          icon: PhosphorIconsRegular.signOut,
           label: t(CommonKeys.actionsSignOut),
           onTap: () => _signOut(context, ref, hub?.name ?? ''),
         ),
         SettingsDisclosureRow(
-          icon: Icons.delete_forever_rounded,
+          icon: PhosphorIconsRegular.trash,
           label: t(SettingsKeys.dataDeleteAccountTitle),
           destructive: true,
           onTap: handle == null

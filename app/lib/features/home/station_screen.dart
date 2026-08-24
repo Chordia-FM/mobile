@@ -6,6 +6,7 @@ import 'package:chordia_sync/chordia_sync.dart'
 import 'package:chordia_sync/chordia_sync.dart' as sync show StationKind;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../data/art/art_cache.dart';
 import '../../i18n/keys.g.dart';
@@ -226,7 +227,7 @@ class _StationHeader extends ConsumerWidget {
           CoverArt(
             sha256: artHashOf(imageUrl),
             size: 220,
-            fallbackIcon: Icons.radio_rounded,
+            fallbackIcon: PhosphorIconsFill.radio,
             semanticLabel: heading,
           ),
           const SizedBox(height: 16),
@@ -283,7 +284,9 @@ class _PinStation extends ConsumerWidget {
     if (station.kind != StationKind.artist) return const SizedBox.shrink();
     final pinned = isPinned(ref, PinKind.radio, station.seedId);
     return IconButton(
-      icon: Icon(pinned ? Icons.push_pin : Icons.push_pin_outlined),
+      icon: Icon(
+        pinned ? PhosphorIconsBold.pushPinSlash : PhosphorIconsBold.pushPin,
+      ),
       tooltip: ref.t(pinned ? CommonKeys.actionsUnpin : DiscoveryKeys.radioPin),
       onPressed: () => unawaited(
         togglePin(context, ref, kind: PinKind.radio, id: station.seedId),

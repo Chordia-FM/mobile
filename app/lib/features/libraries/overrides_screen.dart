@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:chordia_api/chordia_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../data/art/art_cache.dart';
 import '../../i18n/keys.g.dart';
@@ -52,7 +53,7 @@ class OverridesScreen extends ConsumerWidget {
               if (rows.isEmpty)
                 EmptyNote(
                   message: t(LibraryKeys.metadataOverridesNone),
-                  icon: Icons.edit_note_rounded,
+                  icon: PhosphorIconsRegular.notePencil,
                 )
               else
                 for (final row in rows)
@@ -89,9 +90,9 @@ class _OverrideRow extends ConsumerWidget {
             ? BoxShape.circle
             : BoxShape.rectangle,
         fallbackIcon: switch (summary.kind) {
-          OverrideKind.artist => Icons.person_rounded,
-          OverrideKind.album => Icons.album_rounded,
-          OverrideKind.track => Icons.music_note_rounded,
+          OverrideKind.artist => PhosphorIconsFill.microphoneStage,
+          OverrideKind.album => PhosphorIconsFill.disc,
+          OverrideKind.track => PhosphorIconsFill.musicNotes,
         },
       ),
       title: Text(summary.name),
@@ -106,7 +107,7 @@ class _OverrideRow extends ConsumerWidget {
       // want to act on most often is "put that one back". Reaching it only by opening the editor
       // and scrolling past every field to a text button at the bottom is the long way round.
       trailing: IconButton(
-        icon: const Icon(Icons.settings_backup_restore_rounded),
+        icon: const Icon(PhosphorIconsRegular.arrowCounterClockwise),
         tooltip: t(LibraryKeys.metadataOverridesReset),
         onPressed: () => unawaited(_reset(context, ref)),
       ),

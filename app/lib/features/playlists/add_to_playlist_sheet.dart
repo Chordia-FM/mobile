@@ -1,6 +1,7 @@
 import 'package:chordia_api/chordia_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../data/art/art_cache.dart';
 import '../../i18n/keys.g.dart';
@@ -112,13 +113,15 @@ class _AddToPlaylistSheetState extends ConsumerState<_AddToPlaylistSheet> {
                   controller: _query,
                   onChanged: (_) => setState(() {}),
                   decoration: InputDecoration(
-                    prefixIcon: const Icon(Icons.search_rounded),
+                    prefixIcon: const Icon(
+                      PhosphorIconsRegular.magnifyingGlass,
+                    ),
                     hintText: t(PlaylistsKeys.searchPlaceholder),
                   ),
                 ),
               ),
               ListRow(
-                leading: const Icon(Icons.add_rounded, size: 20),
+                leading: const Icon(PhosphorIconsBold.plus, size: 20),
                 title: Text(t(PlaylistsKeys.newKey)),
                 // Typing a name that matches nothing and then tapping this makes exactly that
                 // playlist, rather than opening an empty form the person fills in twice.
@@ -161,7 +164,7 @@ class _AddToPlaylistSheetState extends ConsumerState<_AddToPlaylistSheet> {
                   (autoCovers.isEmpty ? null : autoCovers.first),
             ),
             size: 40,
-            fallbackIcon: Icons.queue_music_rounded,
+            fallbackIcon: PhosphorIconsFill.playlist,
           ),
           title: Text(playlist.name),
           subtitle: Text(

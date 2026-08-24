@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../../widgets/surface.dart';
 
@@ -31,7 +32,7 @@ class ProfileWall extends StatelessWidget {
       child: Column(
         children: [
           Icon(
-            Icons.lock_outline_rounded,
+            PhosphorIcons.lockSimple(),
             color: theme.colorScheme.onSurfaceVariant,
           ),
           const SizedBox(height: 12),

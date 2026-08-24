@@ -1,6 +1,7 @@
 import 'package:chordia_sync/chordia_sync.dart' hide PlaybackState;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../app/providers.dart';
 import '../../app/theme.dart';
@@ -77,7 +78,10 @@ class _SleepTimerSheet extends ConsumerWidget {
                 // becomes a wall-clock deadline the moment it is set, so which option produced it is
                 // no longer knowable — and guessing from the remaining time would tick out of date.
                 trailing: armed is SleepAtTrackEnd
-                    ? Icon(Icons.check_rounded, color: context.surfaces.accent)
+                    ? Icon(
+                        PhosphorIcons.check(),
+                        color: context.surfaces.accent,
+                      )
                     : null,
               ),
               if (armed != null)

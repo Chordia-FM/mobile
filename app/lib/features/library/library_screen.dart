@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:chordia_api/chordia_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../data/art/art_cache.dart';
 import '../../i18n/keys.g.dart';
@@ -56,42 +57,42 @@ class LibraryScreen extends ConsumerWidget {
           children: [
             const _PinnedShelf(),
             _Entry(
-              icon: Icons.queue_music_rounded,
+              icon: PhosphorIcons.playlist(),
               label: t(LibraryKeys.sidebarPlaylists),
               trailing: _countOf(playlists, (rows) => rows.length),
               onTap: () => _push(context, const PlaylistsScreen()),
             ),
             _Entry(
-              icon: Icons.auto_awesome_rounded,
+              icon: PhosphorIcons.sparkle(),
               label: t(PlaylistsKeys.smartKindLabel),
               trailing: _countOf(smart, (rows) => rows.length),
               onTap: () => _push(context, const SmartPlaylistsScreen()),
             ),
             _Entry(
-              icon: Icons.favorite_rounded,
+              icon: PhosphorIcons.heart(),
               label: t(LibraryKeys.likedTitle),
               onTap: () => _push(context, const LikedScreen()),
             ),
             _Entry(
-              icon: Icons.download_rounded,
+              icon: PhosphorIcons.downloadSimple(),
               label: t(LibraryKeys.downloadsNavLabel),
               trailing: _countOf(downloads, (rows) => rows.length),
               onTap: () => _push(context, const DownloadsScreen()),
             ),
             _Entry(
-              icon: Icons.person_rounded,
+              icon: PhosphorIcons.microphoneStage(),
               label: t(LibraryKeys.artistsTitle),
               onTap: () => _push(context, const ArtistsScreen()),
             ),
             _Entry(
-              icon: Icons.album_rounded,
+              icon: PhosphorIcons.disc(),
               // Not "Albums": the Hub has no flat album browse, and this endpoint answers with at
               // most fifty. Naming the row for what it actually shows keeps the promise honest.
               label: t(DiscoveryKeys.shelfRecentlyAdded),
               onTap: () => _push(context, const RecentAlbumsScreen()),
             ),
             _Entry(
-              icon: Icons.dns_rounded,
+              icon: PhosphorIcons.folders(),
               label: t(LibraryKeys.listTitle),
               trailing: _countOf(libraries, (rows) => rows.length),
               onTap: () => _push(context, const LibrariesHomeScreen()),
@@ -232,10 +233,10 @@ class _PinTile extends ConsumerWidget {
                   ? BoxShape.circle
                   : BoxShape.rectangle,
               fallbackIcon: switch (pin.kind) {
-                PinKind.album => Icons.album_rounded,
-                PinKind.artist => Icons.person_rounded,
-                PinKind.playlist => Icons.queue_music_rounded,
-                PinKind.radio => Icons.radio_rounded,
+                PinKind.album => PhosphorIconsFill.disc,
+                PinKind.artist => PhosphorIconsFill.microphoneStage,
+                PinKind.playlist => PhosphorIconsFill.playlist,
+                PinKind.radio => PhosphorIconsFill.radio,
               },
               semanticLabel: pin.name,
             ),
@@ -268,7 +269,7 @@ class _PinTile extends ConsumerWidget {
             ),
             const Divider(height: 1),
             ListRow(
-              leading: const Icon(Icons.arrow_upward_rounded, size: 20),
+              leading: const Icon(PhosphorIconsRegular.arrowUp, size: 20),
               title: Text(t(CommonKeys.actionsMoveUp)),
               enabled: index > 0,
               onTap: () {
@@ -277,7 +278,7 @@ class _PinTile extends ConsumerWidget {
               },
             ),
             ListRow(
-              leading: const Icon(Icons.arrow_downward_rounded, size: 20),
+              leading: const Icon(PhosphorIconsRegular.arrowDown, size: 20),
               title: Text(t(CommonKeys.actionsMoveDown)),
               enabled: index < count - 1,
               onTap: () {
@@ -286,7 +287,7 @@ class _PinTile extends ConsumerWidget {
               },
             ),
             ListRow(
-              leading: const Icon(Icons.push_pin_outlined, size: 20),
+              leading: const Icon(PhosphorIconsFill.pushPin, size: 20),
               title: Text(t(CommonKeys.actionsUnpin)),
               onTap: () {
                 Navigator.of(sheetContext).pop();

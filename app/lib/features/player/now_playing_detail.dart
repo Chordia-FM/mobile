@@ -4,6 +4,7 @@ import 'package:chordia_api/chordia_api.dart';
 import 'package:chordia_sync/chordia_sync.dart' show PlayerTrack;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../app/providers.dart';
 import '../../app/theme.dart';
@@ -170,7 +171,7 @@ class _AboutArtistCard extends ConsumerWidget {
                   sha256: artHashOf(artist.imageUrl),
                   size: 56,
                   shape: BoxShape.circle,
-                  fallbackIcon: Icons.person_rounded,
+                  fallbackIcon: PhosphorIcons.user(),
                   fallbackInitial: artist.name,
                   semanticLabel: artist.name,
                 ),

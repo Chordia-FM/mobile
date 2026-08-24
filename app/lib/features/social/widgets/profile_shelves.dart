@@ -1,5 +1,6 @@
 import 'package:chordia_api/chordia_api.dart';
 import 'package:flutter/material.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../i18n/keys.g.dart';
@@ -206,7 +207,7 @@ class _ArtistShelfState extends ConsumerState<ArtistShelf> {
                 title: artist.name,
                 imageUrl: artist.imageUrl,
                 shape: BoxShape.circle,
-                fallbackIcon: Icons.person_rounded,
+                fallbackIcon: PhosphorIcons.user(),
                 // Followed artists are MBID-identified and need not exist in this Hub's catalog.
                 // Only one the Hub resolved an `artist_id` for — in a library this VIEWER can
                 // reach — has a page to open; the rest are plain, non-interactive cards.

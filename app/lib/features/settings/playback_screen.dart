@@ -1,6 +1,7 @@
 import 'package:chordia_api/chordia_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../i18n/keys.g.dart';
 import '../../i18n/translations_provider.dart';
@@ -41,7 +42,7 @@ class PlaybackScreen extends ConsumerWidget {
           title: t(SettingsKeys.downloadsTitle),
           children: [
             SettingsDisclosureRow(
-              icon: Icons.download_rounded,
+              icon: PhosphorIconsRegular.downloadSimple,
               label: t(LibraryKeys.downloadsTitle),
               description: t(SettingsKeys.playbackStorageDesc),
               onTap: () => openSettingsScreen(context, const DownloadsScreen()),
@@ -125,7 +126,7 @@ class _PlaybackControls extends ConsumerWidget {
             // Inside this section rather than beside Downloads: the equalizer edits `eq` on the
             // very document above it, so it has nothing to show until that document is in hand.
             SettingsDisclosureRow(
-              icon: Icons.tune_rounded,
+              icon: PhosphorIconsRegular.equalizer,
               label: t(SettingsKeys.equalizerTitle),
               description: t(SettingsKeys.playbackEqualizerDesc),
               // The player's own entry point rather than a route of ours: it opens on the root

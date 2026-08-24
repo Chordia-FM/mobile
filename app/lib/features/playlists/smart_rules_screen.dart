@@ -1,6 +1,7 @@
 import 'package:chordia_api/chordia_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../data/art/art_cache.dart';
 import '../../i18n/keys.g.dart';
@@ -143,7 +144,7 @@ class _SmartRulesScreenState extends ConsumerState<SmartRulesScreen> {
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                   child: OutlinedButton.icon(
                     onPressed: () => _addRule(draft),
-                    icon: const Icon(Icons.add_rounded),
+                    icon: const Icon(PhosphorIconsRegular.plus),
                     label: Text(t(PlaylistsKeys.smartAddRule)),
                   ),
                 ),

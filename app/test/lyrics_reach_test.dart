@@ -14,6 +14,7 @@ import 'package:flutter/material.dart' hide RepeatMode;
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 /// Loaded once, in real async: `testWidgets` runs inside a fake-async zone where an asset read
 /// never completes, so the catalogs have to be in hand before the first pump.
@@ -140,7 +141,7 @@ void main() {
 
     // An icon and a label in the player's own tab bar — not a text button in a row of three, which
     // is what made this feature unfindable.
-    expect(find.byIcon(Icons.mic_external_on_rounded), findsOneWidget);
+    expect(find.byIcon(PhosphorIcons.microphoneStage()), findsOneWidget);
     expect(_lyricsControl(tester).onTap, isNotNull);
 
     await tester.tap(find.text(translations(PlayerKeys.expandedLyrics)));
@@ -159,7 +160,7 @@ void main() {
 
     // Present, so the feature is never silently absent; inert, so the tap does not open a view
     // whose only content is an apology.
-    expect(find.byIcon(Icons.mic_external_on_rounded), findsOneWidget);
+    expect(find.byIcon(PhosphorIcons.microphoneStage()), findsOneWidget);
     expect(_lyricsControl(tester).onTap, isNull);
     expect(find.byTooltip(translations(PlayerKeys.lyricsNone)), findsOneWidget);
   });

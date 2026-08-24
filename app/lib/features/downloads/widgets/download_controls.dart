@@ -2,6 +2,7 @@ import 'package:chordia_api/chordia_api.dart';
 import 'package:chordia_db/chordia_db.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../../i18n/keys.g.dart';
 import '../../../i18n/translations_provider.dart';
@@ -76,7 +77,7 @@ class DownloadIconButton extends ConsumerWidget {
     if (state.downloaded) {
       return IconButton(
         icon: Icon(
-          Icons.download_done_rounded,
+          PhosphorIconsFill.checkCircle,
           color: theme.colorScheme.primary,
         ),
         tooltip: t(LibraryKeys.downloadsActionRemove),
@@ -92,7 +93,7 @@ class DownloadIconButton extends ConsumerWidget {
           height: 20,
           child: task.state == DownloadState.failed
               ? Icon(
-                  Icons.error_outline_rounded,
+                  PhosphorIconsRegular.warningCircle,
                   color: theme.colorScheme.error,
                 )
               // An indeterminate spinner until the length is known: a bar sitting at zero reads as
@@ -114,7 +115,7 @@ class DownloadIconButton extends ConsumerWidget {
     }
 
     return IconButton(
-      icon: const Icon(Icons.download_for_offline_outlined),
+      icon: const Icon(PhosphorIconsBold.downloadSimple),
       tooltip: t(LibraryKeys.downloadsActionDownload),
       onPressed: () => saveDownloads(context, ref, [track]),
     );
@@ -153,8 +154,8 @@ class DownloadMenuTile extends ConsumerWidget {
     return ListRow(
       leading: Icon(
         held
-            ? Icons.download_done_rounded
-            : Icons.download_for_offline_outlined,
+            ? PhosphorIconsFill.checkCircle
+            : PhosphorIconsRegular.downloadSimple,
       ),
       title: Text(
         held

@@ -1,5 +1,6 @@
 import 'package:chordia_api/chordia_api.dart';
 import 'package:flutter/material.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
@@ -98,7 +99,7 @@ class _Overview extends ConsumerWidget {
             child: OutlinedButton.icon(
               onPressed: () =>
                   shareWrappedCard(context, ref, report, handle: stamp),
-              icon: const Icon(Icons.ios_share_rounded),
+              icon: Icon(PhosphorIcons.export()),
               label: Text(t(InsightsKeys.rotationShareButton)),
             ),
           ),

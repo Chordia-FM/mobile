@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../../app/providers.dart';
@@ -233,12 +234,12 @@ class _MenuHeader extends StatelessWidget {
             size: 48,
             shape: target.round ? BoxShape.circle : BoxShape.rectangle,
             fallbackIcon: switch (target.kind) {
-              MenuTargetKind.artist => Icons.person_rounded,
-              MenuTargetKind.playlist => Icons.queue_music_rounded,
-              MenuTargetKind.library => Icons.dns_rounded,
-              MenuTargetKind.genre => Icons.category_rounded,
-              MenuTargetKind.label => Icons.business_rounded,
-              _ => Icons.album_rounded,
+              MenuTargetKind.artist => PhosphorIconsFill.microphoneStage,
+              MenuTargetKind.playlist => PhosphorIcons.playlist(),
+              MenuTargetKind.library => PhosphorIcons.folders(),
+              MenuTargetKind.genre => PhosphorIcons.musicNote(),
+              MenuTargetKind.label => PhosphorIcons.tag(),
+              _ => PhosphorIconsFill.musicNotes,
             },
           ),
           title: Text(
@@ -264,7 +265,7 @@ class EntityMenuButton extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) => IconButton(
-    icon: const Icon(Icons.more_vert_rounded),
+    icon: Icon(PhosphorIcons.dotsThree(PhosphorIconsStyle.bold)),
     iconSize: iconSize,
     tooltip: ref.t(CommonKeys.actionsMore),
     onPressed: () => unawaited(showEntityMenu(context, menu)),

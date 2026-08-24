@@ -1,6 +1,7 @@
 import 'package:chordia_api/chordia_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../data/art/art_cache.dart';
 import '../../i18n/keys.g.dart';
@@ -51,7 +52,7 @@ class LabelsScreen extends ConsumerWidget {
                       leading: CoverArt(
                         sha256: artHashOf(label.logoUrl),
                         size: 40,
-                        fallbackIcon: Icons.sell_outlined,
+                        fallbackIcon: PhosphorIcons.tag(),
                         semanticLabel: label.name,
                       ),
                       title: Text(label.name),

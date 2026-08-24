@@ -1,5 +1,6 @@
 import 'package:chordia_api/chordia_api.dart';
 import 'package:flutter/material.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
@@ -299,12 +300,12 @@ class _Actions extends ConsumerWidget {
           following
               ? OutlinedButton.icon(
                   onPressed: () => _toggle(context, ref, following: false),
-                  icon: const Icon(Icons.check_rounded),
+                  icon: Icon(PhosphorIcons.check()),
                   label: Text(t(SocialKeys.followFollowing)),
                 )
               : FilledButton.icon(
                   onPressed: () => _toggle(context, ref, following: true),
-                  icon: const Icon(Icons.person_add_alt_rounded),
+                  icon: Icon(PhosphorIcons.userPlus()),
                   label: Text(t(SocialKeys.followFollow)),
                 )
         else if (!own)
@@ -314,7 +315,7 @@ class _Actions extends ConsumerWidget {
           ),
         const SizedBox(width: 8),
         IconButton.outlined(
-          icon: const Icon(Icons.more_horiz_rounded),
+          icon: Icon(PhosphorIcons.dotsThree(PhosphorIconsStyle.bold)),
           tooltip: t(CommonKeys.actionsMore),
           onPressed: () => showPersonActions(
             context,

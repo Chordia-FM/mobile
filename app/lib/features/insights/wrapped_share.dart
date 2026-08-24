@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:chordia_api/chordia_api.dart';
 import 'package:flutter/material.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
@@ -178,7 +179,7 @@ class _WrappedPreviewState extends ConsumerState<_WrappedPreview> {
             const SizedBox(height: 16),
             FilledButton.icon(
               onPressed: _sharing ? null : _share,
-              icon: const Icon(Icons.ios_share_rounded),
+              icon: Icon(PhosphorIcons.export()),
               label: Text(
                 t(
                   _sharing

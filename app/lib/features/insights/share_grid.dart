@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:chordia_api/chordia_api.dart';
 import 'package:flutter/material.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
@@ -335,7 +336,7 @@ class _ShareGridButtonState extends ConsumerState<ShareGridButton> {
             width: ChordiaControl.sm,
             height: ChordiaControl.sm,
             child: Icon(
-              Icons.grid_view_rounded,
+              PhosphorIcons.gridFour(),
               size: 20,
               color: Colors.white.withValues(alpha: 0.9),
             ),
@@ -474,7 +475,7 @@ class _ShareGridPreviewState extends ConsumerState<_ShareGridPreview> {
             const SizedBox(height: 8),
             FilledButton.icon(
               onPressed: _sharing ? null : _share,
-              icon: const Icon(Icons.ios_share_rounded),
+              icon: Icon(PhosphorIcons.export()),
               label: Text(
                 t(
                   _sharing

@@ -13,6 +13,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 /// The artist's live collection: the shelf card that reaches it, and the page behind it.
 ///
@@ -215,7 +216,9 @@ void main() {
         findsOne,
       );
 
-      await tester.tap(find.byIcon(Icons.play_arrow_rounded));
+      await tester.tap(
+        find.byIcon(PhosphorIcons.play(PhosphorIconsStyle.fill)),
+      );
       await tester.pump();
 
       expect(player.queue?.map((t) => t.id), ['t1', 't2']);

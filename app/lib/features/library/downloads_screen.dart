@@ -4,6 +4,7 @@ import 'package:chordia_db/chordia_db.dart';
 import 'package:chordia_sync/chordia_sync.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../i18n/keys.g.dart';
 import '../catalog/widgets/entity_menu.dart';
@@ -40,7 +41,7 @@ class DownloadsScreen extends ConsumerWidget {
           IconButton(
             onPressed: () => unawaited(openDownloadsManager(context)),
             tooltip: t(LibraryKeys.downloadsActionManage),
-            icon: const Icon(Icons.tune_rounded),
+            icon: const Icon(PhosphorIconsRegular.slidersHorizontal),
           ),
         ],
       ),
@@ -94,7 +95,7 @@ class _DownloadsList extends ConsumerWidget {
                   t(LibraryKeys.downloadsStoredOnDevice),
                 ].join(' · '),
                 artwork: const GradientArtwork(
-                  icon: Icons.download_rounded,
+                  icon: PhosphorIconsFill.downloadSimple,
                   size: 200,
                 ),
               ),
@@ -113,7 +114,7 @@ class _DownloadsList extends ConsumerWidget {
                   extra: [
                     OutlinedButton.icon(
                       onPressed: () => _clearAll(context, ref),
-                      icon: const Icon(Icons.delete_outline_rounded),
+                      icon: const Icon(PhosphorIconsRegular.trash),
                       label: Text(t(CommonKeys.actionsClearAll)),
                     ),
                   ],
@@ -122,7 +123,7 @@ class _DownloadsList extends ConsumerWidget {
               if (rows.isEmpty)
                 EmptyNote(
                   message: t(LibraryKeys.downloadsEmptyState),
-                  icon: Icons.download_for_offline_outlined,
+                  icon: PhosphorIcons.downloadSimple(),
                 ),
             ],
           );
@@ -195,7 +196,7 @@ class _AlbumGroup extends ConsumerWidget {
               CoverArt(
                 sha256: group.coverSha,
                 size: 56,
-                fallbackIcon: Icons.album_rounded,
+                fallbackIcon: PhosphorIconsFill.musicNotes,
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -249,7 +250,7 @@ class _AlbumGroup extends ConsumerWidget {
             onLongPress: () =>
                 unawaited(showTrackMenu(context, ref, tracks[index])),
             trailing: IconButton(
-              icon: const Icon(Icons.more_vert_rounded),
+              icon: const Icon(PhosphorIconsBold.dotsThree),
               tooltip: t(CommonKeys.actionsMore),
               onPressed: () =>
                   unawaited(showTrackMenu(context, ref, tracks[index])),

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../app/providers.dart';
 import '../../app/theme.dart';
@@ -139,8 +140,8 @@ class MiniPlayer extends ConsumerWidget {
                             ),
                             icon: Icon(
                               playing
-                                  ? Icons.pause_rounded
-                                  : Icons.play_arrow_rounded,
+                                  ? PhosphorIcons.pause(PhosphorIconsStyle.fill)
+                                  : PhosphorIcons.play(PhosphorIconsStyle.fill),
                               size: 28,
                             ),
                           ),
@@ -148,7 +149,12 @@ class MiniPlayer extends ConsumerWidget {
                             onPressed: () =>
                                 ref.read(playerActionsProvider).next(),
                             tooltip: t(PlayerKeys.controlsNext),
-                            icon: const Icon(Icons.skip_next_rounded, size: 26),
+                            icon: Icon(
+                              PhosphorIcons.skipForward(
+                                PhosphorIconsStyle.fill,
+                              ),
+                              size: 26,
+                            ),
                           ),
                           const SizedBox(width: 4),
                         ],

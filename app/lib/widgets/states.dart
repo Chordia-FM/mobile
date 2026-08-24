@@ -12,6 +12,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 import 'brand/logo.dart';
 import 'surface.dart';
@@ -193,7 +194,7 @@ class ErrorState extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
-                Icons.cloud_off_rounded,
+                PhosphorIconsDuotone.warningCircle,
                 size: 32,
                 color: scheme.onSurfaceVariant,
               ),

@@ -1,5 +1,6 @@
 import 'package:chordia_api/chordia_api.dart';
 import 'package:flutter/material.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -93,7 +94,7 @@ class PersonRow extends ConsumerWidget {
         children: [
           ?trailing,
           IconButton(
-            icon: const Icon(Icons.more_vert_rounded),
+            icon: Icon(PhosphorIcons.dotsThree(PhosphorIconsStyle.bold)),
             tooltip: ref.t(CommonKeys.actionsMore),
             onPressed: () => showPersonActions(context, ref, user, tie),
           ),
@@ -155,7 +156,7 @@ class _PersonActionsSheet extends ConsumerWidget {
           ),
           const Divider(height: 1),
           ListRow(
-            leading: const Icon(Icons.ios_share_rounded),
+            leading: Icon(PhosphorIcons.shareNetwork()),
             title: Text(t(SocialKeys.followShareProfile)),
             onTap: () {
               Navigator.of(context).pop();
@@ -169,7 +170,7 @@ class _PersonActionsSheet extends ConsumerWidget {
           if (!isSelf) ...[
             switch (tie) {
               FriendTie.friends => ListRow(
-                leading: const Icon(Icons.person_remove_rounded),
+                leading: Icon(PhosphorIcons.userMinus()),
                 title: Text(t(SocialKeys.followRemoveFriend)),
                 onTap: () async {
                   final confirmed = await _confirm(
@@ -184,24 +185,24 @@ class _PersonActionsSheet extends ConsumerWidget {
                 },
               ),
               FriendTie.incoming => ListRow(
-                leading: const Icon(Icons.person_add_alt_1_rounded),
+                leading: Icon(PhosphorIcons.userCheck()),
                 title: Text(t(SocialKeys.requestsAccept)),
                 subtitle: Text(t(SocialKeys.followFriendIncoming)),
                 onTap: () => run(() => friends.accept(user)),
               ),
               FriendTie.outgoing => ListRow(
-                leading: const Icon(Icons.schedule_rounded),
+                leading: Icon(PhosphorIcons.clock()),
                 title: Text(t(SocialKeys.requestsCancel)),
                 subtitle: Text(t(SocialKeys.followFriendPending)),
                 onTap: () => run(() => friends.cancelRequest(user)),
               ),
               FriendTie.blocked => ListRow(
-                leading: const Icon(Icons.lock_open_rounded),
+                leading: Icon(PhosphorIcons.lockSimpleOpen()),
                 title: Text(t(SocialKeys.blockUnblock)),
                 onTap: () => run(() => friends.unblock(user)),
               ),
               FriendTie.none => ListRow(
-                leading: const Icon(Icons.person_add_alt_1_rounded),
+                leading: Icon(PhosphorIcons.userPlus()),
                 title: Text(t(SocialKeys.followAddFriend)),
                 subtitle: Text(t(SocialKeys.followVsFriends)),
                 subtitleMaxLines: 3,
@@ -212,7 +213,7 @@ class _PersonActionsSheet extends ConsumerWidget {
             // Hub answers 204 whether or not it acted on the report, so there is nothing to read
             // back and nothing to tell the reporter beyond that it was filed.
             ListRow(
-              leading: const Icon(Icons.flag_outlined),
+              leading: Icon(PhosphorIcons.flag()),
               title: Text(t(SocialKeys.modMenuReport)),
               onTap: () async {
                 final reason = await _prompt(
@@ -238,7 +239,7 @@ class _PersonActionsSheet extends ConsumerWidget {
             if (tie != FriendTie.blocked)
               ListRow(
                 leading: Icon(
-                  Icons.block_rounded,
+                  PhosphorIcons.prohibit(),
                   color: Theme.of(context).colorScheme.error,
                 ),
                 title: Text(

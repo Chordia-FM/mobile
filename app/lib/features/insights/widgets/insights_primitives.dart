@@ -1,5 +1,6 @@
 import 'package:chordia_api/chordia_api.dart';
 import 'package:flutter/material.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../data/art/art_cache.dart';
@@ -217,7 +218,7 @@ class DeltaLabel extends ConsumerWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Icon(
-          up ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded,
+          up ? PhosphorIcons.arrowUp() : PhosphorIcons.arrowDown(),
           size: 12,
           color: up ? theme.colorScheme.primary : theme.colorScheme.error,
         ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../../widgets/surface.dart';
 import '../../../widgets/tokens.dart';
@@ -153,4 +154,4 @@ class ListRow extends StatelessWidget {
 /// A constant rather than an `Icon(...)` at each call site so the size stays one decision: 20px is
 /// what [ListRow] gives its trailing slot, and a 24px chevron beside a 20px badge in the next row
 /// is the sort of drift these primitives exist to prevent.
-const listRowChevron = Icon(Icons.chevron_right_rounded);
+const listRowChevron = Icon(PhosphorIconsRegular.caretRight);

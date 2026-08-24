@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:chordia_api/chordia_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../data/art/art_cache.dart';
 import '../../i18n/keys.g.dart';
@@ -193,7 +194,9 @@ class _AddSongsSheetState extends ConsumerState<_AddSongsSheet> {
                   controller: _query,
                   textInputAction: TextInputAction.search,
                   decoration: InputDecoration(
-                    prefixIcon: const Icon(Icons.search_rounded),
+                    prefixIcon: const Icon(
+                      PhosphorIconsRegular.magnifyingGlass,
+                    ),
                     hintText: t(PlaylistsKeys.emptyStateSearchPlaceholder),
                   ),
                   onChanged: _onTyped,
@@ -250,7 +253,9 @@ class _AddSongsSheetState extends ConsumerState<_AddSongsSheet> {
         title: Text(track.title),
         subtitle: Text(track.artist),
         trailing: IconButton(
-          icon: Icon(held ? Icons.check_rounded : Icons.add_rounded),
+          icon: Icon(
+            held ? PhosphorIconsBold.check : PhosphorIconsRegular.plus,
+          ),
           tooltip: label,
           onPressed: held ? null : () => unawaited(_add(track)),
         ),

@@ -1,6 +1,7 @@
 import 'package:chordia_api/chordia_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../data/accent/accent_palette.dart' show parseHexColor;
 import '../../i18n/keys.g.dart';
@@ -235,7 +236,7 @@ class _AccentSwatches extends ConsumerWidget {
                     // marked instead of being a twelfth indistinguishable circle.
                     child: preset.$1 == followInstanceAccent
                         ? const Icon(
-                            Icons.auto_awesome_rounded,
+                            PhosphorIconsBold.house,
                             size: 18,
                             color: Colors.white,
                           )
@@ -318,7 +319,7 @@ class _PaletteEditor extends ConsumerWidget {
                     ref,
                     (accent) => onChanged([...palette, accent]),
                   ),
-                  icon: const Icon(Icons.add_rounded),
+                  icon: const Icon(PhosphorIconsRegular.plus),
                   label: Text(t(SettingsKeys.appearancePaletteAdd)),
                 ),
             ],
@@ -384,7 +385,7 @@ class _Stop extends StatelessWidget {
                 border: Border.all(color: theme.colorScheme.outline),
               ),
               child: colour == null
-                  ? const Icon(Icons.help_outline_rounded, size: 18)
+                  ? const Icon(PhosphorIconsRegular.question, size: 18)
                   : null,
             ),
           ),
@@ -401,7 +402,7 @@ class _Stop extends StatelessWidget {
                 ),
                 padding: EdgeInsets.zero,
                 onPressed: onRemove,
-                icon: const Icon(Icons.close_rounded),
+                icon: const Icon(PhosphorIconsRegular.x),
               ),
             ),
         ],

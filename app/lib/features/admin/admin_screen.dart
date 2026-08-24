@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../i18n/keys.g.dart';
 import '../../i18n/translations_provider.dart';
@@ -36,7 +37,7 @@ class AdminScreen extends ConsumerWidget {
         value: isAdmin,
         errorTitle: t(AdminKeys.overviewLoadFailed),
         onRetry: () => ref.invalidate(isAdminProvider),
-        skeleton: const Center(child: CircularProgressIndicator.adaptive()),
+        skeleton: const Center(child: CircularProgressIndicator()),
         builder: (context, allowed) =>
             allowed ? const _AdminTabs() : const _NoAccess(),
       ),
@@ -99,7 +100,7 @@ class _NoAccess extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
-              Icons.lock_outline_rounded,
+              PhosphorIconsRegular.lockSimple,
               size: 40,
               color: theme.colorScheme.onSurfaceVariant,
             ),

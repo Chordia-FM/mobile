@@ -4,6 +4,7 @@ import 'package:chordia_api/chordia_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../data/art/art_cache.dart';
 import '../../i18n/keys.g.dart';
@@ -35,7 +36,7 @@ class TrackScreen extends ConsumerWidget {
       appBar: AppBar(
         actions: [
           IconButton(
-            icon: const Icon(Icons.ios_share_rounded),
+            icon: Icon(PhosphorIcons.shareNetwork()),
             tooltip: ref.t(CommonKeys.actionsShare),
             onPressed: () => unawaited(
               shareCatalogLink(
@@ -120,7 +121,7 @@ class _TrackView extends ConsumerWidget {
           onShuffle: null,
           trailing: [
             IconButton(
-              icon: const Icon(Icons.more_vert_rounded),
+              icon: Icon(PhosphorIcons.dotsThree(PhosphorIconsStyle.bold)),
               tooltip: t(CommonKeys.actionsMore),
               onPressed: () => unawaited(showTrackMenu(context, ref, track)),
             ),

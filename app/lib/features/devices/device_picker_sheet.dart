@@ -5,6 +5,7 @@ import 'package:chordia_api/chordia_api.dart' show DeviceNowPlaying;
 import 'package:chordia_sync/chordia_sync.dart' hide PlaybackState;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../app/theme.dart';
 import '../../data/mesh/providers.dart';
@@ -82,8 +83,8 @@ class DevicePickerSheet extends ConsumerWidget {
                   padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
                   child: Row(
                     children: [
-                      const Icon(
-                        Icons.cloud_off_rounded,
+                      Icon(
+                        PhosphorIcons.cloudSlash(),
                         size: 18,
                         color: ChordiaColors.mutedForeground,
                       ),
@@ -153,7 +154,9 @@ class _DeviceRow extends ConsumerWidget {
       // it stays tappable rather than becoming a dead row somebody presses twice.
       onTap: onTap,
       leading: Icon(
-        Icons.speaker_rounded,
+        PhosphorIcons.broadcast(
+          isTarget ? PhosphorIconsStyle.fill : PhosphorIconsStyle.regular,
+        ),
         color: isTarget
             ? context.surfaces.accent
             : ChordiaColors.mutedForeground,
@@ -165,7 +168,7 @@ class _DeviceRow extends ConsumerWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(
-                  Icons.check_rounded,
+                  PhosphorIcons.check(),
                   size: 18,
                   color: context.surfaces.accent,
                 ),
@@ -197,8 +200,8 @@ class _UnreachableRow extends ConsumerWidget {
     return Opacity(
       opacity: 0.7,
       child: ListRow(
-        leading: const Icon(
-          Icons.speaker_rounded,
+        leading: Icon(
+          PhosphorIcons.broadcast(),
           color: ChordiaColors.mutedForeground,
         ),
         title: Text(

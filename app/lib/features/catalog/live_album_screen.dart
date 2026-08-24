@@ -2,6 +2,7 @@ import 'package:chordia_api/chordia_api.dart';
 import 'package:chordia_sync/chordia_sync.dart' show ArtistContext;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../app/providers.dart' show hubClientProvider;
 import '../../data/art/art_cache.dart';
@@ -15,9 +16,14 @@ import 'widgets/catalog_state.dart';
 import 'widgets/section.dart';
 import 'widgets/track_list.dart';
 
-/// The icon that stands for live material everywhere it appears — the card, the header, the cover
-/// fallback. The web draws Phosphor's microphone-on-a-stand; this is the nearest Material has.
-const _liveIcon = Icons.mic_external_on_rounded;
+/// The icon that stands for live material everywhere it appears — the header and the cover
+/// fallback. Phosphor's microphone-on-a-stand, which is what the web draws for live material
+/// (`ArtistView.tsx:584`).
+const _liveIcon = PhosphorIconsRegular.microphoneStage;
+
+/// The same glyph on the gradient card, where the web opts into `weight="duotone"` — one of only
+/// three duotone uses in the whole web client, and this card is one of them.
+const _liveCardIcon = PhosphorIconsDuotone.microphoneStage;
 
 /// Riverpod 3 retries an errored provider on its own; switched off for the reason
 /// `data/catalog_providers.dart` switches it off — the screen already draws a Retry button, and a
@@ -252,7 +258,7 @@ class _LiveArt extends StatelessWidget {
                 ],
               ),
             ),
-            child: Icon(_liveIcon, size: side / 3, color: scheme.onPrimary),
+            child: Icon(_liveCardIcon, size: side / 3, color: scheme.onPrimary),
           ),
         );
       },

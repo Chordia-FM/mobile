@@ -1,6 +1,7 @@
 import 'package:chordia_api/chordia_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../data/art/art_cache.dart';
 import '../../i18n/keys.g.dart';
@@ -156,8 +157,8 @@ class _Edition extends ConsumerWidget {
               ListRow(
                 leading: Icon(
                   (track.owned ?? false)
-                      ? Icons.check_circle_rounded
-                      : Icons.radio_button_unchecked_rounded,
+                      ? PhosphorIconsFill.checkCircle
+                      : PhosphorIconsRegular.circle,
                   size: 20,
                   color: (track.owned ?? false)
                       ? theme.colorScheme.primary

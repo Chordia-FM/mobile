@@ -1,6 +1,7 @@
 import 'package:chordia_api/chordia_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../../data/art/art_cache.dart';
 import '../../../i18n/keys.g.dart';
@@ -138,7 +139,11 @@ class ManagerSectionHeader extends StatelessWidget {
 /// "Still fetching" — said out loud, because a coverage figure computed over a discography that
 /// has not arrived is provisional and looks like a wrong answer otherwise.
 class ManagerNotice extends StatelessWidget {
-  const ManagerNotice(this.text, {super.key, this.icon = Icons.sync_rounded});
+  const ManagerNotice(
+    this.text, {
+    super.key,
+    this.icon = PhosphorIconsRegular.arrowClockwise,
+  });
 
   final String text;
   final IconData icon;
@@ -277,12 +282,12 @@ class FollowButton extends ConsumerWidget {
     return isFollowing
         ? OutlinedButton.icon(
             onPressed: toggle,
-            icon: const Icon(Icons.check_rounded, size: 18),
+            icon: const Icon(PhosphorIconsRegular.check, size: 18),
             label: Text(t(ManagerKeys.followFollowing)),
           )
         : FilledButton.tonalIcon(
             onPressed: toggle,
-            icon: const Icon(Icons.add_rounded, size: 18),
+            icon: const Icon(PhosphorIconsRegular.plus, size: 18),
             label: Text(t(ManagerKeys.followFollow)),
           );
   }

@@ -2,6 +2,7 @@ import 'package:chordia_api/chordia_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../../i18n/keys.g.dart';
 import '../../../i18n/translations_provider.dart';
@@ -110,7 +111,7 @@ class _RuleEditorState extends ConsumerState<RuleEditor> {
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.close_rounded),
+                  icon: const Icon(PhosphorIconsRegular.x),
                   tooltip: t(PlaylistsKeys.smartRemoveRule),
                   onPressed: () => draft.removeRuleAt(index),
                 ),
@@ -389,7 +390,7 @@ class _DateField extends StatelessWidget {
         child: Row(
           children: [
             Expanded(child: Text(value.isEmpty ? '—' : value)),
-            const Icon(Icons.calendar_today_rounded, size: 18),
+            const Icon(PhosphorIconsRegular.calendarBlank, size: 18),
           ],
         ),
       ),

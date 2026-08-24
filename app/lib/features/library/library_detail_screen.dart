@@ -1,6 +1,7 @@
 import 'package:chordia_api/chordia_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../data/art/art_cache.dart';
 import '../../i18n/keys.g.dart';
@@ -42,7 +43,7 @@ class LibraryDetailScreen extends ConsumerWidget {
         title: Text(library.value?.name ?? t(CommonKeys.navAllLibraries)),
         actions: [
           IconButton(
-            icon: const Icon(Icons.settings_outlined),
+            icon: const Icon(PhosphorIconsRegular.pencilSimple),
             tooltip: t(LibraryKeys.manageTitle),
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute<void>(
@@ -122,7 +123,7 @@ class LibraryDetailScreen extends ConsumerWidget {
             sha256: artHashOf(artist.imageUrl),
             size: 40,
             shape: BoxShape.circle,
-            fallbackIcon: Icons.person_rounded,
+            fallbackIcon: PhosphorIconsFill.microphoneStage,
           ),
           title: Text(artist.name),
           subtitle: Text(
@@ -174,8 +175,8 @@ class _Summary extends ConsumerWidget {
               children: [
                 Icon(
                   endpoint.online
-                      ? Icons.cloud_done_rounded
-                      : Icons.cloud_off_rounded,
+                      ? PhosphorIcons.cloudCheck()
+                      : PhosphorIcons.cloudSlash(),
                   size: 18,
                   color: endpoint.online
                       ? theme.colorScheme.primary
@@ -239,7 +240,7 @@ class _Shares extends ConsumerWidget {
                         sha256: artHashOf(share.grantee.avatarUrl),
                         size: 40,
                         shape: BoxShape.circle,
-                        fallbackIcon: Icons.person_rounded,
+                        fallbackIcon: PhosphorIcons.user(),
                       ),
                       title: Text(share.grantee.displayName),
                       subtitle: Text(

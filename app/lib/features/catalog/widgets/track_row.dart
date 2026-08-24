@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:chordia_api/chordia_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../../data/art/art_cache.dart';
 import '../../../i18n/keys.g.dart';
@@ -148,9 +149,11 @@ class LikeHeart extends ConsumerWidget {
         (liked ?? false) ? LibraryKeys.likedRemove : LibraryKeys.likedSave,
       ),
       icon: Icon(
-        (liked ?? false)
-            ? Icons.favorite_rounded
-            : Icons.favorite_border_rounded,
+        PhosphorIcons.heart(
+          (liked ?? false)
+              ? PhosphorIconsStyle.fill
+              : PhosphorIconsStyle.regular,
+        ),
         color: (liked ?? false) ? scheme.primary : scheme.onSurfaceVariant,
       ),
     );

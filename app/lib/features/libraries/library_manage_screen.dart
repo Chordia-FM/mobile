@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:chordia_api/chordia_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../i18n/keys.g.dart';
 import '../../i18n/translations_provider.dart';
@@ -148,10 +149,10 @@ class _LibraryManageScreenState extends ConsumerState<LibraryManageScreen> {
     return ListRow(
       leading: Icon(
         endpoint == null
-            ? Icons.cloud_queue_rounded
+            ? PhosphorIconsRegular.cloud
             : endpoint.online
-            ? Icons.cloud_done_rounded
-            : Icons.cloud_off_rounded,
+            ? PhosphorIconsRegular.cloudCheck
+            : PhosphorIconsRegular.cloudSlash,
         size: 20,
         color: (endpoint?.online ?? false)
             ? theme.colorScheme.primary
@@ -170,7 +171,7 @@ class _LibraryManageScreenState extends ConsumerState<LibraryManageScreen> {
   }
 
   Widget _rename(LibrarySummary summary, Translate t) => ListRow(
-    leading: const Icon(Icons.drive_file_rename_outline_rounded, size: 20),
+    leading: const Icon(PhosphorIconsRegular.pencilSimple, size: 20),
     title: Text(t(LibraryKeys.manageNameLabel)),
     subtitle: Text(summary.name),
     trailing: listRowChevron,
@@ -211,7 +212,7 @@ class _LibraryManageScreenState extends ConsumerState<LibraryManageScreen> {
   /// that cannot be undone by doing it again.
   Widget _remove(LibrarySummary summary, Translate t) => ListRow(
     destructive: true,
-    leading: const Icon(Icons.delete_outline_rounded, size: 20),
+    leading: const Icon(PhosphorIconsRegular.trash, size: 20),
     title: Text(t(LibraryKeys.editRemoveTitle)),
     subtitle: Text(t(LibraryKeys.editRemoveHelp)),
     onTap: () => unawaited(_removeLibrary(summary)),
@@ -310,7 +311,7 @@ class _LibraryManageScreenState extends ConsumerState<LibraryManageScreen> {
               await showShareLibrarySheet(context, libraryId: widget.libraryId);
               ref.invalidate(librarySharesProvider(widget.libraryId));
             },
-            icon: const Icon(Icons.person_add_alt_1_rounded),
+            icon: const Icon(PhosphorIconsRegular.userPlus),
             label: Text(t(LibraryKeys.shareManagerAddFriend)),
           ),
         ),
@@ -323,7 +324,7 @@ class _LibraryManageScreenState extends ConsumerState<LibraryManageScreen> {
     final count = overrides.value?.length;
 
     return ListRow(
-      leading: const Icon(Icons.edit_note_rounded, size: 20),
+      leading: const Icon(PhosphorIconsRegular.notePencil, size: 20),
       title: Text(t(LibraryKeys.manageOpenOverrides)),
       subtitle: Text(
         count == null

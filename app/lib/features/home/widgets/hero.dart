@@ -2,6 +2,7 @@ import 'package:chordia_api/chordia_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../../app/theme.dart';
 import '../../../data/art/art_cache.dart';
@@ -116,7 +117,7 @@ class _StartHero extends ConsumerWidget {
             CoverArt(
               sha256: artHashOf(mix.imageUrl),
               size: 96,
-              fallbackIcon: Icons.radio_rounded,
+              fallbackIcon: PhosphorIconsFill.radio,
               semanticLabel: mix.title,
             ),
             const SizedBox(width: 16),
@@ -226,9 +227,9 @@ class _FeaturedCard extends ConsumerWidget {
               shape: round ? BoxShape.circle : BoxShape.rectangle,
               fallbackInitial: round ? item.name : null,
               fallbackIcon: switch (item.kind) {
-                RecentKind.artist => Icons.person_rounded,
-                RecentKind.playlist => Icons.queue_music_rounded,
-                RecentKind.album => Icons.album_rounded,
+                RecentKind.artist => PhosphorIconsFill.microphoneStage,
+                RecentKind.playlist => PhosphorIconsFill.playlist,
+                RecentKind.album => PhosphorIconsFill.disc,
               },
               semanticLabel: item.name,
             ),

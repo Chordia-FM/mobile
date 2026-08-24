@@ -14,6 +14,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 /// Where the accent that MOVES actually lands.
 ///
@@ -419,7 +420,7 @@ void main() {
                 dimension: 56,
                 child: AccentSurface(
                   shape: BoxShape.circle,
-                  child: Icon(Icons.play_arrow_rounded),
+                  child: Icon(PhosphorIconsFill.play),
                 ),
               ),
             ),

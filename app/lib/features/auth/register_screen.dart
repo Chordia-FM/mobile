@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../app/providers.dart';
 import '../../i18n/keys.g.dart';
@@ -133,7 +134,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             labelText: t(AuthKeys.fieldsPassword),
             hintText: t(AuthKeys.registerPasswordPlaceholder),
             suffixIcon: IconButton(
-              icon: Icon(_obscure ? Icons.visibility_off : Icons.visibility),
+              icon: Icon(
+                _obscure
+                    ? PhosphorIconsRegular.eye
+                    : PhosphorIconsRegular.eyeSlash,
+              ),
               tooltip: t(
                 _obscure
                     ? SettingsKeys.securityPasswordShowAria

@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 // what tells a user-scroll notification apart from the view's own programmatic scroll.
 import 'package:flutter/rendering.dart' show ScrollDirection;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../app/providers.dart';
 import '../../i18n/keys.g.dart';
@@ -303,7 +304,10 @@ class _SyncedLyricsState extends ConsumerState<_SyncedLyrics> {
                   setState(() => _following = true);
                   _scrollToActive(animate: true);
                 },
-                icon: const Icon(Icons.my_location_rounded, size: 18),
+                icon: Icon(
+                  PhosphorIcons.arrowDown(PhosphorIconsStyle.bold),
+                  size: 18,
+                ),
                 label: Text(t(PlayerKeys.lyricsReturnToCurrent)),
               ),
             ),
