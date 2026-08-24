@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../data/accent/accent_scope.dart';
+import '../../../data/accent/accent_surfaces.dart';
 import '../../../data/art/art_cache.dart';
 import '../../../widgets/cover_art.dart';
 import '../../../widgets/surface.dart';
@@ -304,10 +306,18 @@ class CollectionActions extends ConsumerWidget {
 
 /// The square gradient tile a collection with no artwork wears.
 ///
-/// The web's `.accent-art` (`styles.css:1050`) — a 135° sweep between two mixes of the LIVE accent,
-/// which is why the colours come off the [ColorScheme] rather than a constant: styles.css re-tints
-/// every one of these when the accent changes, and a hard-coded pair would not. Liked Songs uses
-/// exactly this (`liked.tsx`: `bg-linear-to-br from-primary to-accent/60`).
+/// The web's rule for this one is **not** `.accent-art`, whatever the previous comment here said:
+/// `liked.tsx:50` is `bg-linear-to-br from-primary to-accent/60`, a two-stop sweep from `--primary`
+/// to `--accent` at 60% opacity. `.accent-art` is the coverless-tile recipe — two mixes at 35% and
+/// 22% over whatever is behind them — and it is a visibly dimmer, more translucent thing. This
+/// tile ported the wrong end of it: `--accent` is `paneElevated`, the lightest of the shadcn
+/// surfaces, and the [ColorScheme] slot it was reading (`surfaceContainerHigh`) is `card`.
+///
+/// It moves, because `from-primary` is `var(--primary)` and the engine rewrites that on every tick.
+/// A 160px tile at the top of a page is a large enough accent surface that holding it still while
+/// the Play button under it cross-fades is the disagreement this whole seam exists to remove.
+/// Gradient mode is the one case it stays put, and correctly so — `--primary` is a single colour
+/// there by construction, and a palette sweep here would be a second gradient inside the first.
 ///
 /// They have no cover to show and never will, so the alternative to a gradient is a grey box that
 /// reads as artwork that failed to load.
@@ -324,40 +334,70 @@ class GradientArtwork extends StatelessWidget {
   final double size;
 
   /// Overrides the accent pair, for the one page the web gives its own colours (Downloads is
-  /// `from-emerald-500 to-sky-600`).
+  /// `from-emerald-500 to-sky-600` under a `text-white` glyph). Fixed colours, so a tile wearing
+  /// them does not subscribe to the accent at all.
   final List<Color>? colors;
 
   final String? semanticLabel;
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Semantics(
-      label: semanticLabel,
-      image: true,
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          borderRadius: ChordiaRadius.mdAll,
-          gradient: LinearGradient(
-            colors:
-                colors ??
-                [
-                  scheme.primary,
-                  scheme.surfaceContainerHigh.withValues(alpha: 0.6),
-                ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          boxShadow: chordiaCoverShadow,
-        ),
-        // `size-16` in a `size-40` tile.
-        // `text-primary-foreground`, not a literal white: the accent picker reaches lightnesses
-        // (amber, lime) where the web flips this to near-black, and a hard white glyph would be the
-        // one mark on the page that stops being legible.
-        child: Icon(icon, size: size * 0.4, color: scheme.onPrimary),
-      ),
+    // `size-16` in a `size-40` tile.
+    final glyph = Icon(icon, size: size * 0.4);
+
+    if (colors case final override?) {
+      return _tile(gradient: override, foreground: Colors.white, child: glyph);
+    }
+
+    final surfaces = context.surfaces;
+    return AccentBuilder(
+      builder: (context, frame, child) {
+        // `--accent` is itself a `color-mix` off `--primary`, so a browser recomputes it in the
+        // frame the accent moves in. The theme carries the resting derivation; re-deriving is only
+        // worth doing while a mode is actually moving the accent.
+        final elevated = frame.accent == surfaces.accent
+            ? surfaces.paneElevated
+            : paneElevatedFor(frame.accent);
+        return _tile(
+          gradient: [frame.accent, elevated.withValues(alpha: 0.6)],
+          // `text-primary-foreground`, not a literal white: the accent picker reaches lightnesses
+          // (amber, lime) where the web flips this to near-black, and a hard white glyph would be
+          // the one mark on the page that stops being legible. It takes the FRAME's foreground
+          // rather than the theme's, because in Fade the two ends of a palette can want opposite
+          // sides of the crossover — that is how a glyph goes unreadable halfway through.
+          foreground: frame.foreground,
+          child: child!,
+        );
+      },
+      // Built once and carried through every tick: the glyph is the one mark on the tile nobody
+      // has asked to move, only to stay readable.
+      child: glyph,
     );
   }
+
+  Widget _tile({
+    required List<Color> gradient,
+    required Color foreground,
+    required Widget child,
+  }) => Semantics(
+    label: semanticLabel,
+    image: true,
+    child: Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        borderRadius: ChordiaRadius.mdAll,
+        gradient: LinearGradient(
+          colors: gradient,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        boxShadow: chordiaCoverShadow,
+      ),
+      child: IconTheme.merge(
+        data: IconThemeData(color: foreground),
+        child: Center(child: child),
+      ),
+    ),
+  );
 }

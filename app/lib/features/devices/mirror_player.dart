@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/theme.dart';
+import '../../data/accent/accent_scope.dart';
 import '../../data/mesh/mirror.dart';
 import '../../data/mesh/providers.dart';
 import '../../data/playback/notification_art.dart';
@@ -365,13 +366,19 @@ class _MirrorTransport extends ConsumerWidget {
           child: Stack(
             alignment: Alignment.center,
             children: [
+              // The live accent, not the resting one, for the reason the local player's ring
+              // carries: the disc inside it is a `FilledButton` whose fill follows every tick, so
+              // a ring pinned to the resting colour spends each fade disagreeing with the control
+              // it is drawn around.
               if (mirror.buffering)
                 SizedBox(
                   width: 68,
                   height: 68,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: context.surfaces.accent,
+                  child: AccentBuilder(
+                    builder: (context, frame, _) => CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: frame.accent,
+                    ),
                   ),
                 ),
               FilledButton(

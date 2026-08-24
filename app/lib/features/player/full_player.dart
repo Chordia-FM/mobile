@@ -8,6 +8,8 @@ import 'package:flutter/material.dart' hide RepeatMode;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/providers.dart';
+import '../../data/accent/accent_fill.dart';
+import '../../data/accent/accent_scope.dart';
 import '../../data/playback/notification_art.dart';
 import '../../i18n/keys.g.dart';
 import '../../i18n/translations_provider.dart';
@@ -382,17 +384,19 @@ class _Tab extends StatelessWidget {
           alignment: Alignment.topCenter,
           children: [
             if (active)
-              Positioned(
+              const Positioned(
                 left: 20,
                 right: 20,
                 top: 0,
-                child: Container(
+                // A 2px rule reads as a capsule at any corner the scale offers; the web writes
+                // exactly this mark as `h-0.5 rounded-full` (`charts.tsx:1362`). It is also
+                // `bg-primary`, so the blanket rule repaints it on every tick along with the play
+                // button an inch above it — and like the bar's hairline, nobody drags it.
+                child: SizedBox(
                   height: 2,
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.primary,
-                    // A 2px rule reads as a capsule at any corner the scale offers; the web writes
-                    // exactly this mark as `h-0.5 rounded-full` (`charts.tsx:1362`).
+                  child: AccentSurface(
                     borderRadius: ChordiaRadius.pill,
+                    child: SizedBox.expand(),
                   ),
                 ),
               ),
@@ -709,7 +713,6 @@ class _PlayButton extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = ref.t;
-    final theme = Theme.of(context);
     return SizedBox(
       width: 68,
       height: 68,
@@ -718,13 +721,22 @@ class _PlayButton extends ConsumerWidget {
         children: [
           // A ring around the button rather than a spinner in place of it: replacing the glyph
           // would take the control away at the exact moment somebody is most likely to press it.
+          //
+          // On the live accent rather than the resting one, because the disc it encircles is a
+          // `FilledButton` and the theme's button style already follows every tick. Two colours
+          // 2px apart on the same 68px control, disagreeing for a second and a half of every fade,
+          // is worse than either of them alone. A ring cannot carry a gradient any more than a CSS
+          // border can, so in Gradient mode it takes `frame.accent` — the palette's blend, which is
+          // exactly what `--primary` is there.
           if (buffering)
             SizedBox(
               width: 68,
               height: 68,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: theme.colorScheme.primary,
+              child: AccentBuilder(
+                builder: (context, frame, _) => CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: frame.accent,
+                ),
               ),
             ),
           FilledButton(

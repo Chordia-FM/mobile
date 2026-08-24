@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../data/accent/accent_scope.dart';
 import '../../../i18n/keys.g.dart';
 import '../../../i18n/translations_provider.dart';
 import '../../../widgets/cover_art.dart';
@@ -267,8 +268,17 @@ class HeroWash extends StatelessWidget {
 ///
 /// Ported from `components/catalog/DefaultArtistBanner.tsx`: overlapping radial glows in the live
 /// accent plus one lighter highlight hotspot, over a faint accent base wash, so it reads as a
-/// modern mesh gradient rather than a flat band. The colour is read from the theme (never a
-/// constant) so it tracks whatever the accent currently is.
+/// modern mesh gradient rather than a flat band.
+///
+/// Every one of those five layers is written `var(--primary)` on the web, so a browser repaints the
+/// whole banner in the frame the accent moves in. Reading the theme instead tracked the accent only
+/// at REST — pick Fade and the largest accent-derived area on an artist page was the one thing
+/// holding still while the buttons over it cross-faded. So it subscribes to the frame directly,
+/// like `cover_art.dart`'s monogram and for the same reason: there is nothing under here worth
+/// keeping across a tick, the whole widget is the colour.
+///
+/// Gradient mode leaves it on `frame.accent`, the palette's blend, because that is what `--primary`
+/// resolves to there — `--accent-a`/`--accent-b` are read by `.accent-art` and by nothing else.
 ///
 /// The web's film-grain pass is dropped: it is an SVG turbulence filter with no cheap Flutter
 /// equivalent, and it exists only to kill banding a gradient shader does not produce here.
@@ -277,7 +287,7 @@ class AccentBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final primary = Theme.of(context).colorScheme.primary;
+    final primary = AccentScope.of(context).accent;
     // The web's `color-mix(in srgb, var(--primary), white 32%)` highlight.
     final highlight = Color.lerp(primary, Colors.white, 0.32)!;
     return IgnorePointer(

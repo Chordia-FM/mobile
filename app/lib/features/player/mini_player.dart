@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/providers.dart';
 import '../../app/theme.dart';
+import '../../data/accent/accent_fill.dart';
 import '../../data/mesh/providers.dart';
 import '../../data/playback/notification_art.dart';
 import '../../i18n/keys.g.dart';
@@ -168,6 +169,16 @@ class MiniPlayer extends ConsumerWidget {
 ///
 /// Its own widget because it is the only part of the mini player that follows the playhead: kept
 /// inline, the whole bar — cover, two text lines, two buttons — would re-lay-out twice a second.
+///
+/// Hand-rolled rather than a [LinearProgressIndicator], and that is the accent's doing rather than
+/// a layout preference. `PlayerBar.tsx:197` writes the filled part as `h-0.5 bg-primary`, so the
+/// blanket rule in `styles.css` puts `--accent-gradient` on it and repaints it on every tick along
+/// with every other solid accent surface in the app. A `LinearProgressIndicator` takes one flat
+/// `color` and has nowhere to put a gradient, so it would sit at the resting accent while the
+/// play button two inches to its right was mid-fade.
+///
+/// Nobody drags this line — the full player owns the scrubber — so there is no held thumb for a
+/// cross-fade to disagree with, which is the case [AccentSurface] warns about.
 class _ProgressHairline extends ConsumerWidget {
   const _ProgressHairline();
 
@@ -180,11 +191,21 @@ class _ProgressHairline extends ConsumerWidget {
         ? 0.0
         : (position.inMilliseconds / duration.inMilliseconds).clamp(0.0, 1.0);
 
-    return LinearProgressIndicator(
-      value: progress,
-      minHeight: 2,
-      backgroundColor: theme.colorScheme.outline,
-      color: theme.colorScheme.primary,
+    return SizedBox(
+      height: 2,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          ColoredBox(color: theme.colorScheme.outline),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: FractionallySizedBox(
+              widthFactor: progress,
+              child: const AccentSurface(child: SizedBox.expand()),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
