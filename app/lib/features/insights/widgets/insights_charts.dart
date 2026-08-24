@@ -7,6 +7,7 @@ import 'package:intl/intl.dart' show DateFormat, NumberFormat;
 
 import '../../../i18n/keys.g.dart';
 import '../../../i18n/translations_provider.dart';
+import '../../../widgets/tokens.dart';
 import '../../catalog/format.dart' show titleCaseGenre;
 import '../format.dart';
 import 'insights_primitives.dart';
@@ -868,7 +869,7 @@ class ClockGridHeatmap extends ConsumerWidget {
                                         peak,
                                         ramp.length - 1,
                                       )],
-                                  borderRadius: BorderRadius.circular(2),
+                                  borderRadius: ChordiaRadius.markAll,
                                 ),
                               ),
                             ),
@@ -1048,7 +1049,7 @@ class _CalendarPainter extends CustomPainter {
       canvas.drawRRect(
         RRect.fromRectAndRadius(
           Rect.fromLTWH(x, y, cell, cell),
-          const Radius.circular(2),
+          const Radius.circular(ChordiaRadius.mark),
         ),
         Paint()..color = ramp[_level(plays[index], peak, ramp.length - 1)],
       );
@@ -1104,7 +1105,7 @@ class IntensityKey extends ConsumerWidget {
                 height: 10,
                 decoration: BoxDecoration(
                   color: color,
-                  borderRadius: BorderRadius.circular(2),
+                  borderRadius: ChordiaRadius.markAll,
                 ),
               ),
             ),

@@ -1088,6 +1088,15 @@ EntityMenu playlistMenu(
 
   /// Collaborator only: leave a playlist somebody else owns.
   VoidCallback? onLeave,
+
+  /// Opens this playlist's listening figures.
+  ///
+  /// A slot rather than a row this file builds itself, and the reason is the contract: a playlist
+  /// is not an [EntityKind], so `/v1/insights/entity` — which is what [_statsAction] opens — cannot
+  /// answer for one. Playlist figures come from `/v1/playlists/{id}/stats`, a different shape with
+  /// its own me/everyone scope, and the surface that renders them is the host's. Absent until a
+  /// host passes this, exactly as the web has it: a menu row must never navigate somewhere broken.
+  VoidCallback? onStats,
 }) {
   final host = MenuHost(page, ref, nav);
   final t = host.t;
@@ -1207,6 +1216,13 @@ EntityMenu playlistMenu(
             path: '/playlists/${playlist.id}',
             title: playlist.name,
           ),
+          if (onStats != null)
+            MenuAction(
+              id: 'stats',
+              label: t(InsightsKeys.entityTitle),
+              icon: Icons.show_chart_rounded,
+              onSelect: onStats,
+            ),
         ],
       ),
       MenuSection(
@@ -1257,6 +1273,9 @@ EntityMenu smartPlaylistMenu(
 
   /// Owner only, destructive.
   VoidCallback? onDelete,
+
+  /// This playlist's listening figures — see [playlistMenu]'s `onStats` for why it is a slot.
+  VoidCallback? onStats,
 }) {
   final host = MenuHost(page, ref, nav);
   final t = host.t;
@@ -1374,6 +1393,13 @@ EntityMenu smartPlaylistMenu(
             path: '/smart/${playlist.id}',
             title: playlist.name,
           ),
+          if (onStats != null)
+            MenuAction(
+              id: 'stats',
+              label: t(InsightsKeys.entityTitle),
+              icon: Icons.show_chart_rounded,
+              onSelect: onStats,
+            ),
         ],
       ),
       MenuSection(

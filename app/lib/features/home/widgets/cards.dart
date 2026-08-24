@@ -7,6 +7,7 @@ import '../../../widgets/surface.dart';
 import '../../../widgets/tokens.dart';
 import '../../catalog/catalog_routes.dart';
 import '../../catalog/widgets/album_grid.dart';
+import '../../catalog/widgets/entity_menu.dart';
 import '../data/discovery_nav.dart';
 import 'rail.dart';
 
@@ -27,6 +28,7 @@ class EntityCard extends StatelessWidget {
     this.shape = BoxShape.rectangle,
     this.width = shelfCardWidth,
     this.fallbackIcon = Icons.album_rounded,
+    this.menu,
   });
 
   /// The Hub image reference, exactly as the DTO carries it; the hash is taken out here.
@@ -42,10 +44,19 @@ class EntityCard extends StatelessWidget {
   /// Null only where there is genuinely nowhere to go, so no tap is ever swallowed.
   final VoidCallback? onTap;
 
+  /// This card's long-press menu.
+  ///
+  /// A parameter rather than something the card derives, because the card is deliberately kindless
+  /// — it draws a title over artwork for six different sorts of thing — and only the shelf knows
+  /// which of them this one is. The web attaches a menu to every card it renders
+  /// (`components/discovery/cards.tsx` wraps all four kinds in `EntityContextMenu`), so a card
+  /// without one is a card that answers less than the same card on the desktop.
+  final EntityMenuBuilder? menu;
+
   @override
   Widget build(BuildContext context) {
     final round = shape == BoxShape.circle;
-    return CatalogCard(
+    final card = CatalogCard(
       width: width,
       centred: round,
       onTap: onTap,
@@ -62,6 +73,8 @@ class EntityCard extends StatelessWidget {
         semanticLabel: title,
       ),
     );
+
+    return menu == null ? card : EntityMenuGesture(menu: menu!, child: card);
   }
 }
 
@@ -94,6 +107,37 @@ class RecentCard extends StatelessWidget {
       RecentKind.artist => context.goToArtist(item.id),
       RecentKind.playlist => context.goToPlaylist(item.id),
     },
+    // The kind picks the menu exactly as it picks the destination. `RecentItem.mbid` exists for
+    // this: its doc says it is carried "so a menu on a 'Jump back in' card can link straight into
+    // the Manager instead of falling back to a name search", and until now nothing read it.
+    menu: switch (item.kind) {
+      RecentKind.album => (page, ref) => albumMenu(
+        page,
+        ref,
+        AlbumLike(
+          id: item.id,
+          title: item.name,
+          artist: item.subtitle,
+          coverUrl: item.imageUrl,
+          mbid: item.mbid,
+        ),
+      ),
+      RecentKind.artist => (page, ref) => artistMenu(
+        page,
+        ref,
+        ArtistLike(
+          id: item.id,
+          name: item.name,
+          imageUrl: item.imageUrl,
+          mbid: item.mbid,
+        ),
+      ),
+      RecentKind.playlist => (page, ref) => playlistMenu(
+        page,
+        ref,
+        PlaylistLike(id: item.id, name: item.name, coverUrl: item.imageUrl),
+      ),
+    },
   );
 }
 
@@ -115,6 +159,16 @@ class MixCard extends StatelessWidget {
     subtitle: mix.subtitle,
     fallbackIcon: Icons.radio_rounded,
     onTap: () => context.goToDailyMix(mix.seedArtistId),
+    menu: (page, ref) => mixMenu(
+      page,
+      ref,
+      MixLike(
+        seedArtistId: mix.seedArtistId,
+        title: mix.title,
+        subtitle: mix.subtitle,
+        imageUrl: mix.imageUrl,
+      ),
+    ),
   );
 }
 
@@ -132,6 +186,7 @@ class PinPill extends StatelessWidget {
     super.key,
     this.imageUrl,
     this.round = false,
+    this.menu,
   });
 
   final String name;
@@ -141,6 +196,11 @@ class PinPill extends StatelessWidget {
   final bool round;
   final VoidCallback onTap;
 
+  /// This pin's long-press menu, from the shelf that knows which kind of thing it is — the web's
+  /// sidebar pins carry one (`components/app/Sidebar.tsx`), and unpinning is otherwise unreachable
+  /// from the only place the phone shows pins at all.
+  final EntityMenuBuilder? menu;
+
   /// The pill plus its shelf padding; comfortably past the 44px touch floor
   /// ([ChordiaControl.sm]).
   static const shelfHeight = 68.0;
@@ -148,7 +208,7 @@ class PinPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Padding(
+    final pill = Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: PressFill(
         onTap: onTap,
@@ -192,6 +252,8 @@ class PinPill extends StatelessWidget {
         ),
       ),
     );
+
+    return menu == null ? pill : EntityMenuGesture(menu: menu!, child: pill);
   }
 }
 

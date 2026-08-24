@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../i18n/keys.g.dart';
 import '../../i18n/translations_provider.dart';
+import '../catalog/widgets/entity_menu.dart';
 import '../catalog/widgets/list_row.dart';
 import '../playlists/create_playlist_sheet.dart';
 import '../playlists/data/smart_model.dart';
@@ -141,19 +142,39 @@ class PlaylistRow extends ConsumerWidget {
       if (playlist.collaborative ?? false)
         t(PlaylistsKeys.collaboratorsCollaborative),
     ].join(' · ');
+    final auto = playlist.autoCoverUrls;
 
-    return ListRow(
-      leading: MosaicCover(
-        coverUrl: playlist.coverUrl,
-        autoCoverUrls: playlist.autoCoverUrls,
-        size: 40,
-        semanticLabel: playlist.name,
+    return EntityMenuGesture(
+      // The card menu, not the page's: the editing sheets and the two destructive confirmations
+      // all need a host that owns them, and this row owns none of them. Everything a playlist can
+      // do without one — play, queue, radio, pin, download, share — is here, which is the whole
+      // reason the Library tab's rows were the last playlists in the app with no menu at all.
+      menu: (page, sheetRef) => playlistMenu(
+        page,
+        sheetRef,
+        PlaylistLike(
+          id: playlist.id,
+          name: playlist.name,
+          // The mosaic's first tile when the playlist has no cover of its own, so the sheet's
+          // header shows what the row shows rather than a bare glyph.
+          coverUrl:
+              playlist.coverUrl ??
+              (auto == null || auto.isEmpty ? null : auto.first),
+        ),
       ),
-      title: Text(playlist.name),
-      subtitle: Text(subtitle),
-      onTap: () => Navigator.of(context).push(
-        MaterialPageRoute<void>(
-          builder: (context) => PlaylistDetailScreen(playlistId: playlist.id),
+      child: ListRow(
+        leading: MosaicCover(
+          coverUrl: playlist.coverUrl,
+          autoCoverUrls: playlist.autoCoverUrls,
+          size: 40,
+          semanticLabel: playlist.name,
+        ),
+        title: Text(playlist.name),
+        subtitle: Text(subtitle),
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (context) => PlaylistDetailScreen(playlistId: playlist.id),
+          ),
         ),
       ),
     );
@@ -168,35 +189,55 @@ class SmartPlaylistRow extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = ref.t;
-    return ListRow(
-      leading: MosaicCover(
-        coverUrl: playlist.coverUrl,
-        autoCoverUrls: playlist.autoCoverUrls,
-        size: 40,
-        semanticLabel: playlist.name,
+    final auto = playlist.autoCoverUrls;
+
+    // A long press opened the rule builder and nothing else, which quietly said a smart playlist is
+    // a lesser object: it plays, queues, pins, downloads, seeds a station and has a shareable page
+    // exactly like any other playlist. `useSmartPlaylistMenu` on the web makes the same point in
+    // its own words, and Edit is one row of that menu rather than the whole of it.
+    return EntityMenuGesture(
+      menu: (page, sheetRef) => smartPlaylistMenu(
+        page,
+        sheetRef,
+        PlaylistLike(
+          id: playlist.id,
+          name: playlist.name,
+          coverUrl:
+              playlist.coverUrl ??
+              (auto == null || auto.isEmpty ? null : auto.first),
+        ),
+        // The summary row already carries the whole rule set, so the builder opens from here
+        // without loading the snapshot first. Refresh and Delete are absent because this row
+        // cannot honour them: both want a confirmation the list does not own.
+        onEdit: () async {
+          final saved = await openSmartRules(
+            context,
+            existing: SmartSource.ofSummary(playlist),
+          );
+          if (saved != null) ref.invalidate(smartPlaylistsProvider);
+        },
       ),
-      title: Text(playlist.name),
-      // `track_count` is the size of the last SNAPSHOT, not of the rules — a smart playlist that
-      // has never been resolved honestly has none to report.
-      subtitle: Text(
-        playlist.trackCount == null
-            ? t(PlaylistsKeys.smartRefreshNeverRefreshed)
-            : t(PlaylistsKeys.songCount, {'count': playlist.trackCount}),
-      ),
-      onTap: () => Navigator.of(context).push(
-        MaterialPageRoute<void>(
-          builder: (context) => SmartPlaylistScreen(playlistId: playlist.id),
+      child: ListRow(
+        leading: MosaicCover(
+          coverUrl: playlist.coverUrl,
+          autoCoverUrls: playlist.autoCoverUrls,
+          size: 40,
+          semanticLabel: playlist.name,
+        ),
+        title: Text(playlist.name),
+        // `track_count` is the size of the last SNAPSHOT, not of the rules — a smart playlist that
+        // has never been resolved honestly has none to report.
+        subtitle: Text(
+          playlist.trackCount == null
+              ? t(PlaylistsKeys.smartRefreshNeverRefreshed)
+              : t(PlaylistsKeys.songCount, {'count': playlist.trackCount}),
+        ),
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (context) => SmartPlaylistScreen(playlistId: playlist.id),
+          ),
         ),
       ),
-      // The summary row already carries the whole rule set, so the builder can be opened from here
-      // without loading the snapshot first — which is what the web client's row menu does.
-      onLongPress: () async {
-        final saved = await openSmartRules(
-          context,
-          existing: SmartSource.ofSummary(playlist),
-        );
-        if (saved != null) ref.invalidate(smartPlaylistsProvider);
-      },
     );
   }
 }

@@ -10,6 +10,7 @@ import '../../../widgets/surface.dart';
 import '../../../widgets/tokens.dart';
 import '../../catalog/catalog_routes.dart';
 import '../format.dart';
+import 'entity_kind_menu.dart';
 
 /// The Overview's hero card: one card per entity kind, leading with the #1's artwork full bleed
 /// and the runners-up ranked beneath.
@@ -57,17 +58,24 @@ class TopEntityCard extends ConsumerWidget {
             children: [
               Stack(
                 children: [
-                  InkWell(
-                    onTap: () => openEntity(context, kind, first.id),
-                    child: LayoutBuilder(
-                      // The cover is square and fills the card, so its side IS the card's width —
-                      // the one number `CoverArt` needs, and the one this widget cannot know until
-                      // it is laid out.
-                      builder: (context, constraints) => CoverArt(
-                        sha256: artHashOf(first.imageUrl),
-                        size: constraints.maxWidth,
-                        borderRadius: BorderRadius.zero,
-                        semanticLabel: first.name,
+                  // The artwork only, not the whole stack: the scrim above it ignores pointers and
+                  // the share control on top is its own target, so a long press anywhere on the
+                  // hero reaches this and nothing else.
+                  EntityKindMenu(
+                    kind: kind,
+                    item: first,
+                    child: InkWell(
+                      onTap: () => openEntity(context, kind, first.id),
+                      child: LayoutBuilder(
+                        // The cover is square and fills the card, so its side IS the card's width
+                        // — the one number `CoverArt` needs, and the one this widget cannot know
+                        // until it is laid out.
+                        builder: (context, constraints) => CoverArt(
+                          sha256: artHashOf(first.imageUrl),
+                          size: constraints.maxWidth,
+                          borderRadius: BorderRadius.zero,
+                          semanticLabel: first.name,
+                        ),
                       ),
                     ),
                   ),
@@ -161,53 +169,57 @@ class _RunnerUp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final t = ref.t;
     final theme = Theme.of(context);
-    return InkWell(
-      borderRadius: ChordiaRadius.lgAll,
-      onTap: () => openEntity(context, kind, item.id),
-      child: Padding(
-        // Taller than the web's `py-1.5`: every row here is a tap target, and the touch scale is
-        // what `--control-h-*` collapses to under `pointer: coarse`.
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-        child: Row(
-          children: [
-            SizedBox(
-              width: 18,
-              child: Text(
-                '$rank',
-                textAlign: TextAlign.center,
+    return EntityKindMenu(
+      kind: kind,
+      item: item,
+      child: InkWell(
+        borderRadius: ChordiaRadius.lgAll,
+        onTap: () => openEntity(context, kind, item.id),
+        child: Padding(
+          // Taller than the web's `py-1.5`: every row here is a tap target, and the touch scale is
+          // what `--control-h-*` collapses to under `pointer: coarse`.
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          child: Row(
+            children: [
+              SizedBox(
+                width: 18,
+                child: Text(
+                  '$rank',
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              CoverArt(
+                sha256: artHashOf(item.imageUrl),
+                size: 28,
+                shape: kind == EntityKind.artist
+                    ? BoxShape.circle
+                    : BoxShape.rectangle,
+                semanticLabel: item.name,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  item.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                t(InsightsKeys.topPlaysCount, {'count': item.plays}),
                 style: theme.textTheme.labelSmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
-            ),
-            const SizedBox(width: 10),
-            CoverArt(
-              sha256: artHashOf(item.imageUrl),
-              size: 28,
-              shape: kind == EntityKind.artist
-                  ? BoxShape.circle
-                  : BoxShape.rectangle,
-              semanticLabel: item.name,
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                item.name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              t(InsightsKeys.topPlaysCount, {'count': item.plays}),
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

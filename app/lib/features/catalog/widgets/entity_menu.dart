@@ -9,6 +9,7 @@ import '../../../data/art/art_cache.dart';
 import '../../../i18n/keys.g.dart';
 import '../../../i18n/translations_provider.dart';
 import '../../../widgets/cover_art.dart';
+import './list_row.dart';
 
 // One import for the whole menu system: half the app opens a track's menu, and asking each of
 // those files to import the model AND the builders is how one of them ends up with a menu the
@@ -186,7 +187,7 @@ class _EntityMenuSheet extends ConsumerWidget {
                 if (action.row case final row?)
                   row(context, close)
                 else
-                  ListTile(
+                  ListRow(
                     leading: Icon(
                       action.icon,
                       color: action.destructive
@@ -226,7 +227,7 @@ class _MenuHeader extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        ListTile(
+        ListRow(
           leading: CoverArt(
             sha256: artHashOf(target.imageUrl),
             size: 48,

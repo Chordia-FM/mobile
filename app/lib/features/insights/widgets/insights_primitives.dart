@@ -6,12 +6,16 @@ import '../../../data/art/art_cache.dart';
 import '../../../i18n/keys.g.dart';
 import '../../../i18n/translations_provider.dart';
 import '../../../widgets/cover_art.dart';
+import '../../../widgets/surface.dart';
+import '../../../widgets/tokens.dart';
 import '../../catalog/catalog_routes.dart';
 import '../../catalog/format.dart';
 import '../../catalog/widgets/artist_links.dart';
 import '../../catalog/widgets/catalog_state.dart';
+import '../../catalog/widgets/list_row.dart';
 import '../data/insights_providers.dart';
 import '../format.dart';
+import 'entity_kind_menu.dart';
 import 'top_entity_card.dart' show openEntity;
 
 /// The reporting-window pills.
@@ -94,12 +98,11 @@ class StatTile extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final change = showDelta ? compared?.change : null;
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(12),
-      ),
+    // `island-shell rounded-xl p-4` (`insights/primitives.tsx:102`) — the same `StatTile` the
+    // admin overview and system tabs use. A flat `surfaceContainerHigh` fill is not that material:
+    // the panel is an accent-tinted gradient with an accent hairline, which is what makes a grid of
+    // these read as the web's stat row rather than as a page of grey boxes.
+    return IslandPanel(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
@@ -233,56 +236,61 @@ class TopList extends ConsumerWidget {
     return Column(
       children: [
         for (final (index, item) in shown.indexed)
-          ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-            leading: SizedBox(
-              width: kind == null ? 24 : 68,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  SizedBox(
-                    width: 24,
-                    child: Text(
-                      '${index + 1}',
-                      textAlign: TextAlign.center,
-                      style: theme.textTheme.labelMedium?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
+          // Genre rows pass no kind and so mount no menu: they are not catalog entities, and the
+          // id a genre row carries is a hash of its name that no menu could act on.
+          EntityKindMenu(
+            kind: kind,
+            item: item,
+            child: ListRow(
+              leading: SizedBox(
+                width: kind == null ? 24 : 68,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      width: 24,
+                      child: Text(
+                        '${index + 1}',
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.labelMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
                       ),
                     ),
-                  ),
-                  if (kind != null) ...[
-                    const SizedBox(width: 4),
-                    CoverArt(
-                      sha256: artHashOf(item.imageUrl),
-                      size: 40,
-                      shape: kind == EntityKind.artist
-                          ? BoxShape.circle
-                          : BoxShape.rectangle,
-                      semanticLabel: item.name,
-                    ),
+                    if (kind != null) ...[
+                      const SizedBox(width: 4),
+                      CoverArt(
+                        sha256: artHashOf(item.imageUrl),
+                        size: 40,
+                        shape: kind == EntityKind.artist
+                            ? BoxShape.circle
+                            : BoxShape.rectangle,
+                        semanticLabel: item.name,
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
+              title: Text(
+                // The catalog stores genres lower-cased, and every other surface title-cases them on
+                // the way out. A row reading "hip hop" beside a chip reading "Hip Hop" looks like
+                // two different tags rather than one.
+                _genres ? titleCaseGenre(item.name) : item.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              subtitle: Text(
+                '${t(InsightsKeys.topPlaysCount, {'count': item.plays})} · '
+                '${msToTime(item.msPlayed, t)}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              onTap: _genres
+                  ? () => context.goToGenre(genreSlug(item.name))
+                  : kind == null
+                  ? null
+                  : () => openEntity(context, kind!, item.id),
             ),
-            title: Text(
-              // The catalog stores genres lower-cased, and every other surface title-cases them on
-              // the way out. A row reading "hip hop" beside a chip reading "Hip Hop" looks like
-              // two different tags rather than one.
-              _genres ? titleCaseGenre(item.name) : item.name,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            subtitle: Text(
-              '${t(InsightsKeys.topPlaysCount, {'count': item.plays})} · '
-              '${msToTime(item.msPlayed, t)}',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            onTap: _genres
-                ? () => context.goToGenre(genreSlug(item.name))
-                : kind == null
-                ? null
-                : () => openEntity(context, kind!, item.id),
           ),
       ],
     );
@@ -326,8 +334,7 @@ class PlayRow extends ConsumerWidget {
       t,
       locale: ref.watch(translationsProvider).locale,
     );
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+    return ListRow(
       leading: CoverArt(sha256: artHashOf(imageUrl), size: 44),
       title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
       subtitle: Row(
@@ -399,7 +406,9 @@ class BarChart extends StatelessWidget {
                     ),
                     Expanded(
                       child: ClipRRect(
-                        borderRadius: BorderRadius.circular(4),
+                        // `rounded-full`, as every bar on the web is
+                        // (`EntityStatsView.tsx:339`).
+                        borderRadius: ChordiaRadius.pill,
                         child: LinearProgressIndicator(
                           // Zero everywhere is a real answer (a window with no plays), and dividing
                           // by it would paint every bar full instead of empty.
