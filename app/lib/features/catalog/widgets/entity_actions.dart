@@ -71,6 +71,9 @@ abstract interface class MenuNav {
 abstract interface class DiscoverNav {
   void goToDiscoverArtist(String artistMbid);
   void goToReleaseGroup(String releaseGroupMbid);
+
+  /// A name search in Discover, for the entities that have no MusicBrainz id to go straight to.
+  void goToDiscoverSearch(String term);
 }
 
 /// The default: navigate from the page the menu was opened over.
@@ -117,6 +120,11 @@ class PageMenuNav implements MenuNav, DiscoverNav {
   @override
   void goToReleaseGroup(String releaseGroupMbid) {
     if (page.mounted) page.goToReleaseGroup(releaseGroupMbid);
+  }
+
+  @override
+  void goToDiscoverSearch(String term) {
+    if (page.mounted) page.goToDiscoverSearch(term);
   }
 
   @override
@@ -323,28 +331,49 @@ MenuAction _shareAction(
 
 /// "Open in Discover" — this entity in the Manager, with its owned/missing state.
 ///
-/// Null when there is no MusicBrainz id to go to. The web falls back to a name search
-/// (`/app/manager/discover?q=…`), which is why it can offer the row on a track; the phone's
-/// Manager takes no query, so a fallback would land the reader on an empty search field and call
-/// that an answer.
+/// A MusicBrainz id is the destination worth having: the artist's or release group's own Manager
+/// page, everything they released set against what is owned. [term] is the web's FALLBACK
+/// (`lib/menus/actions.tsx` navigates to `/app/manager/discover?q=…`) and the only route a TRACK
+/// has, since no track carries an MBID on the wire — without it the row would be missing from
+/// exactly the rows most likely to want looking up.
+///
+/// Passed by the track menu alone, and that is deliberate while the phone's Discover cannot be
+/// SEEDED: `manager?q=` picks the Discover tab, but `widgets/discover_view.dart` owns the search
+/// field and takes no initial value, so a name search currently arrives with an empty box. For a
+/// track that is still better than no row at all; for an album or artist whose MBID enrichment
+/// merely has not run, it would be strictly worse than the precise destination they usually have.
+/// Both call sites can pass a term the day that field can be filled in.
+///
+/// Null when the nav cannot reach the Manager — the player's sits on a root-navigator route with no
+/// `GoRouterState` above it — or when there is neither an id nor a name to look anything up by.
 MenuAction? _discoverAction(
   MenuHost host, {
+  String? term,
   String? artistMbid,
   String? albumMbid,
 }) {
   // Bound by pattern rather than tested with `is`: the row's callback is a closure, and a
   // promotion does not survive into one.
   if (host.nav case final DiscoverNav nav) {
-    final mbid = albumMbid ?? artistMbid;
-    if (mbid == null || mbid.isEmpty) return null;
+    // An empty string is what an un-enriched row carries, and it is not an id.
+    final release = (albumMbid?.isEmpty ?? true) ? null : albumMbid;
+    final artist = (artistMbid?.isEmpty ?? true) ? null : artistMbid;
+    final search = term?.trim() ?? '';
+    if (release == null && artist == null && search.isEmpty) return null;
 
     return MenuAction(
       id: 'open-in-discover',
       label: host.t(ManagerKeys.discoverOpenIn),
       icon: Icons.travel_explore_rounded,
-      onSelect: () => albumMbid != null && albumMbid.isNotEmpty
-          ? nav.goToReleaseGroup(albumMbid)
-          : nav.goToDiscoverArtist(mbid),
+      onSelect: () {
+        if (release != null) {
+          nav.goToReleaseGroup(release);
+        } else if (artist != null) {
+          nav.goToDiscoverArtist(artist);
+        } else {
+          nav.goToDiscoverSearch(search);
+        }
+      },
     );
   }
   return null;
@@ -536,6 +565,8 @@ EntityMenu trackMenu(
               onSelect: () => host.nav.goToArtist(artistId),
             ),
           _shareAction(host, path: '/tracks/${track.id}', title: track.title),
+          // Name search only, and unconditionally so — a track has no MBID of its own to aim at.
+          ?_discoverAction(host, term: '${track.artist} ${track.title}'.trim()),
         ],
       ),
       MenuSection(
@@ -1710,6 +1741,72 @@ EntityMenu likedSongsMenu(
             icon: Icons.favorite_rounded,
             onSelect: () => host.nav.openScreen((_) => const LikedScreen()),
           ),
+        ],
+      ),
+    ],
+  );
+}
+
+// ── 13. a pinned station ───────────────────────────────────────────────────────────────────────
+
+/// A radio pin: the artist station somebody kept.
+///
+/// The thirteenth, and the one kind the web has no menu for — its sidebar pin row offers Unpin and
+/// the layout editor, because a desktop reader reaches the station itself by clicking the row and
+/// everything else about it from the artist's page. The phone shows pins in exactly one place, the
+/// Quick access shelf, so the station's own actions have nowhere else to live.
+///
+/// Pinned as [PinKind.radio] and not [PinKind.artist]: the Hub stores them as two separate pins of
+/// the same seed, and unpinning the wrong kind would leave the pill sitting on the shelf.
+EntityMenu radioPinMenu(
+  BuildContext page,
+  WidgetRef ref, {
+  required String seedArtistId,
+  required String name,
+  String? imageUrl,
+  MenuNav? nav,
+}) {
+  final host = MenuHost(page, ref, nav);
+  final t = host.t;
+  final pinned = _isPinned(ref, PinKind.radio, seedArtistId);
+
+  return EntityMenu(
+    target: MenuTarget(
+      kind: MenuTargetKind.mix,
+      id: seedArtistId,
+      title: name,
+      imageUrl: imageUrl,
+      // Round, as the pill draws it: a station's artwork is its seed artist's.
+      round: true,
+    ),
+    sections: [
+      MenuSection(
+        id: 'play',
+        items: [_radioAction(host, StationKind.artist, seedArtistId)],
+      ),
+      MenuSection(
+        id: 'collect',
+        items: [
+          _pinAction(
+            host,
+            pinned: pinned,
+            kind: PinKind.radio,
+            id: seedArtistId,
+          ),
+        ],
+      ),
+      MenuSection(
+        id: 'navigate',
+        items: [
+          MenuAction(
+            id: 'go-to-artist',
+            label: t(CommonKeys.actionsGoToArtist),
+            icon: Icons.person_outline_rounded,
+            onSelect: () => host.nav.goToArtist(seedArtistId),
+          ),
+          // The artist, not the station: `shareUrlFor` resolves against the frontend's public
+          // redirect stubs, and there is no stub for a station.
+          _shareAction(host, path: '/artists/$seedArtistId', title: name),
         ],
       ),
     ],

@@ -12,6 +12,7 @@ import 'package:chordia_mobile/features/home/data/home_feed.dart';
 import 'package:chordia_mobile/features/home/data/hub_cache.dart';
 import 'package:chordia_mobile/features/home/data/see_all.dart';
 import 'package:chordia_mobile/features/home/home_screen.dart';
+import 'package:chordia_mobile/features/home/widgets/cards.dart';
 import 'package:chordia_mobile/i18n/keys.g.dart';
 import 'package:chordia_mobile/i18n/translations.dart';
 import 'package:flutter/material.dart';
@@ -150,6 +151,46 @@ void main() {
         find.text(translations(DiscoveryKeys.shelfFriendsListening)),
         findsNothing,
       );
+    });
+
+    testWidgets('every card on the shelves carries its menu', (tester) async {
+      tester.view.physicalSize = const Size(1200, 3000);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(
+        _app(
+          source: FakeHomeSource(
+            pinsValue: [pin(), radioPin()],
+            mixesValue: [mix()],
+            trendingValue: Trending(
+              albums: const [],
+              artists: const [],
+              tracks: [track('t')],
+            ),
+          ),
+          cache: MemoryHubCache(),
+          artDirectory: artDirectory,
+        ),
+      );
+      await tester.pump();
+
+      // The web wraps every card it renders in a context menu
+      // (`components/discovery/cards.tsx`), so a card without one simply answers less on the phone
+      // than the same card on the desktop. The pins are the sharpest case: this shelf is the only
+      // place the phone shows a pin, so a pill with no menu makes unpinning unreachable.
+      final menus = <Object?>[
+        ...tester
+            .widgetList<EntityCard>(find.byType(EntityCard))
+            .map((card) => card.menu),
+        ...tester
+            .widgetList<PinPill>(find.byType(PinPill))
+            .map((pill) => pill.menu),
+      ];
+
+      expect(find.byType(PinPill), findsNWidgets(2));
+      expect(find.byType(EntityCard), findsWidgets);
+      expect(menus, everyElement(isNotNull));
     });
   });
 
@@ -506,6 +547,10 @@ DailyMix mix() => const DailyMix(
 
 PinnedItem pin() =>
     const PinnedItem(id: 'pinned', kind: PinKind.album, name: 'Pinned album');
+
+/// The one pin kind with no entity page behind it, and the one whose menu is the phone's own.
+PinnedItem radioPin() =>
+    const PinnedItem(id: 'seed', kind: PinKind.radio, name: 'Artist Radio');
 
 LibrarySummary library() => const LibrarySummary(
   createdAt: 0,

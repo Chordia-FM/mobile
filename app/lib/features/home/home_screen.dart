@@ -9,6 +9,7 @@ import '../catalog/data/playback.dart';
 import '../catalog/widgets/album_grid.dart';
 import '../catalog/widgets/artist_row.dart';
 import '../catalog/widgets/catalog_state.dart';
+import '../catalog/widgets/entity_menu.dart';
 import '../social/social_routes.dart';
 import 'data/daypart.dart';
 import 'data/discovery_nav.dart';
@@ -113,6 +114,47 @@ class HomeScreen extends ConsumerWidget {
                   PinKind.playlist => context.goToPlaylist(pin.id),
                   PinKind.radio => context.goToArtistRadio(pin.id),
                 },
+                // The kind picks the menu exactly as it picks the destination — and every one of
+                // them carries the pin row, which is the only way to UNPIN anything from the one
+                // place the phone shows pins at all. A pin holds a name and a picture and nothing
+                // else, so the menus that want more (an album's artist, a playlist's tracks) fetch
+                // it themselves.
+                menu: (page, sheetRef) => switch (pin.kind) {
+                  PinKind.album => albumMenu(
+                    page,
+                    sheetRef,
+                    AlbumLike(
+                      id: pin.id,
+                      title: pin.name,
+                      coverUrl: pin.imageUrl,
+                    ),
+                  ),
+                  PinKind.artist => artistMenu(
+                    page,
+                    sheetRef,
+                    ArtistLike(
+                      id: pin.id,
+                      name: pin.name,
+                      imageUrl: pin.imageUrl,
+                    ),
+                  ),
+                  PinKind.playlist => playlistMenu(
+                    page,
+                    sheetRef,
+                    PlaylistLike(
+                      id: pin.id,
+                      name: pin.name,
+                      coverUrl: pin.imageUrl,
+                    ),
+                  ),
+                  PinKind.radio => radioPinMenu(
+                    page,
+                    sheetRef,
+                    seedArtistId: pin.id,
+                    name: pin.name,
+                    imageUrl: pin.imageUrl,
+                  ),
+                },
               );
             },
           ),
@@ -174,6 +216,21 @@ class HomeScreen extends ConsumerWidget {
                   tracks: feed.trendingTracks,
                   index: index,
                   playContext: null,
+                ),
+                // The full browse row, so this is the same menu the track gets in any list —
+                // like, hide, add to playlist, download. `onPlay` is the card's own tap, which the
+                // web passes for the same reason (`TrendingTracksList.tsx`): a menu whose Play
+                // queued only this one song would disagree with the card above it.
+                menu: (page, sheetRef) => trackMenu(
+                  page,
+                  sheetRef,
+                  track,
+                  onPlay: () => playTracksFrom(
+                    ref,
+                    tracks: feed.trendingTracks,
+                    index: index,
+                    playContext: null,
+                  ),
                 ),
               );
             },

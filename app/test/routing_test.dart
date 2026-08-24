@@ -24,6 +24,9 @@ void main() {
   const pushedFromAnyTab = [
     'artists/ar-1',
     'artists/ar-1/discography',
+    // The synthesized live collection. Its card pushes the screen directly, so only a shared
+    // `/app/artists/{id}/live` exercises the route — which is precisely how it went unregistered.
+    'artists/ar-1/live',
     'albums/al-1',
     'tracks/tr-1',
     'genres',
@@ -55,6 +58,9 @@ void main() {
     'admin',
     'admin/users/us-1',
     'manager',
+    // `goToDiscoverSearch`: the Manager opened on a name search, which is the only route into
+    // Discover a track has.
+    'manager?q=machine%20gun%20kelly',
     'manager/artists/ar-1',
     'manager/discover/artists/mb-1',
     'manager/releases/rg-1',
@@ -120,6 +126,7 @@ void main() {
       '/app/albums/al-1',
       '/app/artists/ar-1',
       '/app/artists/ar-1/discography',
+      '/app/artists/ar-1/live',
       '/app/albums/al-1/stats',
       '/app/artists/ar-1/stats',
       '/app/tracks/tr-1/stats',

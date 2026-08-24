@@ -25,7 +25,11 @@ import 'release_group_screen.dart';
 List<RouteBase> managerRoutes() => [
   GoRoute(
     path: 'manager',
-    builder: (context, state) => const ManagerScreen(),
+    // `?q=` seeds a Discover search, exactly as the web's `/app/manager/discover?q=` does. A query
+    // rather than a path segment for the reason the web gives: the page IS a live search box, and
+    // this fills it in rather than replacing it.
+    builder: (context, state) =>
+        ManagerScreen(query: state.uri.queryParameters['q']),
     routes: [
       GoRoute(
         path: 'artists/:artistId',
@@ -53,6 +57,13 @@ extension ManagerNavigation on BuildContext {
   /// What MusicBrainz says one owned artist released, against what is in the library.
   void goToArtistCoverage(String artistId) =>
       _pushInTab('manager/artists/$artistId');
+
+  /// A name search in Discover, for the entities with no MusicBrainz id to aim at.
+  ///
+  /// The route an "Open in Discover" on a TRACK takes: tracks carry no MBID on the wire, so the
+  /// name is all there is to look one up by.
+  void goToDiscoverSearch(String term) =>
+      _pushInTab('manager?q=${Uri.encodeQueryComponent(term)}');
 
   /// A discovered artist — not necessarily one the caller owns anything by.
   void goToDiscoverArtist(String artistMbid) =>

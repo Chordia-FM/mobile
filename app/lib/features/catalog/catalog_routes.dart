@@ -10,6 +10,7 @@ import 'genre_screen.dart';
 import 'genres_screen.dart';
 import 'label_screen.dart';
 import 'labels_screen.dart';
+import 'live_album_screen.dart';
 import 'track_screen.dart';
 
 /// The catalog screens, as sub-routes of a tab's root.
@@ -36,6 +37,15 @@ List<RouteBase> catalogRoutes() => [
         builder: (context, state) => ArtistDiscographyScreen(
           artistId: state.pathParameters['artistId']!,
         ),
+      ),
+      // `artists/{id}/live` — the synthesized live collection, at the web's own path
+      // (`routes/_authed/app/artists/$artistId/live.tsx`). The screen has existed since the artist
+      // page grew its Live card, but only behind a `MaterialPageRoute`, so a shared link to it
+      // landed on the error page.
+      GoRoute(
+        path: 'live',
+        builder: (context, state) =>
+            ArtistLiveScreen(artistId: state.pathParameters['artistId']!),
       ),
       _stats(EntityKind.artist, 'artistId'),
     ],
