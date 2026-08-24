@@ -98,16 +98,47 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-          # Gradle resolves the Android plugin, the Kotlin plugin and every plugin AAR on a cold
-          # runner, which is nearly all of this job's four minutes -- `flutter-action`'s own cache
-          # covers the Flutter SDK and nothing under `~/.gradle`. Keyed on the `*.gradle*` files,
-          # so it re-resolves only when the build scripts actually change.
-          cache: gradle
+      # Gradle resolves the Android plugin, the Kotlin plugin and every plugin AAR on a cold
+      # runner, which is nearly all of this job's four minutes -- `flutter-action`'s own cache
+      # covers the Flutter SDK and the pub cache, and nothing under `~/.gradle`.
+      #
+      # Explicit rather than setup-java's `cache: gradle`, which caches these same two paths but
+      # deliberately sets NO restore-keys (actions/setup-java#269): touching any `*.gradle*` file
+      # misses outright and re-resolves the entire dependency set from scratch. Here that falls
+      # back to the previous entry and Gradle fetches only what actually changed. Same two paths
+      # setup-java used, so this replaces that cache rather than layering a second one over it.
+      #
+      # A stale entry cannot fake a green build. `caches/modules-2` is content-addressed by
+      # group:artifact:version plus checksum and `wrapper/dists` by the exact `distributionUrl`,
+      # so Gradle reuses only a file it asked for by name and downloads anything else; nothing
+      # here is a build output, since `org.gradle.caching` is not enabled in gradle.properties.
+      # No gate reads Gradle state in any case -- analyze, test and drift-check never invoke it,
+      # and this job's only assertion is that the APK builds from the checked-out source.
+      - name: Cache the Gradle dependency cache
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          # `pubspec.lock` is in the key because the resolved plugin set decides which AARs
+          # Gradle pulls, and `FLUTTER_VERSION` because the embedding and the engine artifacts
+          # are versioned with the SDK. Only the trailing hash relaxes on fallback.
+          key: gradle-dev-${{ runner.os }}-${{ runner.arch }}-jdk17-flutter${{ env.FLUTTER_VERSION }}-${{ hashFiles('app/android/**/*.gradle*', 'app/android/gradle.properties', 'app/android/gradle/wrapper/gradle-wrapper.properties', 'pubspec.lock') }}
+          restore-keys: |
+            gradle-dev-${{ runner.os }}-${{ runner.arch }}-jdk17-flutter${{ env.FLUTTER_VERSION }}-
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
           cache: true
+          # `cache: true` already covers the SDK and `~/.pub-cache`, keyed on pubspec.lock. What
+          # it does not distinguish is that `flutter build apk` precaches the Android engine
+          # artifacts into the SDK directory: analyze/test/drift-check finish first and save an
+          # SDK without them under the shared default key, so this job re-downloads them every
+          # run and can never save them back (the key it would write already exists). Its own key
+          # keeps them. The placeholders still pin os, channel, exact version, arch and the
+          # release hash, so an entry can only ever be that same SDK.
+          cache-key: "flutter-android-:os:-:channel:-:version:-:arch:-:hash:"
       - run: flutter pub get
       - name: Build dev APK
         run: >-
@@ -143,11 +174,41 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-          # Gradle resolves the Android plugin, the Kotlin plugin and every plugin AAR on a cold
-          # runner, which is nearly all of this job's four minutes -- `flutter-action`'s own cache
-          # covers the Flutter SDK and nothing under `~/.gradle`. Keyed on the `*.gradle*` files,
-          # so it re-resolves only when the build scripts actually change.
-          cache: gradle
+      # Gradle resolves the Android plugin, the Kotlin plugin and every plugin AAR on a cold
+      # runner, which is nearly all of this job's four minutes -- `flutter-action`'s own cache
+      # covers the Flutter SDK and the pub cache, and nothing under `~/.gradle`.
+      #
+      # Explicit rather than setup-java's `cache: gradle`, which caches these same two paths but
+      # deliberately sets NO restore-keys (actions/setup-java#269): touching any `*.gradle*` file
+      # misses outright and re-resolves the entire dependency set from scratch. Here that falls
+      # back to the previous entry and Gradle fetches only what actually changed. Same two paths
+      # setup-java used, so this replaces that cache rather than layering a second one over it.
+      #
+      # A stale entry cannot fake a green build. `caches/modules-2` is content-addressed by
+      # group:artifact:version plus checksum and `wrapper/dists` by the exact `distributionUrl`,
+      # so Gradle reuses only a file it asked for by name and downloads anything else; nothing
+      # here is a build output, since `org.gradle.caching` is not enabled in gradle.properties.
+      # No gate reads Gradle state in any case -- analyze, test and drift-check never invoke it,
+      # and this job's only assertion is that the APK builds from the checked-out source.
+      - name: Cache the Gradle dependency cache
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          # `pubspec.lock` is in the key because the resolved plugin set decides which AARs
+          # Gradle pulls, and `FLUTTER_VERSION` because the embedding and the engine artifacts
+          # are versioned with the SDK. Only the trailing hash relaxes on fallback.
+          key: gradle-prod-${{ runner.os }}-${{ runner.arch }}-jdk17-flutter${{ env.FLUTTER_VERSION }}-${{ hashFiles('app/android/**/*.gradle*', 'app/android/gradle.properties', 'app/android/gradle/wrapper/gradle-wrapper.properties', 'pubspec.lock') }}
+          # First fallback relaxes only the trailing hash. The second relaxes the dev/prod
+          # partition as well: releases are rare enough that their own entry is usually evicted,
+          # and the dev entry the push/PR runs keep warm is the same content-addressed module
+          # cache, just missing the release-only pieces (R8 and friends) that Gradle then
+          # downloads. Everything identifying the toolchain -- os, arch, JDK, Flutter version --
+          # stays pinned in both.
+          restore-keys: |
+            gradle-prod-${{ runner.os }}-${{ runner.arch }}-jdk17-flutter${{ env.FLUTTER_VERSION }}-
+            gradle-dev-${{ runner.os }}-${{ runner.arch }}-jdk17-flutter${{ env.FLUTTER_VERSION }}-
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
