@@ -7,7 +7,10 @@ import '../../../data/art/art_cache.dart';
 import '../../../i18n/keys.g.dart';
 import '../../../i18n/translations_provider.dart';
 import '../../../widgets/cover_art.dart';
+import '../../../widgets/tokens.dart';
+import '../../catalog/widgets/list_row.dart';
 import 'badge_art.dart';
+import 'badge_directory.dart';
 
 /// Somebody's picture, or their initial.
 ///
@@ -210,7 +213,7 @@ class BadgeRow extends ConsumerWidget {
       children: [
         for (final badge in held)
           InkWell(
-            borderRadius: BorderRadius.circular(999),
+            borderRadius: ChordiaRadius.pill,
             onTap: () => showBadgeDetail(context, badge),
             child: Padding(
               // The badge art is 28px, which is below the touch minimum on its own; the padding is
@@ -240,17 +243,25 @@ class BadgeRow extends ConsumerWidget {
 /// where the engraving, the rank number and the Super-Sonic stage rings are legible, and where the
 /// three questions a badge on a stranger's profile raises get answered: which one is it, since
 /// when, and why does this person have it.
-Future<void> showBadgeDetail(BuildContext context, ProfileBadge badge) =>
-    showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      builder: (_) => _BadgeDetail(badge: badge),
-    );
+Future<void> showBadgeDetail(
+  BuildContext context,
+  ProfileBadge badge,
+) => showModalBottomSheet<void>(
+  context: context,
+  showDragHandle: true,
+  // The PAGE's context, handed down rather than looked up inside: the directory action closes
+  // this sheet and then pushes, and the sheet's own context is dead by the time it would.
+  builder: (_) => _BadgeDetail(badge: badge, page: context),
+);
 
 class _BadgeDetail extends ConsumerWidget {
-  const _BadgeDetail({required this.badge});
+  const _BadgeDetail({required this.badge, required this.page});
 
   final ProfileBadge badge;
+
+  /// Whatever raised the sheet — a profile header, a follower row — and therefore the navigator
+  /// the directory belongs on.
+  final BuildContext page;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -313,6 +324,24 @@ class _BadgeDetail extends ConsumerWidget {
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
+            ),
+            const SizedBox(height: 8),
+            // And out to the whole set. On the web, hovering a badge explains it and CLICKING it
+            // opens the directory at that badge — two gestures the phone has one of, so the sheet
+            // that replaced the hover carries the click. Collapsing the pair the other way, so a
+            // tap went straight to the directory, would lose the half only this sheet can say:
+            // the rank, the streak and the date belong to the person whose profile you are on and
+            // appear nowhere in a catalogue of badges in general.
+            ListRow(
+              gutter: 0,
+              leading: const Icon(Icons.workspace_premium_rounded),
+              title: Text(t(SocialKeys.badgesDirectoryTitle)),
+              subtitle: Text(t(SocialKeys.badgesDirectorySubtitle)),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () {
+                Navigator.of(context).pop();
+                showBadgeDirectory(page, highlightKind: badge.kind);
+              },
             ),
           ],
         ),

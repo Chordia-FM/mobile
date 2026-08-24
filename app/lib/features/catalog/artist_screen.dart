@@ -16,6 +16,7 @@ import 'data/catalog_api.dart';
 import 'data/catalog_providers.dart';
 import 'data/playback.dart';
 import 'format.dart';
+import 'live_album_screen.dart';
 import 'widgets/album_grid.dart';
 import 'widgets/artist_row.dart';
 import 'widgets/catalog_state.dart';
@@ -112,14 +113,28 @@ class _ArtistViewState extends ConsumerState<_ArtistView> {
     final hasPlayer = ref.watch(catalogPlayerActionsProvider) != null;
     final canPlay = hasPlayer && artist.topTracks.isNotEmpty;
 
-    // Three-way split of the discography. Feature appearances get their own shelf rather than
-    // sitting unmarked beside the artist's own records, and singles/EPs are separated from albums
-    // because a listener looking for "the albums" does not mean forty single sleeves.
+    // Split of the discography. Feature appearances get their own shelf rather than sitting
+    // unmarked beside the artist's own records, and singles/EPs are separated from albums because
+    // a listener looking for "the albums" does not mean forty single sleeves.
     final albums = artist.albums;
     final featuring = albums.where((a) => a.appearsOn ?? false).toList();
     final own = albums.where((a) => !(a.appearsOn ?? false)).toList();
-    final singlesAndEps = own.where(_isSingleOrEp).toList();
-    final mainAlbums = own.where((a) => !_isSingleOrEp(a)).toList();
+    // Version pressings come out before anything else is decided, the way the web takes them out
+    // (`ArtistView.tsx:161-170`): an instrumental or live version shares its TITLE with the studio
+    // record it was cut from, so beside it on the main shelf the pair reads as a duplicate.
+    final versions = own.where((a) => a.versionType != null).toList();
+    final studio = own.where((a) => a.versionType == null).toList();
+    final singlesAndEps = studio.where(_isSingleOrEp).toList();
+    final mainAlbums = studio.where((a) => !_isSingleOrEp(a)).toList();
+    final instrumentals = versions
+        .where((a) => a.versionType == 'instrumental')
+        .toList();
+    final liveVersions = versions
+        .where((a) => a.versionType == 'live')
+        .toList();
+    // Owned live material the Hub can gather into a collection, which is a wider set than the live
+    // RELEASES above.
+    final hasLiveCollection = (artist.liveTrackCount ?? 0) > 0;
 
     final popular = _allPopular
         ? artist.topTracks
@@ -211,6 +226,39 @@ class _ArtistViewState extends ConsumerState<_ArtistView> {
           SliverToBoxAdapter(
             child: AlbumShelf(
               albums: singlesAndEps,
+              limit: catalogShelfPreview,
+            ),
+          ),
+        ],
+
+        if (instrumentals.isNotEmpty) ...[
+          SliverToBoxAdapter(
+            child: SectionHeader(
+              title: t(CatalogKeys.artistVersionsInstrumental),
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: AlbumShelf(
+              albums: instrumentals,
+              limit: catalogShelfPreview,
+            ),
+          ),
+        ],
+
+        // The Live shelf is gated on the live TRACK count as well as on live releases, because
+        // most of an artist's live material is bonus tracks sitting on ordinary records: an artist
+        // with none of the one and plenty of the other had no route to any of it. The card leads
+        // the shelf and reaches everything the Hub can gather, releases included.
+        if (liveVersions.isNotEmpty || hasLiveCollection) ...[
+          SliverToBoxAdapter(
+            child: SectionHeader(title: t(CatalogKeys.artistVersionsLive)),
+          ),
+          SliverToBoxAdapter(
+            child: AlbumShelf(
+              albums: liveVersions,
+              leading: hasLiveCollection
+                  ? ArtistLiveCard(artistId: artist.id)
+                  : null,
               limit: catalogShelfPreview,
             ),
           ),
