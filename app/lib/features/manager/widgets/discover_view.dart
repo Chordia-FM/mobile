@@ -21,18 +21,27 @@ import 'manager_widgets.dart';
 /// Nothing here acts on a result that is missing from the library. Tapping one opens the detail,
 /// which is where the coverage story continues.
 class DiscoverView extends ConsumerStatefulWidget {
-  const DiscoverView({super.key});
+  const DiscoverView({super.key, this.initialQuery});
+
+  /// The term a menu arrived with, off `manager?q=`.
+  ///
+  /// Seeded once, in [State.initState], rather than watched: this field is the reader's from the
+  /// first keystroke, and re-applying the URL's term on a later rebuild would overwrite what they
+  /// had typed.
+  final String? initialQuery;
 
   @override
   ConsumerState<DiscoverView> createState() => _DiscoverViewState();
 }
 
 class _DiscoverViewState extends ConsumerState<DiscoverView> {
-  final _controller = TextEditingController();
+  late final _controller = TextEditingController(
+    text: widget.initialQuery ?? '',
+  );
 
   /// The query the provider is actually keyed on. Separate from the field's text so a family
   /// provider is not created per keystroke — each one would be its own in-flight request.
-  String _query = '';
+  late String _query = widget.initialQuery?.trim() ?? '';
 
   Timer? _debounce;
 

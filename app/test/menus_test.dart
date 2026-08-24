@@ -70,6 +70,19 @@ void main() {
   }
 
   group('a track', () {
+    testWidgets('opens in Discover by name, having no id to go straight to', (
+      tester,
+    ) async {
+      // A track carries no MusicBrainz id on the wire, so the name search is its ONLY route into
+      // Discover. The row was missing entirely until the Manager took a query.
+      final menu = await build(
+        tester,
+        (page, ref) => trackMenu(page, ref, aTrack()),
+      );
+
+      expect(menu.has('open-in-discover'), isTrue);
+    });
+
     testWidgets('can be hidden from anywhere it is listed', (tester) async {
       final menu = await build(
         tester,
@@ -184,8 +197,11 @@ void main() {
       );
 
       expect(known.has('open-in-discover'), isTrue);
-      // No MBID means no precise destination, and the phone's Manager takes no search term.
-      expect(unknown.has('open-in-discover'), isFalse);
+      // An un-enriched album still offers it, and lands on a name search. The web spells out why
+      // at `lib/menus/actions.tsx:84`: without the fallback the row "would simply be missing on
+      // exactly the entities most likely to need looking up". This assertion used to be `isFalse`,
+      // which pinned a limitation of the phone's Manager route rather than the rule.
+      expect(unknown.has('open-in-discover'), isTrue);
     });
 
     testWidgets('a card carries the MBID its browse row was built from', (

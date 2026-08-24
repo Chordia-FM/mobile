@@ -342,7 +342,9 @@ MenuAction _shareAction(
 /// field and takes no initial value, so a name search currently arrives with an empty box. For a
 /// track that is still better than no row at all; for an album or artist whose MBID enrichment
 /// merely has not run, it would be strictly worse than the precise destination they usually have.
-/// Both call sites can pass a term the day that field can be filled in.
+/// The term is the fallback the web spells out at `lib/menus/actions.tsx:84`: without it the row
+/// "would simply be missing on exactly the entities most likely to need looking up" — an album whose
+/// MusicBrainz enrichment has not run yet is precisely the one somebody wants to go and find.
 ///
 /// Null when the nav cannot reach the Manager — the player's sits on a root-navigator route with no
 /// `GoRouterState` above it — or when there is neither an id nor a name to look anything up by.
@@ -791,7 +793,11 @@ EntityMenu albumMenu(
               onSelect: () => host.nav.goToArtist(artistId),
             ),
           _shareAction(host, path: '/albums/${album.id}', title: album.title),
-          ?_discoverAction(host, albumMbid: album.mbid),
+          ?_discoverAction(
+            host,
+            albumMbid: album.mbid,
+            term: '${album.artist ?? ''} ${album.title}'.trim(),
+          ),
         ],
       ),
     ],
@@ -891,7 +897,11 @@ EntityMenu albumDetailMenu(
             name: album.title,
           ),
           _shareAction(host, path: '/albums/${album.id}', title: album.title),
-          ?_discoverAction(host, albumMbid: album.mbid),
+          ?_discoverAction(
+            host,
+            albumMbid: album.mbid,
+            term: '${album.artist} ${album.title}'.trim(),
+          ),
         ],
       ),
       MenuSection(
@@ -986,7 +996,7 @@ EntityMenu artistMenu(
             onSelect: () => host.nav.goToArtist(artist.id),
           ),
           _shareAction(host, path: '/artists/${artist.id}', title: artist.name),
-          ?_discoverAction(host, artistMbid: artist.mbid),
+          ?_discoverAction(host, artistMbid: artist.mbid, term: artist.name),
         ],
       ),
     ],
@@ -1058,7 +1068,7 @@ EntityMenu artistDetailMenu(
             name: artist.name,
           ),
           _shareAction(host, path: '/artists/${artist.id}', title: artist.name),
-          ?_discoverAction(host, artistMbid: artist.mbid),
+          ?_discoverAction(host, artistMbid: artist.mbid, term: artist.name),
         ],
       ),
       MenuSection(

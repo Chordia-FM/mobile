@@ -18,9 +18,8 @@ class ManagerScreen extends ConsumerWidget {
   /// A search term off `manager?q=`, from an "Open in Discover" on something with no MusicBrainz id
   /// — a track, always, since none travel on the wire.
   ///
-  /// It picks the tab the reader was sent to, so arriving from a menu lands on Discover rather than
-  /// on Coverage with the search a tap away. Seeding the search FIELD with it is the half still
-  /// owed: `widgets/discover_view.dart` owns that text controller and takes no initial value yet.
+  /// It picks the tab the reader was sent to AND seeds the search field, so arriving from a menu
+  /// shows the results rather than an empty box on the right tab.
   final String? query;
 
   @override
@@ -41,8 +40,12 @@ class ManagerScreen extends ConsumerWidget {
             ],
           ),
         ),
-        body: const TabBarView(
-          children: [CoverageView(), DiscoverView(), FollowsView()],
+        body: TabBarView(
+          children: [
+            const CoverageView(),
+            DiscoverView(initialQuery: term.isEmpty ? null : term),
+            const FollowsView(),
+          ],
         ),
       ),
     );

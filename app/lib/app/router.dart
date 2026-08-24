@@ -252,8 +252,9 @@ String? webLocationToTabLocation(Uri uri) {
   return _withQuery('${NavTab.home.path}/${rest.join('/')}', uri);
 }
 
-/// Carries a link's query string across the rewrite. Nothing in the route table reads one today,
-/// and dropping it silently is the sort of thing that is only noticed once something does.
+/// Carries a link's query string across the rewrite. The Manager reads one — `manager?q=` is how a
+/// track's "Open in Discover" seeds the search, since a track has no MusicBrainz id to go straight
+/// to — so a rewrite that dropped it would land somebody on an empty search box.
 String _withQuery(String path, Uri uri) =>
     uri.hasQuery ? '$path?${uri.query}' : path;
 
