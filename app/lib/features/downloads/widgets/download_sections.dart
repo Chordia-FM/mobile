@@ -1,6 +1,7 @@
 import 'package:chordia_db/chordia_db.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../../data/downloads/download_storage.dart';
 import '../../../i18n/keys.g.dart';
@@ -79,7 +80,7 @@ class DownloadStorageCard extends ConsumerWidget {
                   onPressed: storage.trackCount == 0
                       ? null
                       : () => _clear(context, ref),
-                  icon: const Icon(Icons.delete_outline_rounded),
+                  icon: const Icon(PhosphorIconsRegular.trash),
                   label: Text(t(LibraryKeys.downloadsStorageClear)),
                 ),
               ],
@@ -170,7 +171,7 @@ class _CapPicker extends ConsumerWidget {
                 : formatBytes(current),
             style: Theme.of(context).textTheme.labelLarge,
           ),
-          const Icon(Icons.arrow_drop_down_rounded),
+          const Icon(PhosphorIconsRegular.caretDown),
         ],
       ),
     );
@@ -264,23 +265,23 @@ class _QueueRow extends ConsumerWidget {
         children: [
           switch (task.state) {
             DownloadState.failed => IconButton(
-              icon: const Icon(Icons.refresh_rounded),
+              icon: const Icon(PhosphorIconsRegular.arrowClockwise),
               tooltip: t(LibraryKeys.downloadsActionRetry),
               onPressed: () => api.retry(task.trackId),
             ),
             DownloadState.paused => IconButton(
-              icon: const Icon(Icons.play_arrow_rounded),
+              icon: const Icon(PhosphorIconsFill.play),
               tooltip: t(LibraryKeys.downloadsActionResume),
               onPressed: () => api.resume(task.trackId),
             ),
             _ => IconButton(
-              icon: const Icon(Icons.pause_rounded),
+              icon: const Icon(PhosphorIconsFill.pause),
               tooltip: t(LibraryKeys.downloadsActionPause),
               onPressed: () => api.pause(task.trackId),
             ),
           },
           IconButton(
-            icon: const Icon(Icons.close_rounded),
+            icon: const Icon(PhosphorIconsRegular.x),
             tooltip: t(LibraryKeys.downloadsActionCancel),
             onPressed: () => api.cancel(task.trackId),
           ),

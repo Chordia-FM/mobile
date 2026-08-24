@@ -1,6 +1,7 @@
 import 'package:chordia_api/chordia_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../i18n/keys.g.dart';
 import '../../i18n/translations_provider.dart';
@@ -31,7 +32,7 @@ class PlaylistsScreen extends ConsumerWidget {
       // an empty playlist at all.
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _create(context, ref),
-        icon: const Icon(Icons.add_rounded),
+        icon: const Icon(PhosphorIconsRegular.plus),
         label: Text(t(PlaylistsKeys.newKey)),
       ),
       body: RefreshIndicator(
@@ -45,7 +46,7 @@ class PlaylistsScreen extends ConsumerWidget {
           data: (rows) => rows.isEmpty
               ? EmptyNote(
                   message: t(PlaylistsKeys.emptyStateTitle),
-                  icon: Icons.queue_music_rounded,
+                  icon: PhosphorIcons.playlist(),
                 )
               : ListView.builder(
                   // Room for the button, which would otherwise sit on top of the last row.
@@ -88,7 +89,7 @@ class SmartPlaylistsScreen extends ConsumerWidget {
       // no rules is one that matches the entire library, which is never what anybody meant.
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _create(context, ref),
-        icon: const Icon(Icons.add_rounded),
+        icon: const Icon(PhosphorIconsRegular.plus),
         label: Text(t(PlaylistsKeys.smartNew)),
       ),
       body: RefreshIndicator(
@@ -102,7 +103,7 @@ class SmartPlaylistsScreen extends ConsumerWidget {
           data: (rows) => rows.isEmpty
               ? EmptyNote(
                   message: t(PlaylistsKeys.smartDescription),
-                  icon: Icons.auto_awesome_rounded,
+                  icon: PhosphorIcons.sparkle(),
                 )
               : ListView.builder(
                   padding: const EdgeInsets.only(bottom: 88),

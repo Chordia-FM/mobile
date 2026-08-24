@@ -23,6 +23,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 /// Loaded once, in real async: `testWidgets` runs inside a fake-async zone where an asset read
 /// never completes, so the catalogs have to be in hand before the first pump.
@@ -476,7 +477,7 @@ void main() {
       await tester.tap(
         find.descendant(
           of: find.byType(AppBar),
-          matching: find.byIcon(Icons.more_vert_rounded),
+          matching: find.byIcon(PhosphorIconsBold.dotsThree),
         ),
       );
       await tester.pump();
@@ -550,7 +551,9 @@ void main() {
     ) async {
       final harness = await _pumpPlaylist(tester, _detail(tracks: const []));
 
-      await tester.tap(find.widgetWithIcon(FilledButton, Icons.add_rounded));
+      await tester.tap(
+        find.widgetWithIcon(FilledButton, PhosphorIconsRegular.plus),
+      );
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
 
@@ -559,7 +562,7 @@ void main() {
       expect(find.text(_t(PlaylistsKeys.emptyStateFromLiked)), findsOneWidget);
       expect(find.text('Liked One'), findsOneWidget);
 
-      await tester.tap(find.byIcon(Icons.add_rounded).last);
+      await tester.tap(find.byIcon(PhosphorIconsRegular.plus).last);
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
 
@@ -618,7 +621,7 @@ void main() {
       await tester.tap(
         find.descendant(
           of: find.byType(AppBar),
-          matching: find.byIcon(Icons.more_vert_rounded),
+          matching: find.byIcon(PhosphorIconsBold.dotsThree),
         ),
       );
       await tester.pump();
@@ -644,7 +647,7 @@ void main() {
       await tester.tap(
         find.descendant(
           of: find.byType(AppBar),
-          matching: find.byIcon(Icons.more_vert_rounded),
+          matching: find.byIcon(PhosphorIconsBold.dotsThree),
         ),
       );
       await tester.pump();
@@ -916,7 +919,7 @@ Future<void> _openManageSheet(WidgetTester tester) async {
   await tester.tap(
     find.descendant(
       of: find.byType(AppBar),
-      matching: find.byIcon(Icons.more_vert_rounded),
+      matching: find.byIcon(PhosphorIconsBold.dotsThree),
     ),
   );
   await tester.pump();

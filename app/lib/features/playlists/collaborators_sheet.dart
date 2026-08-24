@@ -1,6 +1,7 @@
 import 'package:chordia_api/chordia_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../data/art/art_cache.dart';
 import '../../i18n/keys.g.dart';
@@ -137,7 +138,7 @@ class _CollaboratorsSheetState extends ConsumerState<_CollaboratorsSheet> {
                     padding: const EdgeInsets.all(16),
                     child: OutlinedButton.icon(
                       onPressed: () => _leave(controller),
-                      icon: const Icon(Icons.logout_rounded),
+                      icon: const Icon(PhosphorIconsRegular.signOut),
                       label: Text(t(PlaylistsKeys.leaveConfirmLabel)),
                     ),
                   ),
@@ -161,7 +162,7 @@ class _CollaboratorsSheetState extends ConsumerState<_CollaboratorsSheet> {
         sha256: artHashOf(person.avatarUrl),
         size: 40,
         shape: BoxShape.circle,
-        fallbackIcon: Icons.person_rounded,
+        fallbackIcon: PhosphorIcons.user(),
       ),
       title: Text(person.displayName),
       subtitle: Text('@${person.handle}'),
@@ -173,7 +174,7 @@ class _CollaboratorsSheetState extends ConsumerState<_CollaboratorsSheet> {
               child: CircularProgressIndicator(strokeWidth: 2),
             )
           : IconButton(
-              icon: const Icon(Icons.close_rounded),
+              icon: const Icon(PhosphorIconsRegular.x),
               tooltip: t(PlaylistsKeys.collaboratorsRemoveTitle, {
                 'name': person.displayName,
               }),

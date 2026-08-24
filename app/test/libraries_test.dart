@@ -22,6 +22,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 /// Loaded once, in real async: `testWidgets` runs inside a fake-async zone where an asset read
 /// never completes, so the catalogs have to be in hand before the first pump.
@@ -90,7 +91,7 @@ void main() {
     testWidgets('and its menu still reaches the settings', (tester) async {
       await _pumpLibraries(tester, const LibrariesHomeScreen());
 
-      await tester.tap(find.byIcon(Icons.more_vert_rounded).first);
+      await tester.tap(find.byIcon(PhosphorIconsBold.dotsThree).first);
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
       await tester.tap(find.text(_t(LibraryKeys.manageTitle)));
@@ -103,7 +104,7 @@ void main() {
     testWidgets('an owner can remove one', (tester) async {
       final api = await _pumpLibraries(tester, const LibrariesHomeScreen());
 
-      await tester.tap(find.byIcon(Icons.more_vert_rounded).first);
+      await tester.tap(find.byIcon(PhosphorIconsBold.dotsThree).first);
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
       await tester.tap(find.text(_t(LibraryKeys.editRemoveTitle)));
@@ -153,7 +154,7 @@ void main() {
         overrides: overrides,
       );
 
-      await tester.tap(find.byIcon(Icons.settings_backup_restore_rounded));
+      await tester.tap(find.byIcon(PhosphorIconsRegular.arrowCounterClockwise));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
       await tester.tap(find.text(_t(LibraryKeys.metadataOverridesReset)).last);

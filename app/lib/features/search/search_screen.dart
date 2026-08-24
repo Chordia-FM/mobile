@@ -4,6 +4,7 @@ import 'package:chordia_api/chordia_api.dart';
 import 'package:chordia_sync/chordia_sync.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../i18n/keys.g.dart';
 import '../../i18n/translations_provider.dart';
@@ -192,7 +193,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
               subtitle: t(PlaylistsKeys.songCount, {
                 'count': playlist.trackCount,
               }),
-              fallbackIcon: Icons.queue_music_rounded,
+              fallbackIcon: PhosphorIconsFill.playlist,
               onTap: () => context.goToPlaylist(playlist.id),
               menu: (page, ref) => playlistMenu(
                 page,
@@ -219,7 +220,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
               subtitle: t(CatalogKeys.labelAlbumCount, {
                 'count': label.albumCount,
               }),
-              fallbackIcon: Icons.business_rounded,
+              fallbackIcon: PhosphorIconsFill.tag,
               // The synthetic "Unlabeled" bucket carries no id and so has no page of its own —
               // and a menu whose every row leads to that page has nothing to offer either.
               onTap: id == null ? null : () => context.goToLabel(id),
@@ -244,7 +245,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
             return ResultRow(
               imageUrl: genre.imageUrl,
               title: genre.name,
-              fallbackIcon: Icons.category_rounded,
+              fallbackIcon: PhosphorIconsFill.musicNote,
               onTap: () => context.goToGenre(genre.slug),
               menu: (page, ref) =>
                   genreMenu(page, ref, slug: genre.slug, name: genre.name),
@@ -280,12 +281,12 @@ class _SearchField extends ConsumerWidget {
       // tab is touched covers the results the user came back to read.
       decoration: InputDecoration(
         hintText: t(CatalogKeys.searchPlaceholder),
-        prefixIcon: const Icon(Icons.search),
+        prefixIcon: const Icon(PhosphorIconsRegular.magnifyingGlass),
         suffixIcon: controller.text.isEmpty
             ? null
             : IconButton(
                 onPressed: onClear,
-                icon: const Icon(Icons.close_rounded),
+                icon: const Icon(PhosphorIconsRegular.x),
                 tooltip: t(CommonKeys.actionsClose),
               ),
       ),
@@ -332,7 +333,7 @@ class _RecentSearches extends ConsumerWidget {
           child: ListView.builder(
             itemCount: terms.length,
             itemBuilder: (context, index) => ListRow(
-              leading: const Icon(Icons.history_rounded),
+              leading: const Icon(PhosphorIconsRegular.clockCounterClockwise),
               title: Text(
                 terms[index],
                 maxLines: 1,

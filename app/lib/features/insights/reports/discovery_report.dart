@@ -1,5 +1,6 @@
 import 'package:chordia_api/chordia_api.dart';
 import 'package:flutter/material.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../i18n/keys.g.dart';
@@ -269,9 +270,7 @@ class _MoveGroup extends ConsumerWidget {
         for (final move in moves)
           ListRow(
             leading: Icon(
-              climbing
-                  ? Icons.trending_up_rounded
-                  : Icons.trending_down_rounded,
+              climbing ? PhosphorIcons.trendUp() : PhosphorIcons.trendDown(),
               color: climbing
                   ? theme.colorScheme.primary
                   : theme.colorScheme.error,

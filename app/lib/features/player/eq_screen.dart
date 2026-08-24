@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:chordia_api/chordia_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../app/providers.dart';
 import '../../app/theme.dart';
@@ -275,10 +276,10 @@ class _Caveat extends StatelessWidget {
   Widget build(BuildContext context) => Row(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      const Padding(
-        padding: EdgeInsets.only(top: 2, right: 8),
+      Padding(
+        padding: const EdgeInsets.only(top: 2, right: 8),
         child: Icon(
-          Icons.info_outline_rounded,
+          PhosphorIcons.info(),
           size: 16,
           color: ChordiaColors.mutedForeground,
         ),

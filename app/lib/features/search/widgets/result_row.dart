@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../../data/art/art_cache.dart';
 import '../../../widgets/cover_art.dart';
@@ -21,7 +22,7 @@ class ResultRow extends StatelessWidget {
     super.key,
     this.imageUrl,
     this.subtitle,
-    this.fallbackIcon = Icons.album_rounded,
+    this.fallbackIcon = PhosphorIconsFill.disc,
     this.menu,
   });
 

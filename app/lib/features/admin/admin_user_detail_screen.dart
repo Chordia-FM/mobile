@@ -1,6 +1,7 @@
 import 'package:chordia_api/chordia_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../data/art/art_cache.dart';
 import '../../i18n/keys.g.dart';
@@ -65,7 +66,7 @@ class _Loaded extends ConsumerWidget {
                 sha256: artHashOf(user.avatarUrl),
                 size: 72,
                 shape: BoxShape.circle,
-                fallbackIcon: Icons.person_rounded,
+                fallbackIcon: PhosphorIconsFill.user,
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -162,8 +163,8 @@ class _Loaded extends ConsumerWidget {
             ListRow(
               leading: Icon(
                 library.online
-                    ? Icons.cloud_done_rounded
-                    : Icons.cloud_off_rounded,
+                    ? PhosphorIconsRegular.cloudCheck
+                    : PhosphorIconsRegular.cloudSlash,
                 color: library.online
                     ? theme.colorScheme.primary
                     : theme.colorScheme.onSurfaceVariant,
@@ -182,8 +183,8 @@ class _Loaded extends ConsumerWidget {
             ListRow(
               leading: Icon(
                 session.longLived
-                    ? Icons.smartphone_rounded
-                    : Icons.public_rounded,
+                    ? PhosphorIconsRegular.deviceMobile
+                    : PhosphorIconsRegular.globe,
               ),
               // The raw user agent, unparsed: turning it into "Chrome on macOS" is a guess, and an
               // operator chasing a suspicious session wants the actual header.

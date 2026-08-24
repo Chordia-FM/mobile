@@ -2,6 +2,7 @@ import 'package:chordia_api/chordia_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../data/art/art_cache.dart';
 import '../../i18n/keys.g.dart';
@@ -13,6 +14,7 @@ import '../admin/data/admin_providers.dart';
 import '../catalog/catalog_routes.dart';
 import '../catalog/widgets/list_row.dart';
 import '../home/data/discovery_nav.dart';
+import '../libraries/library_icons.dart';
 import '../library/data/library_providers.dart';
 import '../manager/manager_routes.dart';
 import '../player/eq_screen.dart';
@@ -61,7 +63,7 @@ class NavDrawer extends ConsumerWidget {
               child: Row(
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.close),
+                    icon: const Icon(PhosphorIconsRegular.x),
                     tooltip: t(CommonKeys.navCloseMenu),
                     onPressed: () => _close(context),
                   ),
@@ -71,46 +73,46 @@ class NavDrawer extends ConsumerWidget {
               ),
             ),
             NavDrawerRow(
-              icon: Icons.speed_outlined,
+              icon: PhosphorIconsFill.gauge,
               label: t(ManagerKeys.nav),
               onSelected: (context) => context.goToManager(),
             ),
             const Divider(indent: 16, endIndent: 16),
             NavDrawerRow(
-              icon: Icons.people_outline,
+              icon: PhosphorIconsRegular.users,
               label: t(CommonKeys.navFriends),
               onSelected: (context) => context.goToFriends(),
             ),
             NavDrawerRow(
-              icon: Icons.folder_copy_outlined,
+              icon: PhosphorIconsRegular.folders,
               label: t(CommonKeys.navAllLibraries),
               onSelected: (context) => _pushInTab(context, 'libraries'),
             ),
             NavDrawerRow(
-              icon: Icons.music_note_outlined,
+              icon: PhosphorIconsRegular.musicNote,
               label: t(CatalogKeys.genresTitle),
               onSelected: (context) => context.goToGenres(),
             ),
             NavDrawerRow(
-              icon: Icons.label_outline,
+              icon: PhosphorIconsRegular.tag,
               label: t(CatalogKeys.labelsTitle),
               onSelected: (context) => context.goToLabels(),
             ),
             NavDrawerRow(
-              icon: Icons.equalizer,
+              icon: PhosphorIconsRegular.equalizer,
               label: t(SettingsKeys.equalizerTitle),
               // Not a route on this client: the equalizer opens over everything, the way the full
               // player does, so it is reachable from whatever is playing rather than from one tab.
               onSelected: openEqualizer,
             ),
             NavDrawerRow(
-              icon: Icons.settings_outlined,
+              icon: PhosphorIconsRegular.gear,
               label: t(CommonKeys.navSettings),
               onSelected: (context) => context.goToSettings(),
             ),
             if (admin)
               NavDrawerRow(
-                icon: Icons.shield_outlined,
+                icon: PhosphorIconsRegular.shieldCheck,
                 label: t(AdminKeys.title),
                 onSelected: (context) => context.goToAdmin(),
               ),
@@ -145,12 +147,12 @@ class _SidebarBlock extends ConsumerWidget {
         const Divider(indent: 16, endIndent: 16),
         // The web's system rows. Search is one too, but on this client it is a tab.
         NavDrawerRow(
-          icon: Icons.favorite_outline,
+          icon: PhosphorIconsFill.heart,
           label: t(LibraryKeys.likedSongs),
           onSelected: (context) => _pushInTab(context, 'liked'),
         ),
         NavDrawerRow(
-          icon: Icons.download_outlined,
+          icon: PhosphorIconsFill.downloadSimple,
           label: t(LibraryKeys.downloadsNavLabel),
           onSelected: (context) => _pushInTab(context, 'downloads'),
         ),
@@ -162,10 +164,10 @@ class _SidebarBlock extends ConsumerWidget {
               imageUrl: pin.imageUrl,
               round: pin.kind == PinKind.artist || pin.kind == PinKind.radio,
               fallbackIcon: switch (pin.kind) {
-                PinKind.album => Icons.album_rounded,
-                PinKind.artist => Icons.person_rounded,
-                PinKind.playlist => Icons.queue_music_rounded,
-                PinKind.radio => Icons.radio_rounded,
+                PinKind.album => PhosphorIconsFill.disc,
+                PinKind.artist => PhosphorIconsFill.microphoneStage,
+                PinKind.playlist => PhosphorIconsFill.playlist,
+                PinKind.radio => PhosphorIconsFill.radio,
               },
               onSelected: (context) => switch (pin.kind) {
                 PinKind.album => context.goToAlbum(pin.id),
@@ -184,7 +186,7 @@ class _SidebarBlock extends ConsumerWidget {
             NavDrawerEntityRow(
               name: playlist.name,
               imageUrl: playlist.coverUrl,
-              fallbackIcon: Icons.auto_awesome_rounded,
+              fallbackIcon: PhosphorIconsFill.sparkle,
               onSelected: (context) =>
                   _pushInTab(context, 'smart/${playlist.id}'),
             ),
@@ -192,7 +194,7 @@ class _SidebarBlock extends ConsumerWidget {
             NavDrawerEntityRow(
               name: playlist.name,
               imageUrl: playlist.coverUrl,
-              fallbackIcon: Icons.queue_music_rounded,
+              fallbackIcon: PhosphorIconsFill.playlist,
               onSelected: (context) => context.goToPlaylist(playlist.id),
             ),
         ],
@@ -224,7 +226,10 @@ class _LibraryRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => NavDrawerRow(
-    icon: Icons.dns_outlined,
+    // The icon its owner chose, not a generic server glyph: the web's sidebar row is
+    // `<LibraryIcon name={l.icon} />`, and a library is meant to be recognisable at a glance in
+    // the same way on both clients.
+    leading: LibraryIcon(icon: library.icon),
     label: library.name,
     // `owned` rides in `extra` rather than being re-derived: the row that linked here already
     // knows, and the screen would otherwise have to ask the directory again to draw its first
@@ -261,19 +266,23 @@ class _SidebarHeading extends StatelessWidget {
 @visibleForTesting
 class NavDrawerRow extends StatelessWidget {
   const NavDrawerRow({
-    required this.icon,
     required this.label,
     required this.onSelected,
     super.key,
-  });
+    this.icon,
+    this.leading,
+  }) : assert(icon != null || leading != null, 'a row needs a glyph');
 
-  final IconData icon;
+  /// The row's glyph. Null only on the rows that supply their own [leading] widget — a library
+  /// wears the icon its owner picked, which can be an emoji rather than a glyph at all.
+  final IconData? icon;
+  final Widget? leading;
   final String label;
   final void Function(BuildContext context) onSelected;
 
   @override
   Widget build(BuildContext context) => ListRow(
-    leading: Icon(icon),
+    leading: leading ?? Icon(icon),
     title: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
     onTap: () {
       _close(context);
@@ -295,7 +304,7 @@ class NavDrawerEntityRow extends StatelessWidget {
     super.key,
     this.imageUrl,
     this.round = false,
-    this.fallbackIcon = Icons.album_rounded,
+    this.fallbackIcon = PhosphorIconsFill.disc,
   });
 
   final String name;
@@ -375,7 +384,7 @@ class NavMenuButton extends ConsumerWidget {
     final open = NavDrawerScope.maybeOf(context);
     if (open == null) return const SizedBox.shrink();
     return IconButton(
-      icon: const Icon(Icons.menu),
+      icon: const Icon(PhosphorIconsRegular.list),
       tooltip: ref.t(CommonKeys.navOpenMenu),
       onPressed: open,
     );

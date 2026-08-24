@@ -189,7 +189,7 @@ class SettingsSwitchRow extends StatelessWidget {
     title: Text(label),
     subtitle: description == null ? null : Text(description!),
     onTap: onChanged == null ? null : () => onChanged!(!value),
-    trailing: Switch.adaptive(value: value, onChanged: onChanged),
+    trailing: Switch(value: value, onChanged: onChanged),
   );
 }
 
@@ -438,7 +438,7 @@ class SettingsBody<T> extends ConsumerWidget {
     }
     return const Padding(
       padding: EdgeInsets.symmetric(vertical: 48),
-      child: Center(child: CircularProgressIndicator.adaptive()),
+      child: Center(child: CircularProgressIndicator()),
     );
   }
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 /// The `icon` column's default, and what an unknown value falls back to.
 ///
@@ -15,56 +16,57 @@ const emojiIconPrefix = 'emoji:';
 
 /// The curated set, keyed by the slug stored in `libraries.icon`.
 ///
-/// The keys are the web client's Phosphor names (`frontend/src/lib/library/icons.tsx`) and the
-/// values are the nearest Material glyph — the slug is the contract, the drawing is not. A name
-/// this build has never heard of falls back to [defaultLibraryIcon] rather than to nothing, so an
-/// icon added by a newer client looks ordinary here rather than broken.
+/// Both halves come from the web client (`frontend/src/lib/library/icons.tsx`): the key is the
+/// slug stored in the column, the value is the SAME Phosphor glyph that client draws for it, at
+/// the fill weight its `LibraryIcon` defaults to. A name this build has never heard of falls back
+/// to [defaultLibraryIcon] rather than to nothing, so an icon added by a newer client looks
+/// ordinary here rather than broken.
 const libraryIcons = <String, IconData>{
-  'music-notes': Icons.music_note_rounded,
-  'vinyl-record': Icons.album_rounded,
-  'disc': Icons.album_outlined,
-  'guitar': Icons.piano_rounded,
-  'piano': Icons.piano_outlined,
-  'microphone': Icons.mic_rounded,
-  'metronome': Icons.timer_rounded,
-  'equalizer': Icons.equalizer_rounded,
-  'waveform': Icons.graphic_eq_rounded,
-  'radio': Icons.radio_rounded,
-  'broadcast': Icons.podcasts_rounded,
-  'headphones': Icons.headphones_rounded,
-  'speaker': Icons.speaker_rounded,
-  'playlist': Icons.queue_music_rounded,
-  'star': Icons.star_rounded,
-  'heart': Icons.favorite_rounded,
-  'fire': Icons.local_fire_department_rounded,
-  'sparkle': Icons.auto_awesome_rounded,
-  'crown': Icons.workspace_premium_rounded,
-  'trophy': Icons.emoji_events_rounded,
-  'diamond': Icons.diamond_rounded,
-  'folder': Icons.folder_rounded,
-  'archive': Icons.inventory_2_rounded,
-  'bookmark': Icons.bookmark_rounded,
-  'lock': Icons.lock_rounded,
-  'users': Icons.group_rounded,
-  'house': Icons.home_rounded,
-  'globe': Icons.public_rounded,
-  'ticket': Icons.confirmation_number_rounded,
-  'confetti': Icons.celebration_rounded,
-  'campfire': Icons.local_fire_department_outlined,
-  'moon': Icons.nightlight_round,
-  'sun': Icons.wb_sunny_rounded,
-  'waves': Icons.waves_rounded,
-  'mountains': Icons.terrain_rounded,
-  'tree': Icons.park_rounded,
-  'coffee': Icons.local_cafe_rounded,
-  'car': Icons.directions_car_rounded,
-  'airplane': Icons.flight_rounded,
-  'barbell': Icons.fitness_center_rounded,
-  'books': Icons.menu_book_rounded,
-  'film': Icons.movie_rounded,
-  'game': Icons.sports_esports_rounded,
-  'ghost': Icons.nights_stay_rounded,
-  'skull': Icons.whatshot_rounded,
+  'music-notes': PhosphorIconsFill.musicNotes,
+  'vinyl-record': PhosphorIconsFill.vinylRecord,
+  'disc': PhosphorIconsFill.disc,
+  'guitar': PhosphorIconsFill.guitar,
+  'piano': PhosphorIconsFill.pianoKeys,
+  'microphone': PhosphorIconsFill.microphoneStage,
+  'metronome': PhosphorIconsFill.metronome,
+  'equalizer': PhosphorIconsFill.equalizer,
+  'waveform': PhosphorIconsFill.waveform,
+  'radio': PhosphorIconsFill.radio,
+  'broadcast': PhosphorIconsFill.broadcast,
+  'headphones': PhosphorIconsFill.headphones,
+  'speaker': PhosphorIconsFill.speakerHigh,
+  'playlist': PhosphorIconsFill.playlist,
+  'star': PhosphorIconsFill.star,
+  'heart': PhosphorIconsFill.heart,
+  'fire': PhosphorIconsFill.fire,
+  'sparkle': PhosphorIconsFill.sparkle,
+  'crown': PhosphorIconsFill.crown,
+  'trophy': PhosphorIconsFill.trophy,
+  'diamond': PhosphorIconsFill.diamond,
+  'folder': PhosphorIconsFill.folder,
+  'archive': PhosphorIconsFill.archive,
+  'bookmark': PhosphorIconsFill.bookmark,
+  'lock': PhosphorIconsFill.lock,
+  'users': PhosphorIconsFill.users,
+  'house': PhosphorIconsFill.house,
+  'globe': PhosphorIconsFill.globe,
+  'ticket': PhosphorIconsFill.ticket,
+  'confetti': PhosphorIconsFill.confetti,
+  'campfire': PhosphorIconsFill.campfire,
+  'moon': PhosphorIconsFill.moon,
+  'sun': PhosphorIconsFill.sun,
+  'waves': PhosphorIconsFill.waves,
+  'mountains': PhosphorIconsFill.mountains,
+  'tree': PhosphorIconsFill.tree,
+  'coffee': PhosphorIconsFill.coffee,
+  'car': PhosphorIconsFill.car,
+  'airplane': PhosphorIconsFill.airplane,
+  'barbell': PhosphorIconsFill.barbell,
+  'books': PhosphorIconsFill.books,
+  'film': PhosphorIconsFill.filmSlate,
+  'game': PhosphorIconsFill.gameController,
+  'ghost': PhosphorIconsFill.ghost,
+  'skull': PhosphorIconsFill.skull,
 };
 
 /// Extra search terms per icon, so the filter matches how people describe them.

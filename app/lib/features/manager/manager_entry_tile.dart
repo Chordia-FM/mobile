@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../i18n/keys.g.dart';
 import '../../i18n/translations_provider.dart';
@@ -18,7 +19,7 @@ class ManagerEntryTile extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final t = ref.t;
     return ListRow(
-      leading: const Icon(Icons.donut_large_rounded),
+      leading: const Icon(PhosphorIconsFill.gauge),
       title: Text(t(ManagerKeys.nav)),
       subtitle: Text(t(ManagerKeys.subtitle)),
       trailing: listRowChevron,

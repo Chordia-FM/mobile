@@ -4,6 +4,7 @@ import 'package:chordia_api/chordia_api.dart' show StationKind;
 import 'package:chordia_sync/chordia_sync.dart' show PlayerTrack;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../i18n/keys.g.dart';
 import '../../i18n/translations_provider.dart';
@@ -50,13 +51,13 @@ EntityMenu playerTrackMenu(
             MenuAction(
               id: 'play',
               label: t(CommonKeys.actionsPlay),
-              icon: Icons.play_arrow_rounded,
+              icon: PhosphorIcons.play(PhosphorIconsStyle.fill),
               onSelect: onPlay,
             ),
           MenuAction(
             id: 'radio',
             label: t(DiscoveryKeys.stationStart),
-            icon: Icons.radio_rounded,
+            icon: PhosphorIcons.radio(),
             enabled: host.player != null && host.api != null,
             onSelect: () => host.startStation(StationKind.track, track.id),
           ),
@@ -70,9 +71,11 @@ EntityMenu playerTrackMenu(
             label: t(
               liked ?? false ? LibraryKeys.likedRemove : LibraryKeys.likedSave,
             ),
-            icon: liked ?? false
-                ? Icons.favorite_rounded
-                : Icons.favorite_border_rounded,
+            icon: PhosphorIcons.heart(
+              liked ?? false
+                  ? PhosphorIconsStyle.fill
+                  : PhosphorIconsStyle.regular,
+            ),
             enabled: liked != null,
             onSelect: () async {
               try {
@@ -85,7 +88,7 @@ EntityMenu playerTrackMenu(
           MenuAction(
             id: 'add-to-playlist',
             label: t(PlaylistsKeys.addToPlaylist),
-            icon: Icons.playlist_add_rounded,
+            icon: PhosphorIcons.playlist(),
             onSelect: () => host.addToPlaylist([track.id], track.title),
           ),
         ],
@@ -97,20 +100,20 @@ EntityMenu playerTrackMenu(
             MenuAction(
               id: 'go-to-album',
               label: t(CommonKeys.actionsGoToAlbum),
-              icon: Icons.album_outlined,
+              icon: PhosphorIcons.disc(),
               onSelect: () => host.nav.goToAlbum(albumId),
             ),
           if (track.artistId case final artistId?)
             MenuAction(
               id: 'go-to-artist',
               label: t(CommonKeys.actionsGoToArtist),
-              icon: Icons.person_outline_rounded,
+              icon: PhosphorIcons.microphoneStage(),
               onSelect: () => host.nav.goToArtist(artistId),
             ),
           MenuAction(
             id: 'share',
             label: t(CommonKeys.actionsShare),
-            icon: Icons.ios_share_rounded,
+            icon: PhosphorIcons.shareNetwork(),
             onSelect: () =>
                 host.share(path: '/tracks/${track.id}', title: track.title),
           ),
@@ -125,7 +128,7 @@ EntityMenu playerTrackMenu(
             MenuAction(
               id: 'equalizer',
               label: t(PlayerKeys.equalizerTitle),
-              icon: Icons.equalizer_rounded,
+              icon: PhosphorIcons.equalizer(),
               onSelect: () => openEqualizer(page),
             ),
             // The tier ladder, the reason for a downgrade and Restore. The sheet existed and
@@ -133,7 +136,7 @@ EntityMenu playerTrackMenu(
             MenuAction(
               id: 'quality',
               label: t(PlayerKeys.qualityTitle),
-              icon: Icons.graphic_eq_rounded,
+              icon: PhosphorIcons.slidersHorizontal(),
               onSelect: () => unawaited(showQualitySheet(page)),
             ),
           ],
@@ -146,7 +149,7 @@ EntityMenu playerTrackMenu(
             MenuAction(
               id: 'remove',
               label: t(PlayerKeys.queueRemoveFromQueue),
-              icon: Icons.close_rounded,
+              icon: PhosphorIcons.x(),
               destructive: true,
               onSelect: onRemove,
             ),

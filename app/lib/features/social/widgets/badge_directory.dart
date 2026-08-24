@@ -1,5 +1,6 @@
 import 'package:chordia_api/chordia_api.dart';
 import 'package:flutter/material.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
@@ -245,7 +246,9 @@ class _Availability extends ConsumerWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Icon(
-          obtainable ? Icons.check_circle_rounded : Icons.lock_outline_rounded,
+          obtainable
+              ? PhosphorIcons.checkCircle(PhosphorIconsStyle.fill)
+              : PhosphorIcons.lockSimple(),
           size: 14,
           color: colour,
         ),

@@ -14,6 +14,7 @@ import 'package:chordia_sync/chordia_sync.dart'
         StationCursor;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../../app/providers.dart' show activeHubProvider, hubClientProvider;
 import '../../../i18n/keys.g.dart';
@@ -305,7 +306,9 @@ MenuAction _pinAction(
 }) => MenuAction(
   id: 'pin',
   label: host.t(pinned ? CommonKeys.actionsUnpin : CommonKeys.actionsPin),
-  icon: pinned ? Icons.push_pin : Icons.push_pin_outlined,
+  icon: PhosphorIcons.pushPin(
+    pinned ? PhosphorIconsStyle.fill : PhosphorIconsStyle.regular,
+  ),
   onSelect: () => host.togglePin(kind, id, pinned: pinned),
 );
 
@@ -313,7 +316,7 @@ MenuAction _radioAction(MenuHost host, StationKind kind, String seed) =>
     MenuAction(
       id: 'radio',
       label: host.t(DiscoveryKeys.stationStart),
-      icon: Icons.radio_rounded,
+      icon: PhosphorIcons.radio(),
       enabled: host.player != null && host.api != null,
       onSelect: () => host.startStation(kind, seed),
     );
@@ -325,7 +328,7 @@ MenuAction _shareAction(
 }) => MenuAction(
   id: 'share',
   label: host.t(CommonKeys.actionsShare),
-  icon: Icons.ios_share_rounded,
+  icon: PhosphorIcons.shareNetwork(),
   onSelect: () => host.share(path: path, title: title),
 );
 
@@ -366,7 +369,7 @@ MenuAction? _discoverAction(
     return MenuAction(
       id: 'open-in-discover',
       label: host.t(ManagerKeys.discoverOpenIn),
-      icon: Icons.travel_explore_rounded,
+      icon: PhosphorIcons.magnifyingGlass(),
       onSelect: () {
         if (release != null) {
           nav.goToReleaseGroup(release);
@@ -393,7 +396,7 @@ MenuAction _statsAction(
 }) => MenuAction(
   id: 'stats',
   label: host.t(InsightsKeys.entityTitle),
-  icon: Icons.show_chart_rounded,
+  icon: PhosphorIcons.chartLine(),
   onSelect: () async {
     if (!host.page.mounted) return;
     await showEntityStats(host.page, kind: kind, id: id, name: name);
@@ -409,7 +412,7 @@ MenuAction _statsAction(
 MenuAction _reportAction(MenuHost host, VoidCallback onReport) => MenuAction(
   id: 'report',
   label: host.t(CatalogKeys.reportAction),
-  icon: Icons.flag_outlined,
+  icon: PhosphorIcons.flag(),
   onSelect: onReport,
 );
 
@@ -492,20 +495,20 @@ EntityMenu trackMenu(
             MenuAction(
               id: 'play',
               label: t(CommonKeys.actionsPlay),
-              icon: Icons.play_arrow_rounded,
+              icon: PhosphorIcons.play(PhosphorIconsStyle.fill),
               onSelect: onPlay,
             ),
           MenuAction(
             id: 'play-next',
             label: t(PlayerKeys.queuePlayNext),
-            icon: Icons.playlist_play_rounded,
+            icon: PhosphorIcons.skipForward(),
             enabled: host.player != null,
             onSelect: () => host.player?.playNext(toPlayerTrack(track)),
           ),
           MenuAction(
             id: 'queue',
             label: t(PlayerKeys.queueAdd),
-            icon: Icons.queue_music_rounded,
+            icon: PhosphorIcons.queue(),
             enabled: host.player != null,
             onSelect: () => host.player?.enqueue(toPlayerTrack(track)),
           ),
@@ -520,7 +523,7 @@ EntityMenu trackMenu(
           MenuAction(
             id: 'add-to-playlist',
             label: t(PlaylistsKeys.addToPlaylist),
-            icon: Icons.playlist_add_rounded,
+            icon: PhosphorIcons.playlist(),
             onSelect: () => host.addToPlaylist([track.id], track.title),
           ),
           MenuAction.custom(
@@ -537,14 +540,14 @@ EntityMenu trackMenu(
             MenuAction(
               id: 'move-up',
               label: t(CommonKeys.actionsMoveUp),
-              icon: Icons.arrow_upward_rounded,
+              icon: PhosphorIcons.arrowUp(),
               onSelect: onMoveUp,
             ),
           if (onMoveDown != null)
             MenuAction(
               id: 'move-down',
               label: t(CommonKeys.actionsMoveDown),
-              icon: Icons.arrow_downward_rounded,
+              icon: PhosphorIcons.arrowDown(),
               onSelect: onMoveDown,
             ),
         ],
@@ -556,14 +559,14 @@ EntityMenu trackMenu(
             MenuAction(
               id: 'go-to-album',
               label: t(CommonKeys.actionsGoToAlbum),
-              icon: Icons.album_outlined,
+              icon: PhosphorIcons.disc(),
               onSelect: () => host.nav.goToAlbum(albumId),
             ),
           if (track.artistId case final artistId?)
             MenuAction(
               id: 'go-to-artist',
               label: t(CommonKeys.actionsGoToArtist),
-              icon: Icons.person_outline_rounded,
+              icon: PhosphorIcons.microphoneStage(),
               onSelect: () => host.nav.goToArtist(artistId),
             ),
           _shareAction(host, path: '/tracks/${track.id}', title: track.title),
@@ -582,7 +585,7 @@ EntityMenu trackMenu(
             MenuAction(
               id: 'remove',
               label: removeLabel ?? t(PlaylistsKeys.removeFromPlaylist),
-              icon: Icons.delete_outline_rounded,
+              icon: PhosphorIcons.trash(),
               destructive: true,
               onSelect: onRemove,
             ),
@@ -601,7 +604,9 @@ MenuAction _likeAction(
   label: host.t(
     liked ?? false ? LibraryKeys.likedRemove : LibraryKeys.likedSave,
   ),
-  icon: liked ?? false ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+  icon: PhosphorIcons.heart(
+    liked ?? false ? PhosphorIconsStyle.fill : PhosphorIconsStyle.regular,
+  ),
   // Until the liked set has loaded there is no state to flip, and a heart that reports the
   // wrong state is worse than one that is briefly unavailable.
   enabled: liked != null,
@@ -673,9 +678,9 @@ MenuAction _hideAction(
   label: host.t(
     hidden ?? false ? LibraryKeys.hiddenUnhide : LibraryKeys.hiddenHide,
   ),
-  icon: hidden ?? false
-      ? Icons.visibility_off_rounded
-      : Icons.visibility_off_outlined,
+  icon: PhosphorIcons.eyeSlash(
+    hidden ?? false ? PhosphorIconsStyle.fill : PhosphorIconsStyle.regular,
+  ),
   // Same rule as the heart: until the hidden set has loaded there is no state to flip.
   enabled: hidden != null && host.api != null,
   onSelect: () async {
@@ -744,7 +749,7 @@ EntityMenu albumMenu(
           MenuAction(
             id: 'play',
             label: t(CommonKeys.actionsPlay),
-            icon: Icons.play_arrow_rounded,
+            icon: PhosphorIcons.play(PhosphorIconsStyle.fill),
             enabled: host.player != null && api != null,
             onSelect: () async => host.play(
               await tracks(),
@@ -754,7 +759,7 @@ EntityMenu albumMenu(
           MenuAction(
             id: 'queue',
             label: t(PlayerKeys.queueAdd),
-            icon: Icons.queue_music_rounded,
+            icon: PhosphorIcons.queue(),
             enabled: host.player != null && api != null,
             onSelect: () async => host.enqueueAll(await tracks()),
           ),
@@ -768,7 +773,7 @@ EntityMenu albumMenu(
           MenuAction(
             id: 'add-to-playlist',
             label: t(PlaylistsKeys.addToPlaylist),
-            icon: Icons.playlist_add_rounded,
+            icon: PhosphorIcons.playlist(),
             enabled: api != null,
             onSelect: () async => host.addToPlaylist([
               for (final track in await tracks()) track.id,
@@ -782,14 +787,14 @@ EntityMenu albumMenu(
           MenuAction(
             id: 'open',
             label: t(CommonKeys.actionsOpen),
-            icon: Icons.album_outlined,
+            icon: PhosphorIcons.disc(),
             onSelect: () => host.nav.goToAlbum(album.id),
           ),
           if (album.artistId case final artistId?)
             MenuAction(
               id: 'go-to-artist',
               label: t(CommonKeys.actionsGoToArtist),
-              icon: Icons.person_outline_rounded,
+              icon: PhosphorIcons.microphoneStage(),
               onSelect: () => host.nav.goToArtist(artistId),
             ),
           _shareAction(host, path: '/albums/${album.id}', title: album.title),
@@ -834,14 +839,14 @@ EntityMenu albumDetailMenu(
           MenuAction(
             id: 'play',
             label: t(CommonKeys.actionsPlay),
-            icon: Icons.play_arrow_rounded,
+            icon: PhosphorIcons.play(PhosphorIconsStyle.fill),
             enabled: host.player != null && album.tracks.isNotEmpty,
             onSelect: () => host.play(album.tracks, playContext),
           ),
           MenuAction(
             id: 'queue',
             label: t(PlayerKeys.queueAdd),
-            icon: Icons.queue_music_rounded,
+            icon: PhosphorIcons.queue(),
             enabled: host.player != null && album.tracks.isNotEmpty,
             onSelect: () => host.enqueueAll(album.tracks),
           ),
@@ -850,7 +855,7 @@ EntityMenu albumDetailMenu(
             MenuAction(
               id: 'artist-radio',
               label: t(CatalogKeys.albumGoToRadio),
-              icon: Icons.radio_outlined,
+              icon: PhosphorIcons.radio(),
               enabled: host.player != null && host.api != null,
               onSelect: () => host.startStation(StationKind.artist, artistId),
             ),
@@ -863,7 +868,7 @@ EntityMenu albumDetailMenu(
           MenuAction(
             id: 'add-to-playlist',
             label: t(PlaylistsKeys.addToPlaylist),
-            icon: Icons.playlist_add_rounded,
+            icon: PhosphorIcons.playlist(),
             enabled: album.tracks.isNotEmpty,
             onSelect: () => host.addToPlaylist([
               for (final track in album.tracks) track.id,
@@ -887,7 +892,7 @@ EntityMenu albumDetailMenu(
             MenuAction(
               id: 'go-to-artist',
               label: t(CommonKeys.actionsGoToArtist),
-              icon: Icons.person_outline_rounded,
+              icon: PhosphorIcons.microphoneStage(),
               onSelect: () => host.nav.goToArtist(artistId),
             ),
           _statsAction(
@@ -963,7 +968,7 @@ EntityMenu artistMenu(
           MenuAction(
             id: 'play',
             label: t(CommonKeys.actionsPlay),
-            icon: Icons.play_arrow_rounded,
+            icon: PhosphorIcons.play(PhosphorIconsStyle.fill),
             enabled: host.player != null && api != null,
             onSelect: () async => host.play(
               await tracks(),
@@ -973,7 +978,7 @@ EntityMenu artistMenu(
           MenuAction(
             id: 'queue',
             label: t(PlayerKeys.queueAdd),
-            icon: Icons.queue_music_rounded,
+            icon: PhosphorIcons.queue(),
             enabled: host.player != null && api != null,
             onSelect: () async => host.enqueueAll(await tracks()),
           ),
@@ -992,7 +997,7 @@ EntityMenu artistMenu(
           MenuAction(
             id: 'open',
             label: t(CommonKeys.actionsOpen),
-            icon: Icons.person_outline_rounded,
+            icon: PhosphorIcons.microphoneStage(),
             onSelect: () => host.nav.goToArtist(artist.id),
           ),
           _shareAction(host, path: '/artists/${artist.id}', title: artist.name),
@@ -1032,14 +1037,14 @@ EntityMenu artistDetailMenu(
           MenuAction(
             id: 'play',
             label: t(CommonKeys.actionsPlay),
-            icon: Icons.play_arrow_rounded,
+            icon: PhosphorIcons.play(PhosphorIconsStyle.fill),
             enabled: host.player != null && artist.topTracks.isNotEmpty,
             onSelect: () => host.play(artist.topTracks, playContext),
           ),
           MenuAction(
             id: 'queue',
             label: t(PlayerKeys.queueAdd),
-            icon: Icons.queue_music_rounded,
+            icon: PhosphorIcons.queue(),
             enabled: host.player != null && artist.topTracks.isNotEmpty,
             onSelect: () => host.enqueueAll(artist.topTracks),
           ),
@@ -1058,7 +1063,7 @@ EntityMenu artistDetailMenu(
           MenuAction(
             id: 'discography',
             label: t(CatalogKeys.artistDiscography),
-            icon: Icons.library_music_outlined,
+            icon: PhosphorIcons.vinylRecord(),
             onSelect: () => host.nav.goToArtistDiscography(artist.id),
           ),
           _statsAction(
@@ -1167,28 +1172,28 @@ EntityMenu playlistMenu(
             MenuAction(
               id: 'edit-details',
               label: t(PlaylistsKeys.editTitle),
-              icon: Icons.edit_outlined,
+              icon: PhosphorIcons.pencilSimple(),
               onSelect: onEditDetails,
             ),
           if (onEditCover != null)
             MenuAction(
               id: 'edit-cover',
               label: t(PlaylistsKeys.editChoosePhoto),
-              icon: Icons.image_outlined,
+              icon: PhosphorIcons.image(),
               onSelect: onEditCover,
             ),
           if (onCollaborators != null)
             MenuAction(
               id: 'collaborators',
               label: t(PlaylistsKeys.collaboratorsManage),
-              icon: Icons.group_outlined,
+              icon: PhosphorIcons.users(),
               onSelect: onCollaborators,
             ),
           if (onReorder != null)
             MenuAction(
               id: 'reorder',
               label: t(PlaylistsKeys.reorderStart),
-              icon: Icons.swap_vert_rounded,
+              icon: PhosphorIcons.arrowsDownUp(),
               onSelect: onReorder,
             ),
         ],
@@ -1199,14 +1204,14 @@ EntityMenu playlistMenu(
           MenuAction(
             id: 'play',
             label: t(CommonKeys.actionsPlay),
-            icon: Icons.play_arrow_rounded,
+            icon: PhosphorIcons.play(PhosphorIconsStyle.fill),
             enabled: host.player != null && known?.isEmpty != true,
             onSelect: () async => host.play(await tracks(), playContext),
           ),
           MenuAction(
             id: 'queue',
             label: t(PlayerKeys.queueAdd),
-            icon: Icons.queue_music_rounded,
+            icon: PhosphorIcons.queue(),
             enabled: host.player != null && known?.isEmpty != true,
             onSelect: () async => host.enqueueAll(await tracks()),
           ),
@@ -1235,7 +1240,7 @@ EntityMenu playlistMenu(
             MenuAction(
               id: 'download',
               label: t(LibraryKeys.downloadsActionDownloadPlaylist),
-              icon: Icons.download_for_offline_outlined,
+              icon: PhosphorIcons.downloadSimple(),
               enabled: api != null,
               onSelect: () async => host.save(await tracks()),
             ),
@@ -1247,7 +1252,7 @@ EntityMenu playlistMenu(
           MenuAction(
             id: 'open',
             label: t(CommonKeys.actionsOpen),
-            icon: Icons.queue_music_rounded,
+            icon: PhosphorIcons.playlist(),
             onSelect: () => host.nav.openScreen(
               (_) => PlaylistDetailScreen(playlistId: playlist.id),
             ),
@@ -1261,7 +1266,7 @@ EntityMenu playlistMenu(
             MenuAction(
               id: 'stats',
               label: t(InsightsKeys.entityTitle),
-              icon: Icons.show_chart_rounded,
+              icon: PhosphorIcons.chartLine(),
               onSelect: onStats,
             ),
         ],
@@ -1273,7 +1278,7 @@ EntityMenu playlistMenu(
             MenuAction(
               id: 'delete',
               label: t(PlaylistsKeys.deleteTitle),
-              icon: Icons.delete_outline_rounded,
+              icon: PhosphorIcons.trash(),
               destructive: true,
               onSelect: onDelete,
             ),
@@ -1283,7 +1288,7 @@ EntityMenu playlistMenu(
             MenuAction(
               id: 'leave',
               label: t(PlaylistsKeys.leaveTitle),
-              icon: Icons.logout_rounded,
+              icon: PhosphorIcons.signOut(),
               destructive: true,
               onSelect: onLeave,
             ),
@@ -1353,14 +1358,14 @@ EntityMenu smartPlaylistMenu(
             MenuAction(
               id: 'edit',
               label: t(PlaylistsKeys.smartEditTitle),
-              icon: Icons.edit_outlined,
+              icon: PhosphorIcons.pencilSimple(),
               onSelect: onEdit,
             ),
           if (onRefresh != null)
             MenuAction(
               id: 'refresh',
               label: t(PlaylistsKeys.smartRefreshAction),
-              icon: Icons.refresh_rounded,
+              icon: PhosphorIcons.arrowsDownUp(),
               onSelect: onRefresh,
             ),
         ],
@@ -1371,14 +1376,14 @@ EntityMenu smartPlaylistMenu(
           MenuAction(
             id: 'play',
             label: t(CommonKeys.actionsPlay),
-            icon: Icons.play_arrow_rounded,
+            icon: PhosphorIcons.play(PhosphorIconsStyle.fill),
             enabled: host.player != null && known?.isEmpty != true,
             onSelect: () async => host.play(await tracks(), playContext),
           ),
           MenuAction(
             id: 'queue',
             label: t(PlayerKeys.queueAdd),
-            icon: Icons.queue_music_rounded,
+            icon: PhosphorIcons.queue(),
             enabled: host.player != null && known?.isEmpty != true,
             onSelect: () async => host.enqueueAll(await tracks()),
           ),
@@ -1412,7 +1417,7 @@ EntityMenu smartPlaylistMenu(
             MenuAction(
               id: 'download',
               label: t(LibraryKeys.downloadsActionDownloadPlaylist),
-              icon: Icons.download_for_offline_outlined,
+              icon: PhosphorIcons.downloadSimple(),
               enabled: api != null && known?.isEmpty != true,
               onSelect: () async => host.save(await tracks()),
             ),
@@ -1424,7 +1429,7 @@ EntityMenu smartPlaylistMenu(
           MenuAction(
             id: 'open',
             label: t(CommonKeys.actionsOpen),
-            icon: Icons.auto_awesome_rounded,
+            icon: PhosphorIcons.playlist(),
             onSelect: () => host.nav.openScreen(
               (_) => SmartPlaylistScreen(playlistId: playlist.id),
             ),
@@ -1438,7 +1443,7 @@ EntityMenu smartPlaylistMenu(
             MenuAction(
               id: 'stats',
               label: t(InsightsKeys.entityTitle),
-              icon: Icons.show_chart_rounded,
+              icon: PhosphorIcons.chartLine(),
               onSelect: onStats,
             ),
         ],
@@ -1450,7 +1455,7 @@ EntityMenu smartPlaylistMenu(
             MenuAction(
               id: 'delete',
               label: t(PlaylistsKeys.deleteTitle),
-              icon: Icons.delete_outline_rounded,
+              icon: PhosphorIcons.trash(),
               destructive: true,
               onSelect: onDelete,
             ),
@@ -1484,7 +1489,7 @@ EntityMenu genreMenu(
             MenuAction(
               id: 'play',
               label: t(CommonKeys.actionsPlay),
-              icon: Icons.play_arrow_rounded,
+              icon: PhosphorIcons.play(PhosphorIconsStyle.fill),
               enabled: host.player != null,
               // The same context the genre page itself plays with: a genre is not one of the
               // queue's own kinds, and inventing one would write a slug into the append-only
@@ -1502,7 +1507,7 @@ EntityMenu genreMenu(
           MenuAction(
             id: 'open',
             label: t(CommonKeys.actionsOpen),
-            icon: Icons.category_rounded,
+            icon: PhosphorIcons.musicNote(),
             onSelect: () => host.nav.goToGenre(slug),
           ),
           _shareAction(host, path: '/genres/$slug', title: name),
@@ -1539,7 +1544,7 @@ EntityMenu labelMenu(
           MenuAction(
             id: 'open',
             label: t(CommonKeys.actionsOpen),
-            icon: Icons.business_rounded,
+            icon: PhosphorIcons.tag(),
             onSelect: () => host.nav.goToLabel(labelId),
           ),
           _shareAction(host, path: '/labels/$labelId', title: name),
@@ -1592,7 +1597,7 @@ EntityMenu mixMenu(
           MenuAction(
             id: 'play',
             label: t(CommonKeys.actionsPlay),
-            icon: Icons.play_arrow_rounded,
+            icon: PhosphorIcons.play(PhosphorIconsStyle.fill),
             enabled: host.player != null && api != null,
             onSelect: () async {
               if (api == null) return;
@@ -1618,7 +1623,7 @@ EntityMenu mixMenu(
           MenuAction(
             id: 'go-to-artist',
             label: t(CommonKeys.actionsGoToArtist),
-            icon: Icons.person_outline_rounded,
+            icon: PhosphorIcons.microphoneStage(),
             onSelect: () => host.nav.goToArtist(mix.seedArtistId),
           ),
           _shareAction(
@@ -1669,7 +1674,7 @@ EntityMenu libraryMenu(
           MenuAction(
             id: 'open',
             label: t(CommonKeys.actionsOpen),
-            icon: Icons.folder_open_rounded,
+            icon: PhosphorIcons.folderOpen(),
             onSelect: () => host.nav.openScreen(
               (_) => LibraryDetailScreen(libraryId: libraryId, owned: owned),
             ),
@@ -1678,7 +1683,7 @@ EntityMenu libraryMenu(
             MenuAction(
               id: 'edit',
               label: t(CommonKeys.actionsEdit),
-              icon: Icons.tune_rounded,
+              icon: PhosphorIcons.pencilSimple(),
               onSelect: onManage,
             ),
           _shareAction(host, path: '/library/$libraryId', title: name),
@@ -1691,21 +1696,24 @@ EntityMenu libraryMenu(
             MenuAction(
               id: 'share-with-friend',
               label: t(LibraryKeys.cardShareTitle),
-              icon: Icons.person_add_alt_rounded,
+              // `library:card.shareTitle` is drawn with `ShareNetworkIcon` on the web
+              // (`routes/_authed/app/library/index.tsx`), not with the add-a-person glyph.
+              // `userPlus` stays for the actual invite control on the manage screen.
+              icon: PhosphorIcons.shareNetwork(),
               onSelect: onShare,
             ),
           if (onMoveUp != null)
             MenuAction(
               id: 'move-up',
               label: t(LibraryKeys.cardMoveUp),
-              icon: Icons.arrow_upward_rounded,
+              icon: PhosphorIcons.arrowUp(),
               onSelect: onMoveUp,
             ),
           if (onMoveDown != null)
             MenuAction(
               id: 'move-down',
               label: t(LibraryKeys.cardMoveDown),
-              icon: Icons.arrow_downward_rounded,
+              icon: PhosphorIcons.arrowDown(),
               onSelect: onMoveDown,
             ),
         ],
@@ -1717,7 +1725,7 @@ EntityMenu libraryMenu(
             MenuAction(
               id: 'remove',
               label: t(CommonKeys.actionsRemove),
-              icon: Icons.delete_outline_rounded,
+              icon: PhosphorIcons.trash(),
               destructive: true,
               onSelect: onRemove,
             ),
@@ -1748,7 +1756,7 @@ EntityMenu likedSongsMenu(
           MenuAction(
             id: 'open',
             label: t(CommonKeys.actionsOpen),
-            icon: Icons.favorite_rounded,
+            icon: PhosphorIcons.heart(PhosphorIconsStyle.fill),
             onSelect: () => host.nav.openScreen((_) => const LikedScreen()),
           ),
         ],
@@ -1811,7 +1819,7 @@ EntityMenu radioPinMenu(
           MenuAction(
             id: 'go-to-artist',
             label: t(CommonKeys.actionsGoToArtist),
-            icon: Icons.person_outline_rounded,
+            icon: PhosphorIcons.microphoneStage(),
             onSelect: () => host.nav.goToArtist(seedArtistId),
           ),
           // The artist, not the station: `shareUrlFor` resolves against the frontend's public

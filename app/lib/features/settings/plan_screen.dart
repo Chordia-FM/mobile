@@ -2,6 +2,7 @@ import 'package:chordia_api/chordia_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../i18n/keys.g.dart';
@@ -100,7 +101,7 @@ class _CurrentPlan extends ConsumerWidget {
           gutter: 0,
           subtitleMaxLines: 3,
           leading: Icon(
-            Icons.workspace_premium_rounded,
+            PhosphorIconsFill.crown,
             size: 20,
             color: Theme.of(context).colorScheme.primary,
           ),
@@ -116,7 +117,7 @@ class _CurrentPlan extends ConsumerWidget {
         ),
         if (account.hasCustomer == true)
           SettingsDisclosureRow(
-            icon: Icons.receipt_long_rounded,
+            icon: PhosphorIconsRegular.receipt,
             label: t(BillingKeys.planManage),
             description: t(BillingKeys.planManageHint),
             onTap: () => _openPortal(context, ref),
@@ -157,7 +158,7 @@ class _Entitlements extends ConsumerWidget {
           ListRow(
             gutter: 0,
             leading: Icon(
-              Icons.check_rounded,
+              PhosphorIconsBold.check,
               size: 20,
               color: Theme.of(context).colorScheme.primary,
             ),
@@ -165,7 +166,10 @@ class _Entitlements extends ConsumerWidget {
           ),
         ListRow(
           gutter: 0,
-          leading: const Icon(Icons.history_rounded, size: 20),
+          leading: const Icon(
+            PhosphorIconsRegular.clockCounterClockwise,
+            size: 20,
+          ),
           title: Text(t(BillingKeys.featuresRetentionName)),
           // No limit is the perk, so it is named rather than left blank. Rounded to years exactly
           // as the web's plan table rounds it, so the same account is not told two different

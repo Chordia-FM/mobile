@@ -6,6 +6,7 @@ import 'package:chordia_sync/chordia_sync.dart' hide PlaybackState;
 // one this screen means is the queue's.
 import 'package:flutter/material.dart' hide RepeatMode;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../app/providers.dart';
 import '../../data/accent/accent_fill.dart';
@@ -272,7 +273,9 @@ class LikeButton extends ConsumerWidget {
         liked ?? false ? LibraryKeys.likedRemove : LibraryKeys.likedSave,
       ),
       icon: Icon(
-        liked ?? false ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+        PhosphorIcons.heart(
+          liked ?? false ? PhosphorIconsStyle.fill : PhosphorIconsStyle.regular,
+        ),
         color: liked ?? false ? theme.colorScheme.primary : null,
       ),
     );
@@ -317,14 +320,14 @@ class PlayerTabBar extends ConsumerWidget {
         child: Row(
           children: [
             _Tab(
-              icon: Icons.album_rounded,
+              icon: PhosphorIcons.disc(),
               label: t(PlayerKeys.expandedNowPlaying),
               active: current == PlayerTab.nowPlaying,
               onTap: () => onSelect(PlayerTab.nowPlaying),
             ),
             _Tab(
               // A microphone on a stand, the same glyph the web client's lyrics control uses.
-              icon: Icons.mic_external_on_rounded,
+              icon: PhosphorIcons.microphoneStage(),
               label: t(PlayerKeys.expandedLyrics),
               active: current == PlayerTab.lyrics,
               disabledReason: hasLyrics == false
@@ -333,7 +336,7 @@ class PlayerTabBar extends ConsumerWidget {
               onTap: () => onSelect(PlayerTab.lyrics),
             ),
             _Tab(
-              icon: Icons.queue_music_rounded,
+              icon: PhosphorIcons.queue(),
               label: t(PlayerKeys.expandedQueue),
               active: current == PlayerTab.queue,
               onTap: () => onSelect(PlayerTab.queue),
@@ -449,7 +452,7 @@ class _Header extends ConsumerWidget {
         IconButton(
           onPressed: () => Navigator.of(buildContext).maybePop(),
           tooltip: t(PlayerKeys.expandedCollapse),
-          icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 30),
+          icon: Icon(PhosphorIcons.caretDown(), size: 30),
         ),
         Expanded(
           child: Column(
@@ -475,14 +478,18 @@ class _Header extends ConsumerWidget {
           onPressed: () => showSleepTimerSheet(buildContext),
           tooltip: t(PlayerKeys.sleepTimerTitle),
           icon: Icon(
-            sleepTimerOn ? Icons.bedtime : Icons.bedtime_outlined,
+            PhosphorIcons.moon(
+              sleepTimerOn
+                  ? PhosphorIconsStyle.fill
+                  : PhosphorIconsStyle.regular,
+            ),
             color: sleepTimerOn ? theme.colorScheme.primary : null,
           ),
         ),
         IconButton(
           onPressed: () => showDevicePickerSheet(buildContext),
           tooltip: t(PlayerKeys.devicesTitle),
-          icon: const Icon(Icons.devices_rounded),
+          icon: Icon(PhosphorIcons.broadcast()),
         ),
         const _MoreButton(),
       ],
@@ -663,7 +670,7 @@ class _Transport extends ConsumerWidget {
           tooltip: t(PlayerKeys.controlsShuffle),
           isSelected: shuffle,
           icon: Icon(
-            Icons.shuffle_rounded,
+            PhosphorIcons.shuffle(),
             color: shuffle
                 ? theme.colorScheme.primary
                 : theme.colorScheme.onSurfaceVariant,
@@ -673,14 +680,14 @@ class _Transport extends ConsumerWidget {
           onPressed: () => actions().prev(),
           tooltip: t(PlayerKeys.controlsPrevious),
           iconSize: 40,
-          icon: const Icon(Icons.skip_previous_rounded),
+          icon: Icon(PhosphorIcons.skipBack(PhosphorIconsStyle.fill)),
         ),
         _PlayButton(playing: playing, buffering: buffering),
         IconButton(
           onPressed: () => actions().next(),
           tooltip: t(PlayerKeys.controlsNext),
           iconSize: 40,
-          icon: const Icon(Icons.skip_next_rounded),
+          icon: Icon(PhosphorIcons.skipForward(PhosphorIconsStyle.fill)),
         ),
         IconButton(
           onPressed: () => actions().cycleRepeat(),
@@ -692,8 +699,8 @@ class _Transport extends ConsumerWidget {
           isSelected: repeat != RepeatMode.off,
           icon: Icon(
             repeat == RepeatMode.one
-                ? Icons.repeat_one_rounded
-                : Icons.repeat_rounded,
+                ? PhosphorIcons.repeatOnce()
+                : PhosphorIcons.repeat(),
             color: repeat == RepeatMode.off
                 ? theme.colorScheme.onSurfaceVariant
                 : theme.colorScheme.primary,
@@ -753,7 +760,9 @@ class _PlayButton extends ConsumerWidget {
               ),
               button: true,
               child: Icon(
-                playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                playing
+                    ? PhosphorIcons.pause(PhosphorIconsStyle.fill)
+                    : PhosphorIcons.play(PhosphorIconsStyle.fill),
                 size: 36,
               ),
             ),

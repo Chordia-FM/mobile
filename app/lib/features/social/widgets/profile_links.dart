@@ -1,6 +1,7 @@
 import 'package:chordia_api/chordia_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../i18n/keys.g.dart';
@@ -13,34 +14,54 @@ import '../../catalog/widgets/list_row.dart';
 /// same fourteen the Hub validates for both `ArtistLink.kind` and `ProfileLink.kind`, which is why
 /// one map serves an artist page and a listener's profile on both clients.
 ///
-/// The **icons** are the one thing that could not be ported: the web draws real brand marks
-/// (Phosphor's, plus three hand-drawn ones in `components/ui/brand-icons`), and Flutter's Material
-/// set has no logos at all. Rather than pick a mark that belongs to some other company, each entry
-/// gets a neutral glyph and the sheet says the platform's name beside it — which is the reason the
-/// web's below-`md` shape is a named list rather than a row of icons in the first place.
-const _platforms = <String, ({IconData icon, String label, int order})>{
-  'website': (icon: Icons.public_rounded, label: 'Website', order: 0),
-  'spotify': (icon: Icons.graphic_eq_rounded, label: 'Spotify', order: 1),
+/// The **icons** are `ArtistLinkBar`'s too, glyph for glyph, now that both clients draw Phosphor.
+/// Eleven of the fourteen have a real brand mark in the set and use it. The three Phosphor has no
+/// mark for are the same three the web hand-draws in `components/ui/brand-icons`; a hand-drawn
+/// path is not portable to a font glyph, so those carry a neutral stand-in and lean on the named
+/// list beside them — which is the reason the web's below-`md` shape names every destination in
+/// the first place.
+final _platforms = <String, ({IconData icon, String label, int order})>{
+  'website': (icon: PhosphorIcons.globeSimple(), label: 'Website', order: 0),
+  'spotify': (icon: PhosphorIcons.spotifyLogo(), label: 'Spotify', order: 1),
   'apple_music': (
-    icon: Icons.music_note_rounded,
+    icon: PhosphorIcons.appleLogo(),
     label: 'Apple Music',
     order: 2,
   ),
   'youtube_music': (
-    icon: Icons.music_video_rounded,
+    icon: PhosphorIcons.youtubeLogo(),
     label: 'YouTube Music',
     order: 3,
   ),
-  'youtube': (icon: Icons.play_circle_outline, label: 'YouTube', order: 4),
-  'soundcloud': (icon: Icons.cloud_rounded, label: 'SoundCloud', order: 5),
-  'bandcamp': (icon: Icons.album_rounded, label: 'Bandcamp', order: 6),
-  'tidal': (icon: Icons.waves_rounded, label: 'Tidal', order: 7),
-  'deezer': (icon: Icons.equalizer_rounded, label: 'Deezer', order: 8),
-  'instagram': (icon: Icons.camera_alt_rounded, label: 'Instagram', order: 9),
-  'twitter': (icon: Icons.alternate_email_rounded, label: 'X', order: 10),
-  'tiktok': (icon: Icons.movie_creation_rounded, label: 'TikTok', order: 11),
-  'facebook': (icon: Icons.groups_rounded, label: 'Facebook', order: 12),
-  'wikipedia': (icon: Icons.menu_book_rounded, label: 'Wikipedia', order: 13),
+  'youtube': (icon: PhosphorIcons.youtubeLogo(), label: 'YouTube', order: 4),
+  'soundcloud': (
+    icon: PhosphorIcons.soundcloudLogo(),
+    label: 'SoundCloud',
+    order: 5,
+  ),
+  // No Phosphor mark: `BandcampIcon` on the web.
+  'bandcamp': (icon: PhosphorIcons.vinylRecord(), label: 'Bandcamp', order: 6),
+  'tidal': (icon: PhosphorIcons.tidalLogo(), label: 'Tidal', order: 7),
+  // No Phosphor mark: `DeezerIcon` on the web.
+  'deezer': (icon: PhosphorIcons.waveform(), label: 'Deezer', order: 8),
+  'instagram': (
+    icon: PhosphorIcons.instagramLogo(),
+    label: 'Instagram',
+    order: 9,
+  ),
+  'twitter': (icon: PhosphorIcons.xLogo(), label: 'X', order: 10),
+  'tiktok': (icon: PhosphorIcons.tiktokLogo(), label: 'TikTok', order: 11),
+  'facebook': (
+    icon: PhosphorIcons.facebookLogo(),
+    label: 'Facebook',
+    order: 12,
+  ),
+  // No Phosphor mark: `WikipediaIcon` on the web.
+  'wikipedia': (
+    icon: PhosphorIcons.bookOpenText(),
+    label: 'Wikipedia',
+    order: 13,
+  ),
 };
 
 /// A profile's external links, as the one button the web shows below `md`.
@@ -68,7 +89,7 @@ class ProfileLinkBar extends ConsumerWidget {
       child: Align(
         alignment: Alignment.centerLeft,
         child: ActionChip(
-          avatar: const Icon(Icons.link_rounded, size: 18),
+          avatar: Icon(PhosphorIcons.linkSimple(), size: 18),
           label: Text(t(SocialKeys.followLinksOpen)),
           onPressed: () => _open(context, ref, shown),
         ),
@@ -96,7 +117,7 @@ class ProfileLinkBar extends ConsumerWidget {
               ListRow(
                 leading: Icon(link.icon),
                 title: Text(link.label),
-                trailing: const Icon(Icons.open_in_new_rounded, size: 18),
+                trailing: Icon(PhosphorIcons.arrowSquareOut(), size: 18),
                 onTap: () {
                   Navigator.of(sheetContext).pop();
                   _launch(link.url);

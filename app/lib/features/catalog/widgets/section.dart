@@ -2,6 +2,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../../data/accent/accent_scope.dart';
 import '../../../i18n/keys.g.dart';
@@ -93,7 +94,7 @@ class CollectionActions extends ConsumerWidget {
         children: [
           _PlayButton(onPressed: onPlay, label: t(CommonKeys.actionsPlay)),
           RingIconButton(
-            icon: Icons.shuffle_rounded,
+            icon: PhosphorIcons.shuffle(PhosphorIconsStyle.bold),
             tooltip: t(CommonKeys.actionsShuffle),
             onPressed: onShuffle,
           ),
@@ -122,7 +123,11 @@ class _PlayButton extends StatelessWidget {
         minimumSize: const Size.square(56),
         fixedSize: const Size.square(56),
       ),
-      child: Icon(Icons.play_arrow_rounded, size: 28, semanticLabel: label),
+      child: Icon(
+        PhosphorIcons.play(PhosphorIconsStyle.fill),
+        size: 28,
+        semanticLabel: label,
+      ),
     ),
   );
 }

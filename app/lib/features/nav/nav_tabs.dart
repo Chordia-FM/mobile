@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../i18n/keys.g.dart';
 
@@ -16,22 +17,22 @@ enum NavTab {
   home(
     path: '/home',
     labelKey: CommonKeys.navHome,
-    icon: Icons.home_outlined,
-    selectedIcon: Icons.home,
+    icon: PhosphorIconsRegular.house,
+    selectedIcon: PhosphorIconsFill.house,
     rootHasAppBar: false,
   ),
   search(
     path: '/search',
     labelKey: CommonKeys.navSearch,
-    icon: Icons.search_outlined,
-    selectedIcon: Icons.search,
+    icon: PhosphorIconsRegular.magnifyingGlass,
+    selectedIcon: PhosphorIconsFill.magnifyingGlass,
     rootHasAppBar: false,
   ),
   library(
     path: '/library',
     labelKey: CommonKeys.navLibrary,
-    icon: Icons.library_music_outlined,
-    selectedIcon: Icons.library_music,
+    icon: PhosphorIconsRegular.musicNotesSimple,
+    selectedIcon: PhosphorIconsFill.musicNotesSimple,
     rootHasAppBar: true,
   ),
 
@@ -40,8 +41,8 @@ enum NavTab {
   insights(
     path: '/insights',
     labelKey: CommonKeys.navInsights,
-    icon: Icons.insights_outlined,
-    selectedIcon: Icons.insights,
+    icon: PhosphorIconsRegular.chartLineUp,
+    selectedIcon: PhosphorIconsFill.chartLineUp,
     rootHasAppBar: true,
   );
 

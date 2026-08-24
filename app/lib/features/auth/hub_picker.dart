@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../app/providers.dart';
 import '../../data/hub.dart';
@@ -58,7 +59,7 @@ class HubPicker extends ConsumerWidget {
                     child: Row(
                       children: [
                         const Icon(
-                          Icons.add_rounded,
+                          PhosphorIconsRegular.plus,
                           size: 18,
                           color: ChordiaColors.accent,
                         ),
@@ -86,7 +87,7 @@ class HubPicker extends ConsumerWidget {
         if (active != null) ...[
           const SizedBox(width: 4),
           IconButton(
-            icon: const Icon(Icons.delete_outline),
+            icon: const Icon(PhosphorIconsRegular.trash),
             tooltip: t(AuthKeys.hubRemove),
             onPressed: () => _confirmRemove(context, ref, active),
           ),

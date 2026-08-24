@@ -1,6 +1,7 @@
 import 'package:chordia_api/chordia_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../data/art/art_cache.dart';
 import '../../i18n/keys.g.dart';
@@ -90,7 +91,7 @@ class _LoadedState extends ConsumerState<_Loaded> {
                       sha256: artHashOf(artist.imageUrl),
                       size: 120,
                       shape: BoxShape.circle,
-                      fallbackIcon: Icons.person_rounded,
+                      fallbackIcon: PhosphorIconsFill.microphoneStage,
                     ),
                     const SizedBox(height: 12),
                     Text(artist.name, style: theme.textTheme.titleLarge),

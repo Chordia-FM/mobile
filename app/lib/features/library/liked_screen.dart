@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:chordia_sync/chordia_sync.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../data/art/art_cache.dart';
 import '../../i18n/keys.g.dart';
@@ -108,7 +109,7 @@ class _LikedScreenState extends ConsumerState<LikedScreen> {
                       totalDuration(controller.durationMs, t),
                   ].join(' · '),
                   artwork: const GradientArtwork(
-                    icon: Icons.favorite_rounded,
+                    icon: PhosphorIconsFill.heart,
                     size: 200,
                   ),
                 ),
@@ -128,7 +129,7 @@ class _LikedScreenState extends ConsumerState<LikedScreen> {
                 if (tracks.isEmpty)
                   EmptyNote(
                     message: t(LibraryKeys.likedEmpty),
-                    icon: Icons.favorite_border_rounded,
+                    icon: PhosphorIcons.heart(),
                   ),
               ],
             );
@@ -157,13 +158,13 @@ class _LikedScreenState extends ConsumerState<LikedScreen> {
               children: [
                 IconButton(
                   visualDensity: VisualDensity.compact,
-                  icon: const Icon(Icons.favorite_rounded),
+                  icon: const Icon(PhosphorIconsFill.heart),
                   tooltip: t(LibraryKeys.likedRemove),
                   onPressed: () => controller.unlike(track),
                 ),
                 IconButton(
                   visualDensity: VisualDensity.compact,
-                  icon: const Icon(Icons.more_vert_rounded),
+                  icon: const Icon(PhosphorIconsBold.dotsThree),
                   tooltip: t(CommonKeys.actionsMore),
                   onPressed: () =>
                       unawaited(showTrackMenu(context, ref, track)),

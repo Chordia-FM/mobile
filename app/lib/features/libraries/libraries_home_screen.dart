@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:chordia_api/chordia_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../i18n/keys.g.dart';
 import '../../i18n/translations_provider.dart';
@@ -32,7 +33,7 @@ class LibrariesHomeScreen extends ConsumerWidget {
       appBar: AppBar(title: Text(t(LibraryKeys.listTitle))),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => openPairingWizard(context),
-        icon: const Icon(Icons.add_rounded),
+        icon: const Icon(PhosphorIconsRegular.plus),
         label: Text(t(LibraryKeys.listConnectServer)),
       ),
       body: RefreshIndicator(
@@ -97,7 +98,7 @@ class _EmptyState extends ConsumerWidget {
       child: Column(
         children: [
           Icon(
-            Icons.dns_outlined,
+            PhosphorIconsRegular.hardDrives,
             size: 40,
             color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
@@ -118,7 +119,7 @@ class _EmptyState extends ConsumerWidget {
           const SizedBox(height: 16),
           FilledButton.icon(
             onPressed: () => openPairingWizard(context),
-            icon: const Icon(Icons.link_rounded),
+            icon: const Icon(PhosphorIconsRegular.plus),
             label: Text(t(LibraryKeys.listOpenSetup)),
           ),
         ],
@@ -185,7 +186,7 @@ class LibraryCard extends ConsumerWidget {
               ),
             ),
           IconButton(
-            icon: const Icon(Icons.more_vert_rounded),
+            icon: const Icon(PhosphorIconsBold.dotsThree),
             tooltip: t(CommonKeys.actionsMore),
             onPressed: () => unawaited(_menu(context, ref)),
           ),
@@ -223,7 +224,7 @@ class LibraryCard extends ConsumerWidget {
             ),
             const Divider(height: 1),
             ListRow(
-              leading: const Icon(Icons.folder_open_rounded, size: 20),
+              leading: const Icon(PhosphorIconsRegular.folderOpen, size: 20),
               title: Text(t(CommonKeys.actionsOpen)),
               onTap: () {
                 Navigator.of(sheetContext).pop();
@@ -238,7 +239,7 @@ class LibraryCard extends ConsumerWidget {
               },
             ),
             ListRow(
-              leading: const Icon(Icons.settings_outlined, size: 20),
+              leading: const Icon(PhosphorIconsRegular.pencilSimple, size: 20),
               title: Text(t(LibraryKeys.manageTitle)),
               onTap: () {
                 Navigator.of(sheetContext).pop();
@@ -255,7 +256,7 @@ class LibraryCard extends ConsumerWidget {
             if (owned)
               ListRow(
                 destructive: true,
-                leading: const Icon(Icons.delete_outline_rounded, size: 20),
+                leading: const Icon(PhosphorIconsRegular.trash, size: 20),
                 title: Text(t(LibraryKeys.editRemoveTitle)),
                 subtitle: Text(t(LibraryKeys.editRemoveHelp)),
                 onTap: () {

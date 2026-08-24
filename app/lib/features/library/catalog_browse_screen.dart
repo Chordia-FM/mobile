@@ -1,6 +1,7 @@
 import 'package:chordia_api/chordia_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../data/art/art_cache.dart';
 import '../../i18n/keys.g.dart';
@@ -46,7 +47,7 @@ class _ArtistsScreenState extends ConsumerState<ArtistsScreen> {
         actions: [
           PopupMenuButton<ArtistSort>(
             tooltip: t(LibraryKeys.artistsSortLabel),
-            icon: const Icon(Icons.sort_rounded),
+            icon: const Icon(PhosphorIconsRegular.arrowsDownUp),
             initialValue: _sort,
             onSelected: (sort) => setState(() => _sort = sort),
             itemBuilder: (context) => [
@@ -95,7 +96,7 @@ class _ArtistsScreenState extends ConsumerState<ArtistsScreen> {
               controller: _search,
               onChanged: (_) => setState(() {}),
               decoration: InputDecoration(
-                prefixIcon: const Icon(Icons.search_rounded),
+                prefixIcon: const Icon(PhosphorIconsRegular.magnifyingGlass),
                 hintText: t(LibraryKeys.artistsSearchPlaceholder),
               ),
             ),
@@ -119,7 +120,7 @@ class _ArtistsScreenState extends ConsumerState<ArtistsScreen> {
                         sha256: artHashOf(artist.imageUrl),
                         size: 40,
                         shape: BoxShape.circle,
-                        fallbackIcon: Icons.person_rounded,
+                        fallbackIcon: PhosphorIconsFill.microphoneStage,
                       ),
                       title: Text(artist.name),
                       subtitle: Text(
@@ -205,7 +206,7 @@ class RecentAlbumsScreen extends ConsumerWidget {
           data: (rows) => rows.isEmpty
               ? EmptyNote(
                   message: t(DiscoveryKeys.homeEmptyState),
-                  icon: Icons.album_outlined,
+                  icon: PhosphorIcons.disc(),
                 )
               : ListView.builder(
                   itemCount: rows.length,
@@ -215,7 +216,7 @@ class RecentAlbumsScreen extends ConsumerWidget {
                       leading: CoverArt(
                         sha256: artHashOf(album.coverUrl),
                         size: 40,
-                        fallbackIcon: Icons.album_rounded,
+                        fallbackIcon: PhosphorIconsFill.musicNotes,
                       ),
                       title: Text(album.title),
                       subtitle: Text(

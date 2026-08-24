@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../app/providers.dart';
 import '../../i18n/keys.g.dart';
@@ -34,51 +35,51 @@ class SettingsScreen extends ConsumerWidget {
           title: t(SettingsKeys.title),
           children: [
             SettingsDisclosureRow(
-              icon: Icons.person_rounded,
+              icon: PhosphorIconsRegular.user,
               label: t(SettingsKeys.accountTitle),
               description: t(SettingsKeys.sectionsAccount),
               onTap: () => openSettingsScreen(context, const AccountScreen()),
             ),
             SettingsDisclosureRow(
-              icon: Icons.palette_rounded,
+              icon: PhosphorIconsRegular.palette,
               label: t(SettingsKeys.appearanceTitle),
               description: t(SettingsKeys.sectionsAppearance),
               onTap: () =>
                   openSettingsScreen(context, const AppearanceScreen()),
             ),
             SettingsDisclosureRow(
-              icon: Icons.graphic_eq_rounded,
+              icon: PhosphorIconsRegular.speakerHigh,
               label: t(SettingsKeys.playbackTitle),
               description: t(SettingsKeys.sectionsPlayback),
               onTap: () => openSettingsScreen(context, const PlaybackScreen()),
             ),
             SettingsDisclosureRow(
-              icon: Icons.visibility_rounded,
+              icon: PhosphorIconsRegular.eye,
               label: t(SettingsKeys.privacyTitle),
               description: t(SettingsKeys.sectionsPrivacy),
               onTap: () => openSettingsScreen(context, const PrivacyScreen()),
             ),
             SettingsDisclosureRow(
-              icon: Icons.lock_rounded,
+              icon: PhosphorIconsRegular.lock,
               label: t(SettingsKeys.securityTitle),
               description: t(SettingsKeys.sectionsSecurity),
               onTap: () => openSettingsScreen(context, const SecurityScreen()),
             ),
             SettingsDisclosureRow(
-              icon: Icons.link_rounded,
+              icon: PhosphorIconsRegular.link,
               label: t(SettingsKeys.connectionsTitle),
               description: t(SettingsKeys.sectionsConnections),
               onTap: () =>
                   openSettingsScreen(context, const ConnectionsScreen()),
             ),
             SettingsDisclosureRow(
-              icon: Icons.folder_zip_rounded,
+              icon: PhosphorIconsRegular.database,
               label: t(SettingsKeys.dataTitle),
               description: t(SettingsKeys.sectionsData),
               onTap: () => openSettingsScreen(context, const DataScreen()),
             ),
             SettingsDisclosureRow(
-              icon: Icons.workspace_premium_rounded,
+              icon: PhosphorIconsRegular.crown,
               label: t(SettingsKeys.planTitle),
               description: t(SettingsKeys.sectionsPlan),
               onTap: () => openSettingsScreen(context, const PlanScreen()),

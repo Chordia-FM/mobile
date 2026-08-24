@@ -1,6 +1,7 @@
 import 'package:chordia_api/chordia_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../../data/art/art_cache.dart';
 import '../../../i18n/keys.g.dart';
@@ -287,8 +288,8 @@ class _TopList extends ConsumerWidget {
                 size: 40,
                 shape: circular ? BoxShape.circle : BoxShape.rectangle,
                 fallbackIcon: circular
-                    ? Icons.person_rounded
-                    : Icons.album_rounded,
+                    ? PhosphorIconsFill.microphoneStage
+                    : PhosphorIconsFill.disc,
               ),
               title: Text(
                 entity.name,

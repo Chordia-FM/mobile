@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:chordia_api/chordia_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../../data/art/art_cache.dart';
 import '../../../i18n/keys.g.dart';
@@ -60,7 +61,7 @@ class _AdminUsersViewState extends ConsumerState<AdminUsersView> {
               );
             },
             decoration: InputDecoration(
-              prefixIcon: const Icon(Icons.search_rounded),
+              prefixIcon: const Icon(PhosphorIconsRegular.magnifyingGlass),
               hintText: t(AdminKeys.usersSearchPlaceholder),
               border: const OutlineInputBorder(),
             ),
@@ -187,7 +188,7 @@ class _UserRow extends ConsumerWidget {
         sha256: artHashOf(user.avatarUrl),
         size: 44,
         shape: BoxShape.circle,
-        fallbackIcon: Icons.person_rounded,
+        fallbackIcon: PhosphorIconsFill.user,
       ),
       title: Row(
         children: [
@@ -217,7 +218,7 @@ class _UserRow extends ConsumerWidget {
         maxLines: 2,
         overflow: TextOverflow.ellipsis,
       ),
-      trailing: const Icon(Icons.chevron_right_rounded),
+      trailing: const Icon(PhosphorIconsRegular.caretRight),
     );
   }
 }
@@ -272,7 +273,7 @@ class _Footer extends ConsumerWidget {
           if (state.hasMore) ...[
             const SizedBox(height: 8),
             if (state.loadingMore)
-              const CircularProgressIndicator.adaptive()
+              const CircularProgressIndicator()
             else
               OutlinedButton(
                 onPressed: () =>

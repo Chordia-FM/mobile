@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../app/providers.dart';
 import '../../data/art/art_cache.dart';
@@ -128,28 +129,28 @@ class _AccountSheet extends ConsumerWidget {
         ),
         const Divider(height: 1),
         AccountMenuRow(
-          icon: Icons.person_outline,
+          icon: PhosphorIconsRegular.user,
           label: t(CommonKeys.userMenuProfile),
           onTap: () => open('u/${Uri.encodeComponent(viewer.handle)}'),
         ),
         AccountMenuRow(
-          icon: Icons.people_outline,
+          icon: PhosphorIconsRegular.users,
           label: t(CommonKeys.navFriends),
           onTap: () => open('friends'),
         ),
         AccountMenuRow(
-          icon: Icons.folder_copy_outlined,
+          icon: PhosphorIconsRegular.folders,
           label: t(CommonKeys.userMenuLibraries),
           onTap: () => open('libraries'),
         ),
         AccountMenuRow(
-          icon: Icons.settings_outlined,
+          icon: PhosphorIconsRegular.gear,
           label: t(CommonKeys.userMenuSettings),
           onTap: () => open('settings'),
         ),
         if (admin)
           AccountMenuRow(
-            icon: Icons.shield_outlined,
+            icon: PhosphorIconsRegular.shieldCheck,
             label: t(CommonKeys.userMenuAdmin),
             onTap: () => open('admin'),
           ),
@@ -157,7 +158,7 @@ class _AccountSheet extends ConsumerWidget {
         // Its own section, in the destructive colour — the web bordered it off from the
         // destinations above for the same reason.
         AccountMenuRow(
-          icon: Icons.logout_rounded,
+          icon: PhosphorIconsRegular.signOut,
           label: t(CommonKeys.userMenuSignOut),
           colour: scheme.error,
           onTap: () => unawaited(_signOut(context, ref)),

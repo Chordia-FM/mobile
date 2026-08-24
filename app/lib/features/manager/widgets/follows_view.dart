@@ -1,6 +1,7 @@
 import 'package:chordia_api/chordia_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../../data/art/art_cache.dart';
 import '../../../i18n/keys.g.dart';
@@ -71,7 +72,7 @@ class _FollowRow extends ConsumerWidget {
         sha256: artHashOf(follow.imageUrl),
         size: 40,
         shape: BoxShape.circle,
-        fallbackIcon: Icons.person_rounded,
+        fallbackIcon: PhosphorIconsFill.microphoneStage,
       ),
       // A follow made before the Hub knew the artist's name has only its MBID, and showing that is
       // more honest than an empty row.

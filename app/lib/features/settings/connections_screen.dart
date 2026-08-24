@@ -1,6 +1,7 @@
 import 'package:chordia_api/chordia_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../app/providers.dart';
@@ -57,8 +58,8 @@ class ConnectionsScreen extends ConsumerWidget {
                 gutter: 0,
                 leading: Icon(
                   value.discordLinked
-                      ? Icons.link_rounded
-                      : Icons.link_off_rounded,
+                      ? PhosphorIconsRegular.link
+                      : PhosphorIconsRegular.linkBreak,
                   size: 20,
                   color: value.discordLinked
                       ? Theme.of(context).colorScheme.primary
@@ -146,7 +147,9 @@ class _LastfmRowsState extends ConsumerState<_LastfmRows> {
         ListRow(
           gutter: 0,
           leading: Icon(
-            connected ? Icons.link_rounded : Icons.link_off_rounded,
+            connected
+                ? PhosphorIconsRegular.link
+                : PhosphorIconsRegular.linkBreak,
             size: 20,
             color: connected ? Theme.of(context).colorScheme.primary : null,
           ),

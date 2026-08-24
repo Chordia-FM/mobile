@@ -9,6 +9,7 @@ import 'dart:math' as math;
 import 'package:chordia_sync/chordia_sync.dart' as sync show RepeatMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../app/theme.dart';
 import '../../data/accent/accent_scope.dart';
@@ -79,7 +80,7 @@ class MirrorPlayerScreen extends ConsumerWidget {
           IconButton(
             onPressed: () => showDevicePickerSheet(context),
             tooltip: t(PlayerKeys.devicesTitle),
-            icon: const Icon(Icons.speaker_rounded),
+            icon: Icon(PhosphorIcons.broadcast()),
           ),
         ],
       ),
@@ -139,7 +140,7 @@ class MirrorPlayerScreen extends ConsumerWidget {
               // over, queue and playhead included.
               TextButton.icon(
                 onPressed: transport.bringHere,
-                icon: const Icon(Icons.phone_iphone_rounded),
+                icon: Icon(PhosphorIcons.deviceMobile()),
                 label: Text(t(PlayerKeys.devicesPlayHere)),
               ),
               const SizedBox(height: 8),
@@ -213,15 +214,18 @@ class MirrorBar extends ConsumerWidget {
                 ),
                 icon: Icon(
                   mirror.playing
-                      ? Icons.pause_rounded
-                      : Icons.play_arrow_rounded,
+                      ? PhosphorIcons.pause(PhosphorIconsStyle.fill)
+                      : PhosphorIcons.play(PhosphorIconsStyle.fill),
                   size: 28,
                 ),
               ),
               IconButton(
                 onPressed: transport.next,
                 tooltip: t(PlayerKeys.controlsNext),
-                icon: const Icon(Icons.skip_next_rounded, size: 26),
+                icon: Icon(
+                  PhosphorIcons.skipForward(PhosphorIconsStyle.fill),
+                  size: 26,
+                ),
               ),
               const SizedBox(width: 4),
             ],
@@ -348,7 +352,7 @@ class _MirrorTransport extends ConsumerWidget {
           tooltip: t(PlayerKeys.controlsShuffle),
           isSelected: mirror.shuffle,
           icon: Icon(
-            Icons.shuffle_rounded,
+            PhosphorIcons.shuffle(),
             color: mirror.shuffle
                 ? context.surfaces.accent
                 : ChordiaColors.mutedForeground,
@@ -358,7 +362,7 @@ class _MirrorTransport extends ConsumerWidget {
           onPressed: transport.prev,
           tooltip: t(PlayerKeys.controlsPrevious),
           iconSize: 40,
-          icon: const Icon(Icons.skip_previous_rounded),
+          icon: Icon(PhosphorIcons.skipBack(PhosphorIconsStyle.fill)),
         ),
         SizedBox(
           width: 68,
@@ -397,8 +401,8 @@ class _MirrorTransport extends ConsumerWidget {
                   button: true,
                   child: Icon(
                     mirror.playing
-                        ? Icons.pause_rounded
-                        : Icons.play_arrow_rounded,
+                        ? PhosphorIcons.pause(PhosphorIconsStyle.fill)
+                        : PhosphorIcons.play(PhosphorIconsStyle.fill),
                     size: 36,
                   ),
                 ),
@@ -410,7 +414,7 @@ class _MirrorTransport extends ConsumerWidget {
           onPressed: transport.next,
           tooltip: t(PlayerKeys.controlsNext),
           iconSize: 40,
-          icon: const Icon(Icons.skip_next_rounded),
+          icon: Icon(PhosphorIcons.skipForward(PhosphorIconsStyle.fill)),
         ),
         IconButton(
           onPressed: transport.cycleRepeat,
@@ -422,8 +426,8 @@ class _MirrorTransport extends ConsumerWidget {
           isSelected: mirror.repeat != sync.RepeatMode.off,
           icon: Icon(
             mirror.repeat == sync.RepeatMode.one
-                ? Icons.repeat_one_rounded
-                : Icons.repeat_rounded,
+                ? PhosphorIcons.repeatOnce()
+                : PhosphorIcons.repeat(),
             color: mirror.repeat == sync.RepeatMode.off
                 ? ChordiaColors.mutedForeground
                 : context.surfaces.accent,

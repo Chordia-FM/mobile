@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:chordia_api/chordia_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../../data/art/art_cache.dart';
 import '../../../i18n/keys.g.dart';
@@ -70,7 +71,7 @@ class _Loaded extends ConsumerWidget {
                   t(ManagerKeys.coveragePending, {
                     'count': summary.pendingArtists,
                   }),
-                  icon: Icons.hourglass_empty_rounded,
+                  icon: PhosphorIconsRegular.hourglass,
                 ),
               ],
               ManagerSectionHeader(
@@ -194,7 +195,7 @@ class _LibraryScope extends ConsumerWidget {
     return ListRow(
       title: Text(t(ManagerKeys.librariesIncludeShared)),
       onTap: prefs.hasValue ? () => unawaited(set(!included)) : null,
-      trailing: Switch.adaptive(
+      trailing: Switch(
         value: included,
         onChanged: prefs.hasValue ? (v) => unawaited(set(v)) : null,
       ),

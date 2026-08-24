@@ -2,6 +2,7 @@ import 'package:chordia_api/chordia_api.dart';
 import 'package:chordia_sync/chordia_sync.dart' show AlbumContext;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../data/art/art_cache.dart';
 import '../../i18n/keys.g.dart';
@@ -91,7 +92,7 @@ class _AlbumView extends ConsumerWidget {
             trailing: [
               if (canPlay)
                 RingIconButton(
-                  icon: Icons.download_rounded,
+                  icon: PhosphorIcons.downloadSimple(PhosphorIconsStyle.bold),
                   tooltip: ref.t(LibraryKeys.downloadsActionDownload),
                   onPressed: () => saveDownloads(context, ref, album.tracks),
                 ),

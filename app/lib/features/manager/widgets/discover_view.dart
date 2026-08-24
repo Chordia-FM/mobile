@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:chordia_api/chordia_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../../data/art/art_cache.dart';
 import '../../../i18n/keys.g.dart';
@@ -78,7 +79,7 @@ class _DiscoverViewState extends ConsumerState<DiscoverView> {
               setState(() => _query = value.trim());
             },
             decoration: InputDecoration(
-              prefixIcon: const Icon(Icons.search_rounded),
+              prefixIcon: const Icon(PhosphorIconsRegular.magnifyingGlass),
               hintText: t(ManagerKeys.discoverPlaceholder),
               border: const OutlineInputBorder(),
             ),
@@ -177,7 +178,7 @@ class _ArtistRow extends ConsumerWidget {
         sha256: artHashOf(artist.imageUrl),
         size: 40,
         shape: BoxShape.circle,
-        fallbackIcon: Icons.person_rounded,
+        fallbackIcon: PhosphorIconsFill.microphoneStage,
       ),
       title: Text(artist.name),
       subtitle: Text(

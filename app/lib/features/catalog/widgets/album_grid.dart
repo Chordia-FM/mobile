@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:chordia_api/chordia_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../../data/art/art_cache.dart';
 import '../../../i18n/keys.g.dart';
@@ -228,7 +229,7 @@ class CoverArtSlot extends StatelessWidget {
     super.key,
     this.semanticLabel,
     this.circular = false,
-    this.fallbackIcon = Icons.music_note_rounded,
+    this.fallbackIcon = PhosphorIconsFill.musicNotes,
     this.fallbackInitial,
   });
 

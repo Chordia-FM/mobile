@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:chordia_api/chordia_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../../data/art/art_cache.dart';
 import '../../../i18n/keys.g.dart';
@@ -33,7 +34,10 @@ class ArtistRow extends ConsumerWidget {
       sha256: artHashOf(artist.imageUrl),
       size: 40,
       shape: BoxShape.circle,
-      fallbackIcon: Icons.person_rounded,
+      // The artist glyph, not the account glyph: `MicrophoneStageIcon` is what the web means by
+      // "artist" (`lib/menus/actions.tsx` goToArtist), and `UserIcon` there is only ever the
+      // signed-in person (`layout/UserMenu.tsx`).
+      fallbackIcon: PhosphorIconsFill.microphoneStage,
       fallbackInitial: artist.name,
       semanticLabel: artist.name,
     ),
@@ -98,7 +102,7 @@ class ArtistTile extends StatelessWidget {
       art: CoverArtSlot(
         sha256: artHashOf(imageUrl),
         circular: true,
-        fallbackIcon: Icons.person_rounded,
+        fallbackIcon: PhosphorIconsFill.microphoneStage,
         fallbackInitial: name,
         semanticLabel: name,
       ),

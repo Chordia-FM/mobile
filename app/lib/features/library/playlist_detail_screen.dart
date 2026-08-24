@@ -5,6 +5,7 @@ import 'package:chordia_sync/chordia_sync.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../data/art/art_cache.dart';
 import '../../i18n/keys.g.dart';
@@ -99,7 +100,9 @@ class _PlaylistDetailScreenState extends ConsumerState<PlaylistDetailScreen> {
               detail.tracks.length > 1)
             IconButton(
               icon: Icon(
-                _reordering ? Icons.check_rounded : Icons.swap_vert_rounded,
+                _reordering
+                    ? PhosphorIconsBold.check
+                    : PhosphorIconsRegular.arrowsDownUp,
               ),
               tooltip: _reordering
                   ? t(PlaylistsKeys.reorderDone)
@@ -113,7 +116,7 @@ class _PlaylistDetailScreenState extends ConsumerState<PlaylistDetailScreen> {
           // actions than a card for the same playlist does.
           if (detail != null)
             IconButton(
-              icon: const Icon(Icons.more_vert_rounded),
+              icon: const Icon(PhosphorIconsBold.dotsThree),
               tooltip: t(CommonKeys.actionsMore),
               onPressed: () => unawaited(_openMenu(detail)),
             ),
@@ -194,13 +197,13 @@ class _PlaylistDetailScreenState extends ConsumerState<PlaylistDetailScreen> {
               if (canEdit)
                 OutlinedButton.icon(
                   onPressed: () => unawaited(_openAddSongs(detail)),
-                  icon: const Icon(Icons.playlist_add_rounded),
+                  icon: const Icon(PhosphorIconsRegular.playlist),
                   label: Text(t(PlaylistsKeys.addToPlaylist)),
                 ),
               if (canEdit)
                 OutlinedButton.icon(
                   onPressed: () => unawaited(_openCollaborators(detail)),
-                  icon: const Icon(Icons.group_outlined),
+                  icon: const Icon(PhosphorIconsRegular.users),
                   label: Text(t(PlaylistsKeys.collaboratorsManage)),
                 ),
             ],
@@ -217,7 +220,7 @@ class _PlaylistDetailScreenState extends ConsumerState<PlaylistDetailScreen> {
           if (detail.tracks.isEmpty) ...[
             EmptyNote(
               message: t(PlaylistsKeys.empty),
-              icon: Icons.queue_music_rounded,
+              icon: PhosphorIcons.playlist(),
             ),
             // An empty playlist with nothing to press is a dead end: the only other route in is
             // finding each song in the catalog and filing it from that song's own menu.
@@ -227,7 +230,7 @@ class _PlaylistDetailScreenState extends ConsumerState<PlaylistDetailScreen> {
                 child: Center(
                   child: FilledButton.icon(
                     onPressed: () => unawaited(_openAddSongs(detail)),
-                    icon: const Icon(Icons.add_rounded),
+                    icon: const Icon(PhosphorIconsRegular.plus),
                     label: Text(t(PlaylistsKeys.addToPlaylist)),
                   ),
                 ),
@@ -503,7 +506,7 @@ class _OwnerLink extends StatelessWidget {
             sha256: artHashOf(owner.avatarUrl),
             size: 24,
             shape: BoxShape.circle,
-            fallbackIcon: Icons.person_rounded,
+            fallbackIcon: PhosphorIcons.user(),
             fallbackInitial: owner.displayName,
           ),
           const SizedBox(width: 6),

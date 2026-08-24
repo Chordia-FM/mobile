@@ -5,6 +5,7 @@ import 'package:chordia_sync/chordia_sync.dart'
     show ArtistContext, RadioContext, StationCursor;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../data/art/art_cache.dart';
 import '../../i18n/keys.g.dart';
@@ -165,7 +166,7 @@ class _ArtistViewState extends ConsumerState<_ArtistView> {
                 : null,
             trailing: [
               RingIconButton(
-                icon: Icons.radio_rounded,
+                icon: PhosphorIcons.radio(PhosphorIconsStyle.bold),
                 tooltip: t(CatalogKeys.artistRadio),
                 onPressed: hasPlayer ? () => unawaited(_startRadio()) : null,
               ),
@@ -424,7 +425,7 @@ class ArtistHeader extends ConsumerWidget {
               sha256: artHashOf(artist.imageUrl),
               size: 160,
               shape: BoxShape.circle,
-              fallbackIcon: Icons.person_rounded,
+              fallbackIcon: PhosphorIconsFill.microphoneStage,
               fallbackInitial: artist.name,
               semanticLabel: artist.name,
             ),
@@ -501,7 +502,7 @@ class _LabelRow extends ConsumerWidget {
       'count': label.albumCount,
     });
     return ListRow(
-      leading: const Icon(Icons.sell_outlined, size: 20),
+      leading: Icon(PhosphorIcons.tag(), size: 20),
       title: Text(label.name),
       subtitle: Text(
         span == null

@@ -1,5 +1,6 @@
 import 'package:chordia_api/chordia_api.dart';
 import 'package:flutter/material.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../../data/art/art_cache.dart';
 import '../../../widgets/cover_art.dart';
@@ -27,7 +28,7 @@ class EntityCard extends StatelessWidget {
     this.subtitle,
     this.shape = BoxShape.rectangle,
     this.width = shelfCardWidth,
-    this.fallbackIcon = Icons.album_rounded,
+    this.fallbackIcon = PhosphorIconsFill.disc,
     this.menu,
   });
 
@@ -98,9 +99,9 @@ class RecentCard extends StatelessWidget {
         ? BoxShape.circle
         : BoxShape.rectangle,
     fallbackIcon: switch (item.kind) {
-      RecentKind.artist => Icons.person_rounded,
-      RecentKind.playlist => Icons.queue_music_rounded,
-      RecentKind.album => Icons.album_rounded,
+      RecentKind.artist => PhosphorIconsFill.microphoneStage,
+      RecentKind.playlist => PhosphorIconsFill.playlist,
+      RecentKind.album => PhosphorIconsFill.disc,
     },
     onTap: () => switch (item.kind) {
       RecentKind.album => context.goToAlbum(item.id),
@@ -157,7 +158,7 @@ class MixCard extends StatelessWidget {
     imageUrl: mix.imageUrl,
     title: mix.title,
     subtitle: mix.subtitle,
-    fallbackIcon: Icons.radio_rounded,
+    fallbackIcon: PhosphorIconsFill.radio,
     onTap: () => context.goToDailyMix(mix.seedArtistId),
     menu: (page, ref) => mixMenu(
       page,
@@ -289,7 +290,9 @@ class FriendCard extends StatelessWidget {
     art: CoverArtSlot(
       sha256: artHashOf(avatarUrl),
       circular: true,
-      fallbackIcon: Icons.person_rounded,
+      // A person, not a performer: the web's own glyph for a listener is `UserIcon`
+      // (`layout/UserMenu.tsx`), and only ever shows behind an empty display name.
+      fallbackIcon: PhosphorIconsFill.user,
       fallbackInitial: displayName,
       semanticLabel: displayName,
     ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../i18n/keys.g.dart';
 import '../../i18n/translations_provider.dart';
@@ -107,7 +108,7 @@ class _IconPickerSheetState extends ConsumerState<_IconPickerSheet> {
               child: TextField(
                 controller: _filter,
                 decoration: InputDecoration(
-                  prefixIcon: const Icon(Icons.search_rounded),
+                  prefixIcon: const Icon(PhosphorIconsRegular.magnifyingGlass),
                   hintText: t(LibraryKeys.editIconSearchPlaceholder),
                 ),
                 onChanged: (_) => setState(() {}),

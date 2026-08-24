@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../app/providers.dart';
 import '../../app/theme.dart';
@@ -215,7 +216,9 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
       decoration: InputDecoration(
         labelText: t(AuthKeys.fieldsPassword),
         suffixIcon: IconButton(
-          icon: Icon(_obscure ? Icons.visibility_off : Icons.visibility),
+          icon: Icon(
+            _obscure ? PhosphorIconsRegular.eye : PhosphorIconsRegular.eyeSlash,
+          ),
           tooltip: t(
             _obscure
                 ? SettingsKeys.securityPasswordShowAria
@@ -259,7 +262,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
     const SizedBox(height: 12),
     OutlinedButton.icon(
       onPressed: _busy || !hasHub ? null : _signInWithBrowser,
-      icon: const Icon(Icons.open_in_browser),
+      icon: const Icon(PhosphorIconsRegular.arrowSquareOut),
       label: Text(t(AuthKeys.desktopSignInWithBrowser)),
     ),
     const SizedBox(height: 20),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../data/art/art_cache.dart';
 import '../../i18n/keys.g.dart';
@@ -74,7 +75,7 @@ class _CoverSheetState extends ConsumerState<_CoverSheet> {
           // teaches nothing except that the app is broken. See `coverPhotoPickerProvider`.
           if (picker != null)
             ListRow(
-              leading: const Icon(Icons.photo_library_outlined, size: 20),
+              leading: const Icon(PhosphorIconsRegular.images, size: 20),
               title: Text(t(PlaylistsKeys.editUploadPhoto)),
               enabled: !_busy,
               onTap: () => _upload(picker),

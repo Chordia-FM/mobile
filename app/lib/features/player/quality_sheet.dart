@@ -4,6 +4,7 @@ import 'package:chordia_api/chordia_api.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../app/theme.dart';
 import '../../data/playback/adaptive.dart';
@@ -65,7 +66,9 @@ class QualityButton extends ConsumerWidget {
         return TextButton.icon(
           onPressed: () => unawaited(showQualitySheet(context)),
           icon: Icon(
-            limited ? Icons.warning_amber_rounded : Icons.graphic_eq_rounded,
+            limited
+                ? PhosphorIcons.warning()
+                : PhosphorIcons.slidersHorizontal(),
             size: 18,
             color: limited
                 ? context.surfaces.accent
@@ -218,10 +221,10 @@ class QualityNote extends ConsumerWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Padding(
-            padding: EdgeInsets.only(top: 2, right: 10),
+          Padding(
+            padding: const EdgeInsets.only(top: 2, right: 10),
             child: Icon(
-              Icons.info_outline_rounded,
+              PhosphorIcons.info(),
               size: 18,
               color: ChordiaColors.mutedForeground,
             ),
@@ -271,9 +274,7 @@ class _TierRow extends ConsumerWidget {
               ),
             ),
       leading: Icon(
-        selected
-            ? Icons.radio_button_checked_rounded
-            : Icons.radio_button_off_rounded,
+        selected ? PhosphorIcons.radioButton() : PhosphorIcons.circle(),
         color: selected
             ? context.surfaces.accent
             : ChordiaColors.mutedForeground.withValues(alpha: 0.7),
@@ -295,7 +296,7 @@ class _TierRow extends ConsumerWidget {
           ? Semantics(
               label: t(PlayerKeys.qualityPlayingAt),
               child: Icon(
-                Icons.graphic_eq_rounded,
+                PhosphorIcons.waveform(),
                 size: 20,
                 color: context.surfaces.accent,
               ),

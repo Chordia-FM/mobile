@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart' show listEquals;
 // one this panel means is the queue's.
 import 'package:flutter/material.dart' hide RepeatMode;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../app/providers.dart';
 import '../../data/playback/notification_art.dart';
@@ -385,7 +386,7 @@ class QueueRow extends ConsumerWidget {
             IconButton(
               onPressed: onRemove,
               tooltip: t(PlayerKeys.queueRemoveFromQueue),
-              icon: const Icon(Icons.close_rounded, size: 18),
+              icon: Icon(PhosphorIcons.x(), size: 18),
             ),
           if (drag != null)
             ReorderableDragStartListener(
@@ -393,7 +394,7 @@ class QueueRow extends ConsumerWidget {
               child: Padding(
                 padding: const EdgeInsets.only(right: 4),
                 child: Icon(
-                  Icons.drag_handle_rounded,
+                  PhosphorIcons.dotsSixVertical(PhosphorIconsStyle.bold),
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
