@@ -20,7 +20,7 @@ jobs:
   analyze:
     runs-on: blacksmith-4vcpu-ubuntu-2404
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
@@ -33,7 +33,7 @@ jobs:
   test:
     runs-on: blacksmith-4vcpu-ubuntu-2404
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
@@ -66,9 +66,9 @@ jobs:
     # is a diff here rather than a surprise at runtime.
     runs-on: blacksmith-4vcpu-ubuntu-2404
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Check out the shared locale catalogs beside this repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: chordia-fm/i18n
           path: .i18n-src
@@ -93,7 +93,7 @@ jobs:
   build:
     runs-on: blacksmith-4vcpu-ubuntu-2404
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -165,7 +165,7 @@ jobs:
       # For `gh release create`. Everything else in this workflow is read-only.
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # `--generate-notes` writes the changelog from the commits since the previous tag, and it
           # can only see the ones that were fetched.
