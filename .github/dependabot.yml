@@ -1,0 +1,14 @@
+# Without this file nothing here ever gets bumped, and it showed: every other repo moved to
+# `actions/checkout@v7` through Dependabot while this one sat on v4, because there was nothing to
+# move it. `i18n` was in the same state.
+version: 2
+updates:
+  - package-ecosystem: pub
+    directory: "/app"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly

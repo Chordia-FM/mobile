@@ -613,6 +613,10 @@ abstract final class CatalogKeys {
   static const artistVersionsInstrumental =
       'catalog:artist.versions.instrumental';
   static const artistVersionsLive = 'catalog:artist.versions.live';
+  static const creditsCoverage = 'catalog:credits.coverage';
+  static const creditsEmpty = 'catalog:credits.empty';
+  static const creditsFailed = 'catalog:credits.failed';
+  static const creditsTitle = 'catalog:credits.title';
   static const editArtOptionAlt = 'catalog:edit.artOptionAlt';
   static const editArtworkAlt = 'catalog:edit.artworkAlt';
   static const editBannerSet = 'catalog:edit.bannerSet';
@@ -787,6 +791,7 @@ abstract final class CommonKeys {
   static const actionsNext = 'common:actions.next';
   static const actionsOk = 'common:actions.ok';
   static const actionsOpen = 'common:actions.open';
+  static const actionsOpenInApp = 'common:actions.openInApp';
   static const actionsPause = 'common:actions.pause';
   static const actionsPin = 'common:actions.pin';
   static const actionsPlay = 'common:actions.play';
@@ -811,6 +816,7 @@ abstract final class CommonKeys {
   static const actionsUnpin = 'common:actions.unpin';
   static const actionsVerify = 'common:actions.verify';
   static const actionsView = 'common:actions.view';
+  static const actionsViewArtwork = 'common:actions.viewArtwork';
   static const appName = 'common:appName';
   static const commandPaletteHintGo = 'common:commandPalette.hint.go';
   static const commandPaletteHintOpen = 'common:commandPalette.hint.open';
@@ -857,7 +863,9 @@ abstract final class CommonKeys {
   static const keybindsToggleRightSidebar =
       'common:keybinds.toggleRightSidebar';
   static const languageDescription = 'common:language.description';
+  static const languageHelp = 'common:language.help';
   static const languageLabel = 'common:language.label';
+  static const languageMachineTranslated = 'common:language.machineTranslated';
   static const menuBack = 'common:menu.back';
   static const menuMoreActions = 'common:menu.moreActions';
   static const navAllLibraries = 'common:nav.allLibraries';
@@ -932,7 +940,6 @@ abstract final class DiscoveryKeys {
   static const heroSeeAll = 'discovery:hero.seeAll';
   static const heroStartTitle = 'discovery:hero.startTitle';
   static const homeEmptyBody = 'discovery:home.empty.body';
-  static const homeEmptyCta = 'discovery:home.empty.cta';
   static const homeEmptyState = 'discovery:home.emptyState';
   static const homeEmptyTitle = 'discovery:home.empty.title';
   static const homeNoHistoryBody = 'discovery:home.noHistory.body';
@@ -1297,6 +1304,7 @@ abstract final class InsightsKeys {
   static const navTitle = 'insights:nav.title';
   static const overviewFirstWindow = 'insights:overview.firstWindow';
   static const panelsActivity = 'insights:panels.activity';
+  static const panelsActivityCalendar = 'insights:panels.activityCalendar';
   static const panelsByWeekday = 'insights:panels.byWeekday';
   static const panelsClockHeatmap = 'insights:panels.clockHeatmap';
   static const panelsDecades = 'insights:panels.decades';
@@ -1540,6 +1548,7 @@ abstract final class LibraryKeys {
   static const editDeleteFailed = 'library:edit.deleteFailed';
   static const editFallbackToAlbums = 'library:edit.fallbackToAlbums';
   static const editFoldersHelp = 'library:edit.foldersHelp';
+  static const editFoldersHint = 'library:edit.foldersHint';
   static const editFoldersTitle = 'library:edit.foldersTitle';
   static const editFoldersUpdateFailed = 'library:edit.foldersUpdateFailed';
   static const editFoldersUpdated = 'library:edit.foldersUpdated';
@@ -1592,6 +1601,10 @@ abstract final class LibraryKeys {
   static const editTemplateHelp = 'library:edit.templateHelp';
   static const editTitle = 'library:edit.title';
   static const editUnknownLabel = 'library:edit.unknownLabel';
+  static const foldersHiddenCount = 'library:folders.hiddenCount';
+  static const foldersNoMatches = 'library:folders.noMatches';
+  static const foldersNone = 'library:folders.none';
+  static const foldersSearch = 'library:folders.search';
   static const hiddenHide = 'library:hidden.hide';
   static const hiddenUnhide = 'library:hidden.unhide';
   static const likedEmpty = 'library:liked.empty';
@@ -1614,6 +1627,7 @@ abstract final class LibraryKeys {
   static const likedStatsTopArtists = 'library:liked.stats.topArtists';
   static const likedTitle = 'library:liked.title';
   static const listAddLibrary = 'library:list.addLibrary';
+  static const listAddServerHint = 'library:list.addServerHint';
   static const listConnectServer = 'library:list.connectServer';
   static const listConnectServerBody = 'library:list.connectServerBody';
   static const listCopyServerId = 'library:list.copyServerId';
@@ -1622,8 +1636,10 @@ abstract final class LibraryKeys {
   static const listLoading = 'library:list.loading';
   static const listNewLibrary = 'library:list.newLibrary';
   static const listOpenSetup = 'library:list.openSetup';
+  static const listServerLastSeen = 'library:list.serverLastSeen';
   static const listServerOffline = 'library:list.serverOffline';
   static const listServerOnline = 'library:list.serverOnline';
+  static const listServerStale = 'library:list.serverStale';
   static const listServerSummary = 'library:list.serverSummary';
   static const listSharedWithYou = 'library:list.sharedWithYou';
   static const listTitle = 'library:list.title';
@@ -1790,6 +1806,15 @@ abstract final class LibraryKeys {
   static const shareManagerAddFriend = 'library:shareManager.addFriend';
   static const shareManagerDirectories = 'library:shareManager.directories';
   static const shareManagerEmpty = 'library:shareManager.empty';
+  static const shareManagerFoldersAllShared =
+      'library:shareManager.folders.allShared';
+  static const shareManagerFoldersHelp = 'library:shareManager.folders.help';
+  static const shareManagerFoldersSaved = 'library:shareManager.folders.saved';
+  static const shareManagerFoldersSomeWithheld =
+      'library:shareManager.folders.someWithheld';
+  static const shareManagerFoldersTitle = 'library:shareManager.folders.title';
+  static const shareManagerFoldersUnreachable =
+      'library:shareManager.folders.unreachable';
   static const shareManagerGrantAccess = 'library:shareManager.grantAccess';
   static const shareManagerHelp = 'library:shareManager.help';
   static const shareManagerLastPlayed = 'library:shareManager.lastPlayed';
@@ -1818,6 +1843,20 @@ abstract final class LibraryKeys {
   static const sidebarPlaylists = 'library:sidebar.playlists';
   static const sidebarSharedWithYou = 'library:sidebar.sharedWithYou';
   static const sidebarYourLibrary = 'library:sidebar.yourLibrary';
+  static const statsEmptyBody = 'library:stats.empty.body';
+  static const statsEmptyTitle = 'library:stats.empty.title';
+  static const statsListened = 'library:stats.listened';
+  static const statsListeners = 'library:stats.listeners';
+  static const statsPlays = 'library:stats.plays';
+  static const statsReached = 'library:stats.reached';
+  static const statsReachedValue = 'library:stats.reachedValue';
+  static const statsTopAlbums = 'library:stats.topAlbums';
+  static const statsTopArtists = 'library:stats.topArtists';
+  static const statsTopTracks = 'library:stats.topTracks';
+  static const statsTrackingSince = 'library:stats.trackingSince';
+  static const tabsMusic = 'library:tabs.music';
+  static const tabsSettings = 'library:tabs.settings';
+  static const tabsStats = 'library:tabs.stats';
   static const trackCount = 'library:trackCount';
 }
 
@@ -2139,6 +2178,7 @@ abstract final class PlayerKeys {
   static const notificationChannelName = 'player:notification.channelName';
   static const nowPlayingAboutArtist = 'player:nowPlaying.aboutArtist';
   static const nowPlayingAlbumFallback = 'player:nowPlaying.albumFallback';
+  static const nowPlayingOnAlbum = 'player:nowPlaying.onAlbum';
   static const nowPlayingPlayingFrom = 'player:nowPlaying.playingFrom';
   static const nowPlayingTitle = 'player:nowPlaying.title';
   static const plays = 'player:plays';
@@ -2739,6 +2779,8 @@ abstract final class SettingsKeys {
   static const playbackOutputLabel = 'settings:playback.output.label';
   static const playbackOutputReset = 'settings:playback.output.reset';
   static const playbackOutputSystem = 'settings:playback.output.system';
+  static const playbackOutputUnavailable =
+      'settings:playback.output.unavailable';
   static const playbackOutputUnknown = 'settings:playback.output.unknown';
   static const playbackPreloadDesc = 'settings:playback.preload.desc';
   static const playbackPreloadLabel = 'settings:playback.preload.label';
@@ -3037,6 +3079,7 @@ abstract final class SocialKeys {
   static const profileJoinedDate = 'social:profile.joinedDate';
   static const profileJoinedLabel = 'social:profile.joinedLabel';
   static const profileListTabs = 'social:profile.listTabs';
+  static const profileListeningNow = 'social:profile.listeningNow';
   static const profileLoadError = 'social:profile.loadError';
   static const profileLoadMore = 'social:profile.loadMore';
   static const profileNoActivity = 'social:profile.noActivity';
