@@ -34,3 +34,6 @@ Thumbs.db
 .idea/
 *.iml
 *.swp
+
+# A full checkout of the shared catalogs, placed here by the i18n workflows. Never committed.
+.i18n-src/
