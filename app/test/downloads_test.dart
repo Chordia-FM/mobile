@@ -60,18 +60,35 @@ void main() {
   /// subscription — so a fixed pump count is a race dressed up as a constant.
   Future<void> settleUntil(
     Future<bool> Function() reached, {
-    int rounds = 200,
+    Duration timeout = const Duration(seconds: 10),
   }) async {
-    for (var round = 0; round < rounds; round++) {
+    // A DEADLINE, not a round count. The round count was 200, and the comment below already
+    // described why that is the wrong unit: progress here is real file I/O, so the budget is spent
+    // in wall-clock time by a loaded machine rather than in iterations by a stuck queue. On
+    // 2026-09-01 CI proved it, failing 'runs exactly two downloads at a time' on a runner that was
+    // simply busy. A deadline gives a slow machine more rounds instead of failing it.
+    //
+    // This cannot mask the thing the tests are checking. Every caller waits for a state to be
+    // REACHED and then asserts what is true once it is -- the concurrency test pumps 50 more times
+    // after two bodies open and requires there to still be exactly two -- so waiting longer only
+    // ever changes whether the check gets to run.
+    final elapsed = Stopwatch()..start();
+    var rounds = 0;
+    while (true) {
       if (await reached()) return;
+      if (elapsed.elapsed >= timeout) {
+        fail(
+          'the download queue never reached the state the test was waiting for '
+          'after ${timeout.inSeconds}s and $rounds rounds',
+        );
+      }
+      rounds++;
       await pumpEventQueue(times: 10);
       // Draining microtasks is not enough on its own: the queue writes real files, and that
       // progress happens off the Dart event loop. Without a moment of real time each round, a
-      // machine busy running the rest of the suite can exhaust the whole budget before two
-      // downloads have opened — which is a slow disk, not a queue that ignored its limit.
+      // machine busy running the rest of the suite makes no progress between checks.
       await Future<void>.delayed(const Duration(milliseconds: 1));
     }
-    fail('the download queue never reached the state the test was waiting for');
   }
 
   Future<void> settleUntilSaved(int count) =>
