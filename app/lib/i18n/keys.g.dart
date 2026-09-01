@@ -2630,6 +2630,26 @@ abstract final class SettingsKeys {
   static const dataExportReady = 'settings:data.exportReady';
   static const dataExportSubject = 'settings:data.exportSubject';
   static const dataTitle = 'settings:data.title';
+  static const desktopAudioDesc = 'settings:desktop.audio.desc';
+  static const desktopAudioExclusiveDesc =
+      'settings:desktop.audio.exclusive.desc';
+  static const desktopAudioExclusiveDevice =
+      'settings:desktop.audio.exclusive.device';
+  static const desktopAudioExclusiveDeviceDefault =
+      'settings:desktop.audio.exclusive.deviceDefault';
+  static const desktopAudioExclusiveDeviceHint =
+      'settings:desktop.audio.exclusive.deviceHint';
+  static const desktopAudioExclusiveFallback =
+      'settings:desktop.audio.exclusive.fallback';
+  static const desktopAudioExclusiveLabel =
+      'settings:desktop.audio.exclusive.label';
+  static const desktopAudioExclusiveNeedsNative =
+      'settings:desktop.audio.exclusive.needsNative';
+  static const desktopAudioExclusiveSystemDefault =
+      'settings:desktop.audio.exclusive.systemDefault';
+  static const desktopAudioLabel = 'settings:desktop.audio.label';
+  static const desktopAudioTitle = 'settings:desktop.audio.title';
+  static const desktopAudioTradeoff = 'settings:desktop.audio.tradeoff';
   static const desktopCloseDesc = 'settings:desktop.close.desc';
   static const desktopCloseQuit = 'settings:desktop.close.quit';
   static const desktopCloseTitle = 'settings:desktop.close.title';
