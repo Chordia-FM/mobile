@@ -76,8 +76,9 @@ class LibraryClient {
 
   /// Resolves whether this library holds a copy of a track described by fingerprint.
   ///
-  /// Unauthenticated on the server, but still sent over the pinned client — the answer names what
-  /// somebody owns.
+  /// Authenticated like every other catalog read, and scoped on the server to what this token could
+  /// actually stream — the answer names what somebody owns, so an open version of this endpoint was
+  /// a possession oracle for anyone who knew the hostname.
   Future<MatchResult> match(MatchQuery query) async {
     final json = await _transport.send(
       method: 'GET',
