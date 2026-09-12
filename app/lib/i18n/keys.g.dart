@@ -94,8 +94,10 @@ abstract final class AdminKeys {
   static const backupsWouldResurrectNone = 'admin:backups.wouldResurrectNone';
   static const badgesDeveloper = 'admin:badges.developer';
   static const badgesDeveloperHint = 'admin:badges.developerHint';
+  static const badgesDeveloperTagline = 'admin:badges.developerTagline';
   static const badgesDeveloperTaglinePlaceholder =
       'admin:badges.developerTaglinePlaceholder';
+  static const badgesDeveloperTitle = 'admin:badges.developerTitle';
   static const badgesDeveloperTitlePlaceholder =
       'admin:badges.developerTitlePlaceholder';
   static const badgesEarned = 'admin:badges.earned';
@@ -108,6 +110,7 @@ abstract final class AdminKeys {
   static const badgesTitle = 'admin:badges.title';
   static const badgesTranslator = 'admin:badges.translator';
   static const badgesTranslatorHint = 'admin:badges.translatorHint';
+  static const badgesTranslatorLanguages = 'admin:badges.translatorLanguages';
   static const badgesTranslatorPlaceholder =
       'admin:badges.translatorPlaceholder';
   static const contentAlbums = 'admin:content.albums';
@@ -241,11 +244,13 @@ abstract final class AdminKeys {
   static const planGrant = 'admin:plan.grant';
   static const planGranted = 'admin:plan.granted';
   static const planHint = 'admin:plan.hint';
+  static const planNoteLabel = 'admin:plan.noteLabel';
   static const planNotePlaceholder = 'admin:plan.notePlaceholder';
   static const planRevoke = 'admin:plan.revoke';
   static const planRevokeConfirm = 'admin:plan.revokeConfirm';
   static const planRevoked = 'admin:plan.revoked';
   static const planTierLabel = 'admin:plan.tierLabel';
+  static const planTierRequired = 'admin:plan.tierRequired';
   static const planTitle = 'admin:plan.title';
   static const planUntilHint = 'admin:plan.untilHint';
   static const planUntilLabel = 'admin:plan.untilLabel';
@@ -405,16 +410,25 @@ abstract final class AuthKeys {
   static const hubCheck = 'auth:hub.check';
   static const hubChecking = 'auth:hub.checking';
   static const hubChooseFirst = 'auth:hub.chooseFirst';
+  static const hubEdit = 'auth:hub.edit';
   static const hubInsecureBody = 'auth:hub.insecureBody';
   static const hubInsecureRefused = 'auth:hub.insecureRefused';
   static const hubInsecureTitle = 'auth:hub.insecureTitle';
   static const hubInvalidUrl = 'auth:hub.invalidUrl';
+  static const hubIsWebApp = 'auth:hub.isWebApp';
   static const hubLabel = 'auth:hub.label';
+  static const hubLabelField = 'auth:hub.labelField';
+  static const hubLabelHint = 'auth:hub.labelHint';
+  static const hubMethodBrowser = 'auth:hub.methodBrowser';
+  static const hubMethodDiscord = 'auth:hub.methodDiscord';
+  static const hubMethodPassword = 'auth:hub.methodPassword';
   static const hubNone = 'auth:hub.none';
+  static const hubOffers = 'auth:hub.offers';
   static const hubRemove = 'auth:hub.remove';
   static const hubRemoveBody = 'auth:hub.removeBody';
   static const hubRemoveTitle = 'auth:hub.removeTitle';
   static const hubUnreachable = 'auth:hub.unreachable';
+  static const hubUnreachableTried = 'auth:hub.unreachableTried';
   static const loginCreateOne = 'auth:login.createOne';
   static const loginEnterEmailFirst = 'auth:login.enterEmailFirst';
   static const loginFailed = 'auth:login.failed';
@@ -904,6 +918,24 @@ abstract final class CommonKeys {
   static const statesVerifying = 'common:states.verifying';
   static const statusSaved = 'common:status.saved';
   static const statusSending = 'common:status.sending';
+  static const unsavedBlocked = 'common:unsaved.blocked';
+  static const unsavedChangedValue = 'common:unsaved.changedValue';
+  static const unsavedCount = 'common:unsaved.count';
+  static const unsavedEmpty = 'common:unsaved.empty';
+  static const unsavedFailed = 'common:unsaved.failed';
+  static const unsavedHide = 'common:unsaved.hide';
+  static const unsavedLeaveAnyway = 'common:unsaved.leaveAnyway';
+  static const unsavedListValue = 'common:unsaved.listValue';
+  static const unsavedOff = 'common:unsaved.off';
+  static const unsavedOn = 'common:unsaved.on';
+  static const unsavedReopen = 'common:unsaved.reopen';
+  static const unsavedSaveAll = 'common:unsaved.saveAll';
+  static const unsavedSaved = 'common:unsaved.saved';
+  static const unsavedShow = 'common:unsaved.show';
+  static const unsavedTitle = 'common:unsaved.title';
+  static const unsavedUndoAll = 'common:unsaved.undoAll';
+  static const unsavedUndoChange = 'common:unsaved.undoChange';
+  static const unsavedUndoDraft = 'common:unsaved.undoDraft';
   static const updateAvailable = 'common:update.available';
   static const updateDownload = 'common:update.download';
   static const updateFile = 'common:update.file';
@@ -919,6 +951,104 @@ abstract final class CommonKeys {
   static const userMenuSettings = 'common:userMenu.settings';
   static const userMenuSignOut = 'common:userMenu.signOut';
   static const userMenuStats = 'common:userMenu.stats';
+}
+
+/// Keys for the `discord` namespace.
+abstract final class DiscordKeys {
+  static const commands247Description = 'discord:commands.247.description';
+  static const commands247ParamsOn = 'discord:commands.247.params.on';
+  static const commandsAlbumDescription = 'discord:commands.album.description';
+  static const commandsAlbumParamsPosition =
+      'discord:commands.album.params.position';
+  static const commandsAlbumParamsQuery = 'discord:commands.album.params.query';
+  static const commandsArtistDescription =
+      'discord:commands.artist.description';
+  static const commandsArtistParamsPosition =
+      'discord:commands.artist.params.position';
+  static const commandsArtistParamsQuery =
+      'discord:commands.artist.params.query';
+  static const commandsBackDescription = 'discord:commands.back.description';
+  static const commandsBotsDescription = 'discord:commands.bots.description';
+  static const commandsClearDescription = 'discord:commands.clear.description';
+  static const commandsCrossfadeDescription =
+      'discord:commands.crossfade.description';
+  static const commandsCrossfadeParamsSeconds =
+      'discord:commands.crossfade.params.seconds';
+  static const commandsDjDescription = 'discord:commands.dj.description';
+  static const commandsDjParamsRole = 'discord:commands.dj.params.role';
+  static const commandsEqDescription = 'discord:commands.eq.description';
+  static const commandsEqParamsBand = 'discord:commands.eq.params.band';
+  static const commandsEqParamsGain = 'discord:commands.eq.params.gain';
+  static const commandsEqParamsOn = 'discord:commands.eq.params.on';
+  static const commandsEqParamsPreset = 'discord:commands.eq.params.preset';
+  static const commandsForceskipDescription =
+      'discord:commands.forceskip.description';
+  static const commandsHistoryDescription =
+      'discord:commands.history.description';
+  static const commandsJoinDescription = 'discord:commands.join.description';
+  static const commandsJumpDescription = 'discord:commands.jump.description';
+  static const commandsJumpParamsIndex = 'discord:commands.jump.params.index';
+  static const commandsLeaveDescription = 'discord:commands.leave.description';
+  static const commandsLoopDescription = 'discord:commands.loop.description';
+  static const commandsLoopParamsMode = 'discord:commands.loop.params.mode';
+  static const commandsLyricsDescription =
+      'discord:commands.lyrics.description';
+  static const commandsMoveDescription = 'discord:commands.move.description';
+  static const commandsMoveParamsFrom = 'discord:commands.move.params.from';
+  static const commandsMoveParamsTo = 'discord:commands.move.params.to';
+  static const commandsNowplayingDescription =
+      'discord:commands.nowplaying.description';
+  static const commandsPauseDescription = 'discord:commands.pause.description';
+  static const commandsPickupDescription =
+      'discord:commands.pickup.description';
+  static const commandsPickupParamsMode = 'discord:commands.pickup.params.mode';
+  static const commandsPlayDescription = 'discord:commands.play.description';
+  static const commandsPlayParamsPosition =
+      'discord:commands.play.params.position';
+  static const commandsPlayParamsQuery = 'discord:commands.play.params.query';
+  static const commandsPlaylistDescription =
+      'discord:commands.playlist.description';
+  static const commandsPlaylistParamsPosition =
+      'discord:commands.playlist.params.position';
+  static const commandsPlaylistParamsQuery =
+      'discord:commands.playlist.params.query';
+  static const commandsQueueDescription = 'discord:commands.queue.description';
+  static const commandsQueueParamsPage = 'discord:commands.queue.params.page';
+  static const commandsRadioDescription = 'discord:commands.radio.description';
+  static const commandsRadioParamsOn = 'discord:commands.radio.params.on';
+  static const commandsRemoveDescription =
+      'discord:commands.remove.description';
+  static const commandsRemoveParamsIndex =
+      'discord:commands.remove.params.index';
+  static const commandsRemoveParamsTo = 'discord:commands.remove.params.to';
+  static const commandsResumeDescription =
+      'discord:commands.resume.description';
+  static const commandsSearchDescription =
+      'discord:commands.search.description';
+  static const commandsSearchParamsQuery =
+      'discord:commands.search.params.query';
+  static const commandsSeekDescription = 'discord:commands.seek.description';
+  static const commandsSeekParamsPosition =
+      'discord:commands.seek.params.position';
+  static const commandsSettingsDescription =
+      'discord:commands.settings.description';
+  static const commandsShuffleDescription =
+      'discord:commands.shuffle.description';
+  static const commandsSkipDescription = 'discord:commands.skip.description';
+  static const commandsSkipmodeDescription =
+      'discord:commands.skipmode.description';
+  static const commandsSkipmodeParamsMode =
+      'discord:commands.skipmode.params.mode';
+  static const commandsSkipmodeParamsPercent =
+      'discord:commands.skipmode.params.percent';
+  static const commandsStatsDescription = 'discord:commands.stats.description';
+  static const commandsStatsParamsScope = 'discord:commands.stats.params.scope';
+  static const commandsStopDescription = 'discord:commands.stop.description';
+  static const commandsVolumeDescription =
+      'discord:commands.volume.description';
+  static const commandsVolumeParamsLevel =
+      'discord:commands.volume.params.level';
+  static const commandsVoteDescription = 'discord:commands.vote.description';
 }
 
 /// Keys for the `discovery` namespace.
@@ -1468,6 +1598,331 @@ abstract final class LibraryKeys {
   static const cardMoveUp = 'library:card.moveUp';
   static const cardShareTitle = 'library:card.shareTitle';
   static const cardTrackCount = 'library:card.trackCount';
+  static const discordAddRolePlaceholder = 'library:discord.addRolePlaceholder';
+  static const discordAddServerPlaceholder =
+      'library:discord.addServerPlaceholder';
+  static const discordAddStatus = 'library:discord.addStatus';
+  static const discordAddUserPlaceholder = 'library:discord.addUserPlaceholder';
+  static const discordAllowedGuilds = 'library:discord.allowedGuilds';
+  static const discordAllowedGuildsHelp = 'library:discord.allowedGuildsHelp';
+  static const discordAnnounce = 'library:discord.announce';
+  static const discordAnnounceAfter = 'library:discord.announceAfter';
+  static const discordAnnounceAfterHelp = 'library:discord.announceAfterHelp';
+  static const discordAnnounceHelp = 'library:discord.announceHelp';
+  static const discordAppId = 'library:discord.appId';
+  static const discordApplyColor = 'library:discord.applyColor';
+  static const discordAvatarManaged = 'library:discord.avatarManaged';
+  static const discordAvatarManagedHelp = 'library:discord.avatarManagedHelp';
+  static const discordAvatarSaved = 'library:discord.avatarSaved';
+  static const discordAvatarTooLarge = 'library:discord.avatarTooLarge';
+  static const discordBadgeAlwaysOn = 'library:discord.badgeAlwaysOn';
+  static const discordBadgeAutoplay = 'library:discord.badgeAutoplay';
+  static const discordCanAlwaysOn = 'library:discord.canAlwaysOn';
+  static const discordCanAutoplay = 'library:discord.canAutoplay';
+  static const discordCollapse = 'library:discord.collapse';
+  static const discordCollapseServer = 'library:discord.collapseServer';
+  static const discordColor = 'library:discord.color';
+  static const discordColorSaved = 'library:discord.colorSaved';
+  static const discordCopyInvite = 'library:discord.copyInvite';
+  static const discordCrossfade = 'library:discord.crossfade';
+  static const discordCrossfadeHelp = 'library:discord.crossfadeHelp';
+  static const discordDefaultVolume = 'library:discord.defaultVolume';
+  static const discordDisplayName = 'library:discord.displayName';
+  static const discordDjRoles = 'library:discord.djRoles';
+  static const discordDjRolesHelp = 'library:discord.djRolesHelp';
+  static const discordDraftServer = 'library:discord.draftServer';
+  static const discordDraftSettings = 'library:discord.draftSettings';
+  static const discordEq = 'library:discord.eq';
+  static const discordEqCustom = 'library:discord.eqCustom';
+  static const discordEqEnabled = 'library:discord.eqEnabled';
+  static const discordEqHelp = 'library:discord.eqHelp';
+  static const discordExpand = 'library:discord.expand';
+  static const discordExpandServer = 'library:discord.expandServer';
+  static const discordHelp = 'library:discord.help';
+  static const discordIdle = 'library:discord.idle';
+  static const discordIdleTimeout = 'library:discord.idleTimeout';
+  static const discordIdleTimeoutHelp = 'library:discord.idleTimeoutHelp';
+  static const discordInChannel = 'library:discord.inChannel';
+  static const discordInvite = 'library:discord.invite';
+  static const discordInviteOpenFailed = 'library:discord.inviteOpenFailed';
+  static const discordLayoutAccent = 'library:discord.layout.accent';
+  static const discordLayoutAccentHex = 'library:discord.layout.accentHex';
+  static const discordLayoutAccentsBot = 'library:discord.layout.accents.bot';
+  static const discordLayoutAccentsFixed =
+      'library:discord.layout.accents.fixed';
+  static const discordLayoutAccentsNone = 'library:discord.layout.accents.none';
+  static const discordLayoutAccessoriesButton =
+      'library:discord.layout.accessories.button';
+  static const discordLayoutAccessoriesImage =
+      'library:discord.layout.accessories.image';
+  static const discordLayoutAccessory = 'library:discord.layout.accessory';
+  static const discordLayoutAddBlock = 'library:discord.layout.addBlock';
+  static const discordLayoutAddButton = 'library:discord.layout.addButton';
+  static const discordLayoutAddButtonHere =
+      'library:discord.layout.addButtonHere';
+  static const discordLayoutAddHere = 'library:discord.layout.addHere';
+  static const discordLayoutAddImage = 'library:discord.layout.addImage';
+  static const discordLayoutAddText = 'library:discord.layout.addText';
+  static const discordLayoutBlocksContainer =
+      'library:discord.layout.blocks.container';
+  static const discordLayoutBlocksEqBands =
+      'library:discord.layout.blocks.eq_bands';
+  static const discordLayoutBlocksEqNudges =
+      'library:discord.layout.blocks.eq_nudges';
+  static const discordLayoutBlocksEqPresets =
+      'library:discord.layout.blocks.eq_presets';
+  static const discordLayoutBlocksGallery =
+      'library:discord.layout.blocks.gallery';
+  static const discordLayoutBlocksList = 'library:discord.layout.blocks.list';
+  static const discordLayoutBlocksPager = 'library:discord.layout.blocks.pager';
+  static const discordLayoutBlocksRow = 'library:discord.layout.blocks.row';
+  static const discordLayoutBlocksSection =
+      'library:discord.layout.blocks.section';
+  static const discordLayoutBlocksSeparator =
+      'library:discord.layout.blocks.separator';
+  static const discordLayoutBlocksText = 'library:discord.layout.blocks.text';
+  static const discordLayoutButtonPick = 'library:discord.layout.buttonPick';
+  static const discordLayoutControl = 'library:discord.layout.control';
+  static const discordLayoutControlsAutoplay =
+      'library:discord.layout.controls.autoplay';
+  static const discordLayoutControlsClear =
+      'library:discord.layout.controls.clear';
+  static const discordLayoutControlsEqToggle =
+      'library:discord.layout.controls.eq_toggle';
+  static const discordLayoutControlsEqualizer =
+      'library:discord.layout.controls.equalizer';
+  static const discordLayoutControlsHistory =
+      'library:discord.layout.controls.history';
+  static const discordLayoutControlsLeave =
+      'library:discord.layout.controls.leave';
+  static const discordLayoutControlsLoop =
+      'library:discord.layout.controls.loop';
+  static const discordLayoutControlsLyrics =
+      'library:discord.layout.controls.lyrics';
+  static const discordLayoutControlsMute =
+      'library:discord.layout.controls.mute';
+  static const discordLayoutControlsPlayPause =
+      'library:discord.layout.controls.play_pause';
+  static const discordLayoutControlsPrevious =
+      'library:discord.layout.controls.previous';
+  static const discordLayoutControlsQueue =
+      'library:discord.layout.controls.queue';
+  static const discordLayoutControlsSeekBack =
+      'library:discord.layout.controls.seek_back';
+  static const discordLayoutControlsSeekForward =
+      'library:discord.layout.controls.seek_forward';
+  static const discordLayoutControlsShuffle =
+      'library:discord.layout.controls.shuffle';
+  static const discordLayoutControlsSkip =
+      'library:discord.layout.controls.skip';
+  static const discordLayoutControlsStop =
+      'library:discord.layout.controls.stop';
+  static const discordLayoutControlsVolumeDown =
+      'library:discord.layout.controls.volume_down';
+  static const discordLayoutControlsVolumeUp =
+      'library:discord.layout.controls.volume_up';
+  static const discordLayoutDivider = 'library:discord.layout.divider';
+  static const discordLayoutDraft = 'library:discord.layout.draft';
+  static const discordLayoutDraftServer = 'library:discord.layout.draftServer';
+  static const discordLayoutDragHandle = 'library:discord.layout.dragHandle';
+  static const discordLayoutDropHere = 'library:discord.layout.dropHere';
+  static const discordLayoutEmpty = 'library:discord.layout.empty';
+  static const discordLayoutEqBandsNote = 'library:discord.layout.eqBandsNote';
+  static const discordLayoutEqNudgesNote =
+      'library:discord.layout.eqNudgesNote';
+  static const discordLayoutEqPresetsNote =
+      'library:discord.layout.eqPresetsNote';
+  static const discordLayoutHelp = 'library:discord.layout.help';
+  static const discordLayoutInsertMention =
+      'library:discord.layout.insertMention';
+  static const discordLayoutInsertVariable =
+      'library:discord.layout.insertVariable';
+  static const discordLayoutItem = 'library:discord.layout.item';
+  static const discordLayoutLabel = 'library:discord.layout.label';
+  static const discordLayoutLinkOption = 'library:discord.layout.linkOption';
+  static const discordLayoutMoveButton = 'library:discord.layout.moveButton';
+  static const discordLayoutMoveDown = 'library:discord.layout.moveDown';
+  static const discordLayoutMoveUp = 'library:discord.layout.moveUp';
+  static const discordLayoutOpenEditor = 'library:discord.layout.openEditor';
+  static const discordLayoutOwnVersion = 'library:discord.layout.ownVersion';
+  static const discordLayoutPageSize = 'library:discord.layout.pageSize';
+  static const discordLayoutPagerNote = 'library:discord.layout.pagerNote';
+  static const discordLayoutPanelEmojis = 'library:discord.layout.panel.emojis';
+  static const discordLayoutPanelPreview =
+      'library:discord.layout.panel.preview';
+  static const discordLayoutPanelVariables =
+      'library:discord.layout.panel.variables';
+  static const discordLayoutParts = 'library:discord.layout.parts';
+  static const discordLayoutPreview = 'library:discord.layout.preview';
+  static const discordLayoutPreviewFailed =
+      'library:discord.layout.previewFailed';
+  static const discordLayoutPreviewHelp = 'library:discord.layout.previewHelp';
+  static const discordLayoutReferenceCopied =
+      'library:discord.layout.reference.copied';
+  static const discordLayoutReferenceCopy =
+      'library:discord.layout.reference.copy';
+  static const discordLayoutReferenceEmojis =
+      'library:discord.layout.reference.emojis';
+  static const discordLayoutReferenceVariables =
+      'library:discord.layout.reference.variables';
+  static const discordLayoutRemoveBlock = 'library:discord.layout.removeBlock';
+  static const discordLayoutRemoveButton =
+      'library:discord.layout.removeButton';
+  static const discordLayoutRemoveImage = 'library:discord.layout.removeImage';
+  static const discordLayoutRemoveText = 'library:discord.layout.removeText';
+  static const discordLayoutRendering = 'library:discord.layout.rendering';
+  static const discordLayoutReset = 'library:discord.layout.reset';
+  static const discordLayoutResetToBot = 'library:discord.layout.resetToBot';
+  static const discordLayoutSource = 'library:discord.layout.source';
+  static const discordLayoutSourcesArtist =
+      'library:discord.layout.sources.artist';
+  static const discordLayoutSourcesArtistBanner =
+      'library:discord.layout.sources.artist_banner';
+  static const discordLayoutSourcesBotAvatar =
+      'library:discord.layout.sources.bot_avatar';
+  static const discordLayoutSourcesCover =
+      'library:discord.layout.sources.cover';
+  static const discordLayoutSourcesEqualizer =
+      'library:discord.layout.sources.equalizer';
+  static const discordLayoutSourcesServerIcon =
+      'library:discord.layout.sources.server_icon';
+  static const discordLayoutSourcesUrl = 'library:discord.layout.sources.url';
+  static const discordLayoutSpacing = 'library:discord.layout.spacing';
+  static const discordLayoutSpacingsLarge =
+      'library:discord.layout.spacings.large';
+  static const discordLayoutSpacingsSmall =
+      'library:discord.layout.spacings.small';
+  static const discordLayoutSuggestChannels =
+      'library:discord.layout.suggest.channels';
+  static const discordLayoutSuggestEmojis =
+      'library:discord.layout.suggest.emojis';
+  static const discordLayoutSuggestMembers =
+      'library:discord.layout.suggest.members';
+  static const discordLayoutSuggestNone = 'library:discord.layout.suggest.none';
+  static const discordLayoutSuggestRoles =
+      'library:discord.layout.suggest.roles';
+  static const discordLayoutSuggestSearching =
+      'library:discord.layout.suggest.searching';
+  static const discordLayoutSuggestVariables =
+      'library:discord.layout.suggest.variables';
+  static const discordLayoutTarget = 'library:discord.layout.target';
+  static const discordLayoutTargetBot = 'library:discord.layout.targetBot';
+  static const discordLayoutTargetGuild = 'library:discord.layout.targetGuild';
+  static const discordLayoutText = 'library:discord.layout.text';
+  static const discordLayoutTextN = 'library:discord.layout.textN';
+  static const discordLayoutTitle = 'library:discord.layout.title';
+  static const discordLayoutUrl = 'library:discord.layout.url';
+  static const discordLayoutUrlPlaceholder =
+      'library:discord.layout.urlPlaceholder';
+  static const discordLayoutUsesBot = 'library:discord.layout.usesBot';
+  static const discordLayoutView = 'library:discord.layout.view';
+  static const discordLayoutViewGroupsAdding =
+      'library:discord.layout.viewGroups.adding';
+  static const discordLayoutViewGroupsLists =
+      'library:discord.layout.viewGroups.lists';
+  static const discordLayoutViewGroupsPlayer =
+      'library:discord.layout.viewGroups.player';
+  static const discordLayoutViewGroupsReplies =
+      'library:discord.layout.viewGroups.replies';
+  static const discordLayoutViewsDone = 'library:discord.layout.views.done';
+  static const discordLayoutViewsEqualizer =
+      'library:discord.layout.views.equalizer';
+  static const discordLayoutViewsError = 'library:discord.layout.views.error';
+  static const discordLayoutViewsHistory =
+      'library:discord.layout.views.history';
+  static const discordLayoutViewsIdle = 'library:discord.layout.views.idle';
+  static const discordLayoutViewsLeft = 'library:discord.layout.views.left';
+  static const discordLayoutViewsLyrics = 'library:discord.layout.views.lyrics';
+  static const discordLayoutViewsNotice = 'library:discord.layout.views.notice';
+  static const discordLayoutViewsNowPlaying =
+      'library:discord.layout.views.now_playing';
+  static const discordLayoutViewsQueue = 'library:discord.layout.views.queue';
+  static const discordLayoutViewsQueued = 'library:discord.layout.views.queued';
+  static const discordLayoutViewsQueuedAlbum =
+      'library:discord.layout.views.queued_album';
+  static const discordLayoutViewsQueuedArtist =
+      'library:discord.layout.views.queued_artist';
+  static const discordLayoutViewsQueuedPlaylist =
+      'library:discord.layout.views.queued_playlist';
+  static const discordLayoutViewsSession =
+      'library:discord.layout.views.session';
+  static const discordLayoutViewsVote = 'library:discord.layout.views.vote';
+  static const discordLayoutViewsVotePassed =
+      'library:discord.layout.views.vote_passed';
+  static const discordLeave = 'library:discord.leave';
+  static const discordLibraryOwner = 'library:discord.libraryOwner';
+  static const discordLibraryOwnerHelp = 'library:discord.libraryOwnerHelp';
+  static const discordLibraryOwnerUnlinked =
+      'library:discord.libraryOwnerUnlinked';
+  static const discordLockedUntil = 'library:discord.lockedUntil';
+  static const discordMode = 'library:discord.mode';
+  static const discordModeMulti = 'library:discord.modeMulti';
+  static const discordModeSingle = 'library:discord.modeSingle';
+  static const discordMultiStatusesHelp = 'library:discord.multiStatusesHelp';
+  static const discordNoBots = 'library:discord.noBots';
+  static const discordNoBotsHelp = 'library:discord.noBotsHelp';
+  static const discordNoServers = 'library:discord.noServers';
+  static const discordNormalize = 'library:discord.normalize';
+  static const discordNormalizeHelp = 'library:discord.normalizeHelp';
+  static const discordNotConnected = 'library:discord.notConnected';
+  static const discordNotInVoice = 'library:discord.notInVoice';
+  static const discordOwnerIds = 'library:discord.ownerIds';
+  static const discordOwnerIdsHelp = 'library:discord.ownerIdsHelp';
+  static const discordPaused = 'library:discord.paused';
+  static const discordPermissions = 'library:discord.permissions';
+  static const discordPermissionsHelp = 'library:discord.permissionsHelp';
+  static const discordPickup = 'library:discord.pickup';
+  static const discordPickupHelp = 'library:discord.pickupHelp';
+  static const discordPickupPosition = 'library:discord.pickupPosition';
+  static const discordPickupStart = 'library:discord.pickupStart';
+  static const discordQueued = 'library:discord.queued';
+  static const discordRemovePill = 'library:discord.removePill';
+  static const discordRemoveStatus = 'library:discord.removeStatus';
+  static const discordRestart = 'library:discord.restart';
+  static const discordRestartConfirmMessage =
+      'library:discord.restartConfirm.message';
+  static const discordRestartConfirmTitle =
+      'library:discord.restartConfirm.title';
+  static const discordRotateEvery = 'library:discord.rotateEvery';
+  static const discordRotateEveryHelp = 'library:discord.rotateEveryHelp';
+  static const discordSaveFailed = 'library:discord.saveFailed';
+  static const discordSaved = 'library:discord.saved';
+  static const discordServerJoined = 'library:discord.serverJoined';
+  static const discordServerNotJoined = 'library:discord.serverNotJoined';
+  static const discordServers = 'library:discord.servers';
+  static const discordServersHelp = 'library:discord.serversHelp';
+  static const discordSessionSummary = 'library:discord.sessionSummary';
+  static const discordSessionSummaryHelp = 'library:discord.sessionSummaryHelp';
+  static const discordSettings = 'library:discord.settings';
+  static const discordSettingsHelp = 'library:discord.settingsHelp';
+  static const discordSingleStatusesHelp = 'library:discord.singleStatusesHelp';
+  static const discordSkipMode = 'library:discord.skipMode';
+  static const discordSkipModeHelp = 'library:discord.skipModeHelp';
+  static const discordSkipSingle = 'library:discord.skipSingle';
+  static const discordSkipVote = 'library:discord.skipVote';
+  static const discordStatusConnecting = 'library:discord.status.connecting';
+  static const discordStatusFailed = 'library:discord.status.failed';
+  static const discordStatusN = 'library:discord.statusN';
+  static const discordStatusOnline = 'library:discord.status.online';
+  static const discordStatusSection = 'library:discord.statusSection';
+  static const discordStatusSectionHelp = 'library:discord.statusSectionHelp';
+  static const discordStatusStarting = 'library:discord.status.starting';
+  static const discordStatusStopped = 'library:discord.status.stopped';
+  static const discordStatuses = 'library:discord.statuses';
+  static const discordSummary = 'library:discord.summary';
+  static const discordTheme = 'library:discord.theme';
+  static const discordThemeApplied = 'library:discord.themeApplied';
+  static const discordThemeHelp = 'library:discord.themeHelp';
+  static const discordThemePending = 'library:discord.themePending';
+  static const discordTitle = 'library:discord.title';
+  static const discordUnknownRole = 'library:discord.unknownRole';
+  static const discordUnknownUser = 'library:discord.unknownUser';
+  static const discordUploadAvatar = 'library:discord.uploadAvatar';
+  static const discordUploadAvatarHelp = 'library:discord.uploadAvatarHelp';
+  static const discordVcStatus = 'library:discord.vcStatus';
+  static const discordVcStatusHelp = 'library:discord.vcStatusHelp';
+  static const discordVotePercent = 'library:discord.votePercent';
+  static const discordVotePercentHelp = 'library:discord.votePercentHelp';
   static const downloadsActionCancel = 'library:downloads.action.cancel';
   static const downloadsActionDownload = 'library:downloads.action.download';
   static const downloadsActionDownloadAlbum =
@@ -1562,6 +2017,7 @@ abstract final class LibraryKeys {
   static const editIconTabIcons = 'library:edit.iconTabIcons';
   static const editLastScanUnknown = 'library:edit.lastScanUnknown';
   static const editLastScanned = 'library:edit.lastScanned';
+  static const editNameRequired = 'library:edit.nameRequired';
   static const editNameSaved = 'library:edit.nameSaved';
   static const editNoSubFolders = 'library:edit.noSubFolders';
   static const editOrganizeConfirmConfirmLabel =
@@ -1593,12 +2049,14 @@ abstract final class LibraryKeys {
   static const editSaveFolders = 'library:edit.saveFolders';
   static const editSinglesLabel = 'library:edit.singlesLabel';
   static const editTabsDanger = 'library:edit.tabs.danger';
+  static const editTabsDiscord = 'library:edit.tabs.discord';
   static const editTabsFolders = 'library:edit.tabs.folders';
   static const editTabsGeneral = 'library:edit.tabs.general';
   static const editTabsMetadata = 'library:edit.tabs.metadata';
   static const editTabsOrganize = 'library:edit.tabs.organize';
   static const editTabsSharing = 'library:edit.tabs.sharing';
   static const editTemplateHelp = 'library:edit.templateHelp';
+  static const editTemplateRequired = 'library:edit.templateRequired';
   static const editTitle = 'library:edit.title';
   static const editUnknownLabel = 'library:edit.unknownLabel';
   static const foldersHiddenCount = 'library:folders.hiddenCount';
@@ -1744,6 +2202,10 @@ abstract final class LibraryKeys {
   static const pairingDoneAction = 'library:pairing.doneAction';
   static const pairingDoneBody = 'library:pairing.doneBody';
   static const pairingDoneTitle = 'library:pairing.doneTitle';
+  static const pairingInsecureBody = 'library:pairing.insecureBody';
+  static const pairingInsecureConfirm = 'library:pairing.insecureConfirm';
+  static const pairingInsecurePublic = 'library:pairing.insecurePublic';
+  static const pairingInsecureTitle = 'library:pairing.insecureTitle';
   static const pairingIntro = 'library:pairing.intro';
   static const pairingLinkInvalid = 'library:pairing.linkInvalid';
   static const pairingLinkLabel = 'library:pairing.linkLabel';
@@ -1863,9 +2325,11 @@ abstract final class LibraryKeys {
 /// Keys for the `local` namespace.
 abstract final class LocalKeys {
   static const empty = 'local:empty';
+  static const emptyTitle = 'local:emptyTitle';
   static const foldersAdd = 'local:folders.add';
   static const foldersRemove = 'local:folders.remove';
   static const foldersRemoveConfirm = 'local:folders.removeConfirm';
+  static const foldersTitle = 'local:folders.title';
   static const foldersTrackCount = 'local:folders.trackCount';
   static const hubEntry = 'local:hubEntry';
   static const intro = 'local:intro';
@@ -2645,6 +3109,8 @@ abstract final class SettingsKeys {
       'settings:desktop.audio.exclusive.label';
   static const desktopAudioExclusiveNeedsNative =
       'settings:desktop.audio.exclusive.needsNative';
+  static const desktopAudioExclusiveRefused =
+      'settings:desktop.audio.exclusive.refused';
   static const desktopAudioExclusiveSystemDefault =
       'settings:desktop.audio.exclusive.systemDefault';
   static const desktopAudioLabel = 'settings:desktop.audio.label';
@@ -2682,6 +3148,7 @@ abstract final class SettingsKeys {
   static const desktopPresencePreviewTitle =
       'settings:desktop.presence.previewTitle';
   static const desktopPresenceReset = 'settings:desktop.presence.reset';
+  static const desktopPresenceTemplate = 'settings:desktop.presence.template';
   static const desktopPresenceTitle = 'settings:desktop.presence.title';
   static const desktopPresenceVarsAlbum =
       'settings:desktop.presence.vars.album';
@@ -2773,9 +3240,13 @@ abstract final class SettingsKeys {
   static const importUploading = 'settings:import.uploading';
   static const layoutCustomizeControls = 'settings:layout.customizeControls';
   static const layoutCustomizeSidebar = 'settings:layout.customizeSidebar';
+  static const layoutHidden = 'settings:layout.hidden';
+  static const layoutOrder = 'settings:layout.order';
   static const layoutPlayerBarAllHidden = 'settings:layout.playerBar.allHidden';
   static const layoutPlayerBarHelp = 'settings:layout.playerBar.help';
   static const layoutPlayerBarTitle = 'settings:layout.playerBar.title';
+  static const layoutPlayerBarWiderScreens =
+      'settings:layout.playerBar.widerScreens';
   static const layoutReset = 'settings:layout.reset';
   static const layoutSidebarEmpty = 'settings:layout.sidebar.empty';
   static const layoutSidebarHelp = 'settings:layout.sidebar.help';
@@ -2792,11 +3263,22 @@ abstract final class SettingsKeys {
   static const playbackCrossfadeLabel = 'settings:playback.crossfade.label';
   static const playbackCrossfadeSeconds = 'settings:playback.crossfadeSeconds';
   static const playbackEqualizerDesc = 'settings:playback.equalizerDesc';
+  static const playbackExternalBrowsingDesc =
+      'settings:playback.externalBrowsing.desc';
+  static const playbackExternalBrowsingLabel =
+      'settings:playback.externalBrowsing.label';
+  static const playbackExternalBrowsingTitle =
+      'settings:playback.externalBrowsing.title';
   static const playbackNormalizeDesc = 'settings:playback.normalize.desc';
   static const playbackNormalizeLabel = 'settings:playback.normalize.label';
   static const playbackOutputChoose = 'settings:playback.output.choose';
   static const playbackOutputDesc = 'settings:playback.output.desc';
+  static const playbackOutputDescNative = 'settings:playback.output.descNative';
+  static const playbackOutputDeviceDefault =
+      'settings:playback.output.deviceDefault';
   static const playbackOutputLabel = 'settings:playback.output.label';
+  static const playbackOutputNativeFallback =
+      'settings:playback.output.nativeFallback';
   static const playbackOutputReset = 'settings:playback.output.reset';
   static const playbackOutputSystem = 'settings:playback.output.system';
   static const playbackOutputUnavailable =
@@ -2826,6 +3308,10 @@ abstract final class SettingsKeys {
       'settings:privacy.activityVisibility.desc';
   static const privacyActivityVisibilityLabel =
       'settings:privacy.activityVisibility.label';
+  static const privacyDiscordListeningDesc =
+      'settings:privacy.discordListening.desc';
+  static const privacyDiscordListeningLabel =
+      'settings:privacy.discordListening.label';
   static const privacyEmailNotificationsDesc =
       'settings:privacy.emailNotifications.desc';
   static const privacyEmailNotificationsLabel =
