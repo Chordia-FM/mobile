@@ -105,6 +105,13 @@ class HttpPairingTransport implements PairingTransport {
     required String ticket,
     required String setupToken,
   }) async {
+    // Belt and braces behind the wizard's own refusal: a credential that would cross the internet
+    // in clear text never reaches a socket, whatever asked for it.
+    if (pairingReach(base) == PairingReach.publicCleartext) {
+      throw StateError(
+        'refusing to send a pairing credential in clear text to ${base.host}',
+      );
+    }
     final client = _factory.pinnedTo(pin);
     try {
       final url = base.replace(path: '${base.path}/v1/pairing/claim');
@@ -163,6 +170,60 @@ class HttpPairingTransport implements PairingTransport {
       client.close(force: true);
     }
   }
+}
+
+/// How safe an address is to hand a pairing credential to.
+///
+/// Pairing sends two credentials that are worth stealing — the Hub's one-time pair ticket and the
+/// server's setup token — so the address they travel over is a security decision, not a
+/// convenience. Plain HTTP is therefore split in two: the LAN case a self-hoster genuinely has
+/// (a server with no certificate on their own network), and the case that is never anything but a
+/// mistake or an attack.
+enum PairingReach {
+  /// HTTPS, or plain HTTP that never leaves the device. Nothing to confirm.
+  secure,
+
+  /// Plain HTTP to a private network. Sendable, but only after the person says so.
+  localCleartext,
+
+  /// Plain HTTP across the internet. Never sendable.
+  publicCleartext,
+}
+
+/// Rates [base] for sending a pairing credential to, by scheme and by where the host lives.
+///
+/// Hostnames that are not addresses are only local when their suffix says so: a name that could
+/// resolve anywhere is treated as the internet, because "it is probably on my LAN" is exactly the
+/// assumption a MITM wants made.
+PairingReach pairingReach(Uri base) {
+  if (base.scheme == 'https') return PairingReach.secure;
+  final host = base.host.toLowerCase();
+  // The emulator's alias for the developer machine belongs with loopback, as it does everywhere
+  // else in the app.
+  const deviceLocal = {'localhost', '127.0.0.1', '::1', '10.0.2.2'};
+  if (deviceLocal.contains(host)) return PairingReach.secure;
+  return _isPrivateHost(host)
+      ? PairingReach.localCleartext
+      : PairingReach.publicCleartext;
+}
+
+bool _isPrivateHost(String host) {
+  const localSuffixes = ['.local', '.lan', '.internal', '.home.arpa'];
+  for (final suffix in localSuffixes) {
+    if (host.endsWith(suffix)) return true;
+  }
+  final address = InternetAddress.tryParse(host);
+  if (address == null) return false;
+  if (address.isLoopback || address.isLinkLocal) return true;
+  final bytes = address.rawAddress;
+  if (address.type == InternetAddressType.IPv4) {
+    return bytes[0] == 10 ||
+        (bytes[0] == 172 && bytes[1] >= 16 && bytes[1] < 32) ||
+        (bytes[0] == 192 && bytes[1] == 168);
+  }
+  // fc00::/7 (unique local) and fe80::/10 (link local, for the addresses `isLinkLocal` misses).
+  return (bytes[0] & 0xfe) == 0xfc ||
+      (bytes[0] == 0xfe && (bytes[1] & 0xc0) == 0x80);
 }
 
 /// The two halves of the link a library server prints at startup.

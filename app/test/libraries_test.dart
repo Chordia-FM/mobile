@@ -358,6 +358,71 @@ void main() {
       },
     );
 
+    test('a cleartext LAN address sends nothing until it is accepted', () async {
+      final hub = _FakeLibrariesApi();
+      final transport = _FakeTransport();
+      final pairing = PairingController(hub: hub, transport: transport);
+
+      await pairing.submitLink('http://192.168.1.20:8443/setup/tok');
+
+      // Not even the probe: the decision is the person's, and it is taken before any traffic.
+      expect(pairing.step, PairingStep.insecure);
+      expect(transport.probes, isEmpty);
+      expect(transport.claimedTickets, isEmpty);
+      expect(hub.ticketsMinted, 0);
+
+      await pairing.acceptInsecure();
+
+      expect(pairing.step, PairingStep.naming);
+      expect(transport.claimedTickets, ['ticket-1']);
+    });
+
+    test('a cleartext address out on the internet is refused outright', () async {
+      final hub = _FakeLibrariesApi();
+      final transport = _FakeTransport();
+      final pairing = PairingController(hub: hub, transport: transport);
+
+      await pairing.submitLink('http://library.example.com/setup/tok');
+
+      expect(pairing.failure, PairingFailure.insecurePublic);
+      expect(pairing.step, PairingStep.link);
+      expect(transport.probes, isEmpty);
+      expect(hub.ticketsMinted, 0);
+
+      // And there is no way to accept it: the step it would be accepted from is never reached.
+      await pairing.acceptInsecure();
+      expect(transport.claimedTickets, isEmpty);
+    });
+
+    test('the reach of an address is read from scheme and host', () {
+      expect(
+        pairingReach(Uri.parse('https://library.example.com')),
+        PairingReach.secure,
+      );
+      // Loopback never leaves the device, as everywhere else in the app.
+      expect(
+        pairingReach(Uri.parse('http://localhost:8443')),
+        PairingReach.secure,
+      );
+      expect(
+        pairingReach(Uri.parse('http://192.168.1.20:8443')),
+        PairingReach.localCleartext,
+      );
+      expect(
+        pairingReach(Uri.parse('http://nas.local')),
+        PairingReach.localCleartext,
+      );
+      expect(
+        pairingReach(Uri.parse('http://library.example.com')),
+        PairingReach.publicCleartext,
+      );
+      // A name that could resolve anywhere is not assumed to be on the LAN.
+      expect(
+        pairingReach(Uri.parse('http://nas')),
+        PairingReach.publicCleartext,
+      );
+    });
+
     test('an unnamed library is not created', () async {
       final hub = _FakeLibrariesApi();
       final pairing = PairingController(hub: hub, transport: _FakeTransport());

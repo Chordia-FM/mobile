@@ -92,6 +92,7 @@ class _PairingWizardScreenState extends ConsumerState<PairingWizardScreen> {
                 const SizedBox(height: 16),
                 ...switch (pairing.step) {
                   PairingStep.link => _linkStep(pairing, t),
+                  PairingStep.insecure => _insecureStep(pairing, t),
                   PairingStep.trust => _trustStep(pairing, t),
                   PairingStep.claiming => _claimingStep(pairing, t),
                   PairingStep.naming => _namingStep(pairing, t),
@@ -110,7 +111,7 @@ class _PairingWizardScreenState extends ConsumerState<PairingWizardScreen> {
   /// "introducing your account" and the highlighted step are the same thing said twice.
   Widget _stepper(PairingController pairing, Translate t) {
     final index = switch (pairing.step) {
-      PairingStep.link || PairingStep.trust => 0,
+      PairingStep.link || PairingStep.insecure || PairingStep.trust => 0,
       PairingStep.claiming => 1,
       PairingStep.naming || PairingStep.done => 2,
     };
@@ -201,6 +202,33 @@ class _PairingWizardScreenState extends ConsumerState<PairingWizardScreen> {
         }),
       ),
     ],
+  ];
+
+  /// A plain-HTTP address on a local network, which has to be accepted before anything is sent.
+  ///
+  /// Deliberately shaped like the certificate step rather than a toast: both credentials of the
+  /// handshake are worth stealing, and on an unencrypted address anyone else on the network gets
+  /// both. An http address that is NOT local never reaches this screen — it is refused outright.
+  List<Widget> _insecureStep(PairingController pairing, Translate t) => [
+    Text(
+      t(LibraryKeys.pairingInsecureTitle),
+      style: Theme.of(context).textTheme.titleMedium,
+    ),
+    const SizedBox(height: 8),
+    _para(
+      t(LibraryKeys.pairingInsecureBody, {
+        'host': pairing.serverBase?.host ?? '',
+      }),
+    ),
+    const SizedBox(height: 16),
+    FilledButton(
+      onPressed: pairing.busy ? null : pairing.acceptInsecure,
+      child: Text(t(LibraryKeys.pairingInsecureConfirm)),
+    ),
+    TextButton(
+      onPressed: pairing.busy ? null : _restart,
+      child: Text(t(LibraryKeys.pairingStartOver)),
+    ),
   ];
 
   List<Widget> _trustStep(PairingController pairing, Translate t) => [
@@ -302,6 +330,9 @@ class _PairingWizardScreenState extends ConsumerState<PairingWizardScreen> {
     final host = pairing.serverBase?.host ?? '';
     final message = switch (pairing.failure!) {
       PairingFailure.badLink => t(LibraryKeys.pairingLinkInvalid),
+      PairingFailure.insecurePublic => t(LibraryKeys.pairingInsecurePublic, {
+        'host': host,
+      }),
       PairingFailure.unreachable => t(LibraryKeys.pairingUnreachable, {
         'host': host,
       }),
