@@ -14,10 +14,17 @@ class Grant {
     required this.token,
     required this.server,
     required this.expiresAt,
+    this.permissionLevel,
   });
 
   final String token;
   final ServerEndpoint server;
+
+  /// The level this grant carries, or null when the Hub did not say — an older Hub than the one
+  /// that added the field. Null is read as permissive on purpose: the library's own check is the
+  /// authority, and failing closed here would break every download against a Hub a self-hoster
+  /// has not upgraded yet.
+  final PermissionLevel? permissionLevel;
 
   /// Epoch milliseconds, like every other timestamp on this API.
   final int expiresAt;
@@ -31,6 +38,9 @@ class Grant {
 
   bool usableAt(int now, Duration margin) =>
       expiresAt - now > margin.inMilliseconds;
+
+  /// Whether keeping a copy is allowed at all. A `read` share is stream-only.
+  bool get allowsDownload => permissionLevel != PermissionLevel.read;
 }
 
 /// Mints and caches capability tokens, one per library.
@@ -78,9 +88,17 @@ class GrantManager {
   }
 
   Future<Grant> _mint(String libraryId) async {
+    // `permission_level` is read off the raw body rather than the generated model so an absent
+    // field stays distinguishable from `read`; the model's enum decoder falls back to `read` for
+    // anything it does not recognise, which would turn an old Hub into "downloads forbidden".
+    PermissionLevel? level;
     final response = await hub.post<GrantResponse>(
       '/v1/directory/grant',
-      (json) => GrantResponse.fromJson(asObject(json)),
+      (json) {
+        final body = asObject(json);
+        level = PermissionLevel.tryFromWire(body['permission_level']);
+        return GrantResponse.fromJson(body);
+      },
       // Resource and action are omitted deliberately: the Hub defaults to the whole library at
       // stream_read, which is what ordinary playback wants.
       body: GrantRequest(libraryId: libraryId).toJson(),
@@ -89,6 +107,7 @@ class GrantManager {
       token: response.token,
       server: response.server,
       expiresAt: response.expiresAt,
+      permissionLevel: level,
     );
     _cache[libraryId] = grant;
     return grant;
