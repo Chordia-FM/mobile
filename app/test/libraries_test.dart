@@ -421,6 +421,26 @@ void main() {
         pairingReach(Uri.parse('http://nas')),
         PairingReach.publicCleartext,
       );
+      // 100.64.0.0/10: a tailnet address, which is how a phone usually reaches a home library.
+      // Refusing it outright made a working, end-to-end-encrypted setup unpairable.
+      expect(
+        pairingReach(Uri.parse('http://100.100.42.7:8443')),
+        PairingReach.localCleartext,
+      );
+      // Just outside the range, so still the internet.
+      expect(
+        pairingReach(Uri.parse('http://100.128.0.1:8443')),
+        PairingReach.publicCleartext,
+      );
+      expect(
+        pairingReach(Uri.parse('http://100.63.255.255:8443')),
+        PairingReach.publicCleartext,
+      );
+      // The same LAN address in its v4-mapped v6 spelling.
+      expect(
+        pairingReach(Uri.parse('http://[::ffff:192.168.1.20]:8443')),
+        PairingReach.localCleartext,
+      );
     });
 
     test('an unnamed library is not created', () async {

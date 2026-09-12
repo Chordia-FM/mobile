@@ -216,14 +216,35 @@ bool _isPrivateHost(String host) {
   if (address == null) return false;
   if (address.isLoopback || address.isLinkLocal) return true;
   final bytes = address.rawAddress;
-  if (address.type == InternetAddressType.IPv4) {
-    return bytes[0] == 10 ||
-        (bytes[0] == 172 && bytes[1] >= 16 && bytes[1] < 32) ||
-        (bytes[0] == 192 && bytes[1] == 168);
-  }
+  if (address.type == InternetAddressType.IPv4) return _isPrivateV4(bytes);
+  // `::ffff:192.168.1.20` is a v4 address wearing a v6 spelling; without this it falls through to
+  // the ULA test, fails it, and a LAN server becomes unpairable for the way its address was typed.
+  if (_isV4Mapped(bytes)) return _isPrivateV4(bytes.sublist(12));
   // fc00::/7 (unique local) and fe80::/10 (link local, for the addresses `isLinkLocal` misses).
   return (bytes[0] & 0xfe) == 0xfc ||
       (bytes[0] == 0xfe && (bytes[1] & 0xc0) == 0x80);
+}
+
+bool _isPrivateV4(List<int> bytes) =>
+    bytes[0] == 10 ||
+    (bytes[0] == 172 && bytes[1] >= 16 && bytes[1] < 32) ||
+    (bytes[0] == 192 && bytes[1] == 168) ||
+    // 100.64.0.0/10, the carrier-NAT range Tailscale hands out. Strictly it is a shared address
+    // space rather than a private one, so this is the one entry here that is a judgement: a
+    // tailnet address is reachable only from inside that tailnet and the traffic is already
+    // encrypted end to end, and the alternative is refusing a topology that in fact works with a
+    // message telling the user to get a certificate they cannot get.
+    (bytes[0] == 100 && bytes[1] >= 64 && bytes[1] < 128) ||
+    // Loopback and link-local, for the v4-mapped spellings `isLoopback`/`isLinkLocal` miss.
+    bytes[0] == 127 ||
+    (bytes[0] == 169 && bytes[1] == 254);
+
+/// `::ffff:0:0/96` — the v4-mapped v6 prefix.
+bool _isV4Mapped(List<int> bytes) {
+  for (var i = 0; i < 10; i++) {
+    if (bytes[i] != 0) return false;
+  }
+  return bytes[10] == 0xff && bytes[11] == 0xff;
 }
 
 /// The two halves of the link a library server prints at startup.
