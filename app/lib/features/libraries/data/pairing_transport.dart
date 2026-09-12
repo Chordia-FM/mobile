@@ -121,7 +121,12 @@ class HttpPairingTransport implements PairingTransport {
         // The TICKET, never the session token. A library server is a machine the Hub does not
         // vouch for, and this credential authorises exactly one call on exactly one endpoint.
         ..set(HttpHeaders.authorizationHeader, 'Bearer $ticket')
-        ..set('X-Setup-Token', setupToken);
+        ..set('X-Setup-Token', setupToken)
+        // The origin the ticket was minted for, which the library forwards to the Hub verbatim.
+        // Derived from the same `base` the mint used, so the two spellings cannot drift; the Hub
+        // refuses the redemption outright if this header is missing, which is how a library binary
+        // older than the Hub reports as "upgrade the library" rather than as a bad ticket.
+        ..set('X-Pair-Origin', base.origin);
       final response = await request.close().timeout(timeout);
       final text = await response.transform(utf8.decoder).join();
 

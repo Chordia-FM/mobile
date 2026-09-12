@@ -34,9 +34,15 @@ extension LibraryEndpoints on HubClient {
 
   /// Mints a single-use credential for one pairing handshake, to hand to a library server that is
   /// being set up.
-  Future<PairTicket> mintPairTicket() => post(
+  ///
+  /// [libraryUrl] is the address the ticket is for, and it is required: the Hub binds the ticket to
+  /// that origin and refuses a redemption claiming a different one, so a caller that named no
+  /// address would be asking for a ticket any host could spend. The redeeming library has to
+  /// forward the same origin back (`X-Pair-Origin`), which is why the claim sends it too.
+  Future<PairTicket> mintPairTicket({required String libraryUrl}) => post(
     '/v1/libraries/pair-ticket',
     (json) => PairTicket.fromJson(asObject(json)),
+    body: {'library_url': libraryUrl},
   );
 
   Future<LibrarySummary> libraryDetail(String libraryId) => get(

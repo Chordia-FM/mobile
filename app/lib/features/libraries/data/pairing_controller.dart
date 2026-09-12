@@ -281,7 +281,9 @@ class PairingController extends ChangeNotifier {
         // issues the ticket, so the round trip back to the phone is spent out of that window.
         // Dating the expiry from the answer would make a slow connection look like a fresh pass.
         final requestedAt = _clock();
-        final minted = await _hub.mintPairTicket();
+        // The origin this wizard is about to hand the ticket to, which is what the Hub binds it
+        // to. `claim` sends the same value back as `X-Pair-Origin`.
+        final minted = await _hub.mintPairTicket(libraryUrl: link.base.origin);
         _ticket = minted.ticket;
         _ticketExpiresAt = requestedAt.add(
           Duration(seconds: minted.expiresInSecs),

@@ -319,6 +319,13 @@ void main() {
         expect(pairing.step, PairingStep.naming);
         expect(hub.ticketsMinted, 2);
         expect(transport.claimedTickets, ['ticket-2']);
+        // Every ticket is bound at mint time to the origin it will be handed to: the Hub stores
+        // that origin and refuses a redemption claiming any other, so a ticket that escapes this
+        // handshake cannot register some other server on the account.
+        expect(hub.mintedFor, [
+          'http://localhost:8443',
+          'http://localhost:8443',
+        ]);
       },
     );
 
@@ -513,6 +520,9 @@ class _FakeTransport implements PairingTransport {
 
 class _FakeLibrariesApi implements LibrariesApi {
   var ticketsMinted = 0;
+
+  /// The `library_url` each mint was bound to — the Hub refuses a redemption from anywhere else.
+  final mintedFor = <String>[];
   var mintFails = false;
 
   /// Runs while a ticket is being minted, so a test can advance the clock the way a slow round
@@ -522,7 +532,8 @@ class _FakeLibrariesApi implements LibrariesApi {
   final created = <CreateLibraryRequest>[];
 
   @override
-  Future<PairTicket> mintPairTicket() async {
+  Future<PairTicket> mintPairTicket({required String libraryUrl}) async {
+    mintedFor.add(libraryUrl);
     ticketsMinted++;
     onMint?.call();
     if (mintFails) {
@@ -717,7 +728,8 @@ class _ScreenLibrariesApi implements LibrariesApi {
   Future<List<PublicUser>> friends() async => const [];
 
   @override
-  Future<PairTicket> mintPairTicket() => throw UnimplementedError();
+  Future<PairTicket> mintPairTicket({required String libraryUrl}) =>
+      throw UnimplementedError();
 
   @override
   Future<LibrarySummary> createLibrary(CreateLibraryRequest request) =>
