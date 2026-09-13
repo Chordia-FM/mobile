@@ -384,18 +384,31 @@ abstract final class AuthKeys {
   static const callbackCompleting = 'auth:callback.completing';
   static const callbackFailedTitle = 'auth:callback.failedTitle';
   static const callbackMissingParams = 'auth:callback.missingParams';
+  static const callbackUnexpected = 'auth:callback.unexpected';
+  static const desktopApprove = 'auth:desktop.approve';
+  static const desktopApproving = 'auth:desktop.approving';
   static const desktopCannotOpenBrowser = 'auth:desktop.cannotOpenBrowser';
+  static const desktopConfirmBody = 'auth:desktop.confirmBody';
+  static const desktopConfirmTitle = 'auth:desktop.confirmTitle';
+  static const desktopDecline = 'auth:desktop.decline';
+  static const desktopDeclined = 'auth:desktop.declined';
   static const desktopExpired = 'auth:desktop.expired';
   static const desktopFailed = 'auth:desktop.failed';
   static const desktopHandedOff = 'auth:desktop.handedOff';
+  static const desktopLabelAccount = 'auth:desktop.labelAccount';
+  static const desktopLabelApp = 'auth:desktop.labelApp';
+  static const desktopLabelHub = 'auth:desktop.labelHub';
   static const desktopMissingChallenge = 'auth:desktop.missingChallenge';
   static const desktopNoFrontend = 'auth:desktop.noFrontend';
+  static const desktopRequesterDesktop = 'auth:desktop.requesterDesktop';
+  static const desktopRequesterMobile = 'auth:desktop.requesterMobile';
   static const desktopSignInWithBrowser = 'auth:desktop.signInWithBrowser';
   static const desktopSignInWithBrowserAgain =
       'auth:desktop.signInWithBrowserAgain';
   static const desktopTitle = 'auth:desktop.title';
   static const desktopUnknownScheme = 'auth:desktop.unknownScheme';
   static const desktopWaitingForBrowser = 'auth:desktop.waitingForBrowser';
+  static const desktopWarning = 'auth:desktop.warning';
   static const desktopWorking = 'auth:desktop.working';
   static const fieldsEmail = 'auth:fields.email';
   static const fieldsPassword = 'auth:fields.password';
@@ -575,6 +588,7 @@ abstract final class CatalogKeys {
   static const albumDownloadSavedCount = 'catalog:album.download.savedCount';
   static const albumDownloadSavedPartial =
       'catalog:album.download.savedPartial';
+  static const albumDownloadStreamOnly = 'catalog:album.download.streamOnly';
   static const albumDurationHrMin = 'catalog:album.durationHrMin';
   static const albumDurationMin = 'catalog:album.durationMin';
   static const albumGenresJoin = 'catalog:album.genresJoin';
@@ -1223,6 +1237,10 @@ abstract final class ErrorsKeys {
   static const imageInvalidUrl = 'errors:image.invalidUrl';
   static const imageTooLarge = 'errors:image.tooLarge';
   static const imageTooManyPixels = 'errors:image.tooManyPixels';
+  static const importAlreadyRunning = 'errors:import.alreadyRunning';
+  static const importTooLarge = 'errors:import.tooLarge';
+  static const importUnrecognizedFile = 'errors:import.unrecognizedFile';
+  static const importUploadBusy = 'errors:import.uploadBusy';
   static const insightsCompareSelf = 'errors:insights.compareSelf';
   static const insightsCompatibilityNotFound =
       'errors:insights.compatibilityNotFound';
@@ -2251,10 +2269,20 @@ abstract final class LibraryKeys {
   static const setupMissingParamsTitle = 'library:setup.missingParamsTitle';
   static const setupNoFolderSelected = 'library:setup.noFolderSelected';
   static const setupNoSubdirectories = 'library:setup.noSubdirectories';
+  static const setupPairApprove = 'library:setup.pair.approve';
+  static const setupPairConfirmBody = 'library:setup.pair.confirmBody';
+  static const setupPairConfirmTitle = 'library:setup.pair.confirmTitle';
   static const setupPairConnect = 'library:setup.pair.connect';
   static const setupPairConnecting = 'library:setup.pair.connecting';
+  static const setupPairDecline = 'library:setup.pair.decline';
+  static const setupPairDeclined = 'library:setup.pair.declined';
   static const setupPairDescription = 'library:setup.pair.description';
+  static const setupPairInvalidAddress = 'library:setup.pair.invalidAddress';
+  static const setupPairLabelAccount = 'library:setup.pair.labelAccount';
+  static const setupPairLabelHub = 'library:setup.pair.labelHub';
+  static const setupPairLabelServer = 'library:setup.pair.labelServer';
   static const setupPairTitle = 'library:setup.pair.title';
+  static const setupPairWarning = 'library:setup.pair.warning';
   static const setupPairingFailed = 'library:setup.pairingFailed';
   static const setupSessionExpired = 'library:setup.sessionExpired';
   static const setupStepAddFolders = 'library:setup.step.addFolders';
@@ -3224,6 +3252,7 @@ abstract final class SettingsKeys {
   static const importErrorsInternal = 'settings:import.errors.internal';
   static const importErrorsInterrupted = 'settings:import.errors.interrupted';
   static const importErrorsMalformed = 'settings:import.errors.malformed';
+  static const importErrorsTooManyRows = 'settings:import.errors.tooManyRows';
   static const importErrorsUnrecognized = 'settings:import.errors.unrecognized';
   static const importHint = 'settings:import.hint';
   static const importProgress = 'settings:import.progress';
