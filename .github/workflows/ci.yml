@@ -72,11 +72,23 @@ jobs:
     runs-on: blacksmith-4vcpu-ubuntu-2404
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Pick the i18n ref (this branch where i18n has it, else main)
+        id: siblings
+        shell: bash
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          ref=main
+          if [ -n "$HEAD_REF" ] && git ls-remote --exit-code --heads "https://github.com/chordia-fm/i18n.git" "refs/heads/$HEAD_REF" >/dev/null 2>&1; then
+            ref="$HEAD_REF"
+          fi
+          echo "i18n=$ref" >> "$GITHUB_OUTPUT"
       - name: Check out the shared locale catalogs beside this repo
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: chordia-fm/i18n
           path: .i18n-src
+          ref: ${{ steps.siblings.outputs.i18n }}
       - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
