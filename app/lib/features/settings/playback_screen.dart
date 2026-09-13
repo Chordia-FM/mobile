@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:phosphor_icons/phosphor_icons.dart';
 
+import '../../data/playback/external_browsing.dart';
 import '../../i18n/keys.g.dart';
 import '../../i18n/translations_provider.dart';
 import '../library/downloads_screen.dart';
@@ -36,6 +37,12 @@ class PlaybackScreen extends ConsumerWidget {
           onRetry: () => ref.invalidate(settingsControllerProvider),
           builder: (context, value) => _PlaybackControls(settings: value),
         ),
+        // Device-local, and off until asked: the media service has to be exported for a head
+        // unit to reach it, and Android does not say which app bound it.
+        SettingsSection(
+          title: t(SettingsKeys.playbackExternalBrowsingTitle),
+          children: const [_ExternalBrowsingRow()],
+        ),
         // Outside the settings read on purpose: what is already on the device is the one thing
         // still worth reaching when the Hub cannot be reached at all.
         SettingsSection(
@@ -50,6 +57,29 @@ class PlaybackScreen extends ConsumerWidget {
           ],
         ),
       ],
+    );
+  }
+}
+
+class _ExternalBrowsingRow extends ConsumerWidget {
+  const _ExternalBrowsingRow();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = ref.t;
+    final allowed = ref.watch(externalBrowsingControllerProvider);
+
+    return SettingsSwitchRow(
+      label: t(SettingsKeys.playbackExternalBrowsingLabel),
+      description: t(SettingsKeys.playbackExternalBrowsingDesc),
+      value: allowed.value ?? false,
+      // Null while it is still being read: a confident "off" for something that may be on is
+      // worse than a switch that is briefly not touchable.
+      onChanged: allowed.isLoading
+          ? null
+          : (on) => ref
+                .read(externalBrowsingControllerProvider.notifier)
+                .set(allowed: on),
     );
   }
 }

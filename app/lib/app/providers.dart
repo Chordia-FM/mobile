@@ -26,6 +26,7 @@ import '../data/hub_registry.dart';
 import '../data/hub_transport.dart';
 import '../data/playback/auto_browse_source.dart';
 import '../data/playback/eq.dart';
+import '../data/playback/external_browsing.dart';
 import '../data/playback/notification_art.dart';
 import '../data/playback/playback_service.dart';
 import '../data/playback/player_state.dart';
@@ -299,7 +300,11 @@ final playbackEngineProvider = Provider<PlaybackEngine>(
 final autoBrowseProvider = Provider<AutoBrowse>((ref) {
   final t = ref.watch(translationsProvider).call;
   final art = ref.watch(artCacheProvider);
+  // Read per request: the source is built cold for Android Auto, so the answer has to come from
+  // the stored setting rather than from anything a screen set up.
+  final browsing = ref.watch(externalBrowsingSettingProvider);
   return AutoBrowse(
+    browsingAllowed: browsing.allowed,
     sections: [
       BrowseNode(
         id: BrowseId.section(BrowseId.home),

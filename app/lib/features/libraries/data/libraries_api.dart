@@ -35,7 +35,7 @@ abstract interface class LibrariesApi {
   Future<List<PublicUser>> friends();
 
   /// A single-use credential for one pairing handshake, to hand to a library server.
-  Future<PairTicket> mintPairTicket();
+  Future<PairTicket> mintPairTicket({required String libraryUrl});
 
   /// Registers a logical library on a server that has already been paired.
   Future<LibrarySummary> createLibrary(CreateLibraryRequest request);
@@ -126,7 +126,8 @@ class HubLibrariesApi implements LibrariesApi {
   Future<List<PublicUser>> friends() => _hub.friends();
 
   @override
-  Future<PairTicket> mintPairTicket() => _hub.mintPairTicket();
+  Future<PairTicket> mintPairTicket({required String libraryUrl}) =>
+      _hub.mintPairTicket(libraryUrl: libraryUrl);
 
   @override
   Future<LibrarySummary> createLibrary(CreateLibraryRequest request) =>

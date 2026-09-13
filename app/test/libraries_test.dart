@@ -319,6 +319,13 @@ void main() {
         expect(pairing.step, PairingStep.naming);
         expect(hub.ticketsMinted, 2);
         expect(transport.claimedTickets, ['ticket-2']);
+        // Every ticket is bound at mint time to the origin it will be handed to: the Hub stores
+        // that origin and refuses a redemption claiming any other, so a ticket that escapes this
+        // handshake cannot register some other server on the account.
+        expect(hub.mintedFor, [
+          'http://localhost:8443',
+          'http://localhost:8443',
+        ]);
       },
     );
 
@@ -357,6 +364,91 @@ void main() {
         expect(transport.claimedTickets, isEmpty);
       },
     );
+
+    test('a cleartext LAN address sends nothing until it is accepted', () async {
+      final hub = _FakeLibrariesApi();
+      final transport = _FakeTransport();
+      final pairing = PairingController(hub: hub, transport: transport);
+
+      await pairing.submitLink('http://192.168.1.20:8443/setup/tok');
+
+      // Not even the probe: the decision is the person's, and it is taken before any traffic.
+      expect(pairing.step, PairingStep.insecure);
+      expect(transport.probes, isEmpty);
+      expect(transport.claimedTickets, isEmpty);
+      expect(hub.ticketsMinted, 0);
+
+      await pairing.acceptInsecure();
+
+      expect(pairing.step, PairingStep.naming);
+      expect(transport.claimedTickets, ['ticket-1']);
+    });
+
+    test('a cleartext address out on the internet is refused outright', () async {
+      final hub = _FakeLibrariesApi();
+      final transport = _FakeTransport();
+      final pairing = PairingController(hub: hub, transport: transport);
+
+      await pairing.submitLink('http://library.example.com/setup/tok');
+
+      expect(pairing.failure, PairingFailure.insecurePublic);
+      expect(pairing.step, PairingStep.link);
+      expect(transport.probes, isEmpty);
+      expect(hub.ticketsMinted, 0);
+
+      // And there is no way to accept it: the step it would be accepted from is never reached.
+      await pairing.acceptInsecure();
+      expect(transport.claimedTickets, isEmpty);
+    });
+
+    test('the reach of an address is read from scheme and host', () {
+      expect(
+        pairingReach(Uri.parse('https://library.example.com')),
+        PairingReach.secure,
+      );
+      // Loopback never leaves the device, as everywhere else in the app.
+      expect(
+        pairingReach(Uri.parse('http://localhost:8443')),
+        PairingReach.secure,
+      );
+      expect(
+        pairingReach(Uri.parse('http://192.168.1.20:8443')),
+        PairingReach.localCleartext,
+      );
+      expect(
+        pairingReach(Uri.parse('http://nas.local')),
+        PairingReach.localCleartext,
+      );
+      expect(
+        pairingReach(Uri.parse('http://library.example.com')),
+        PairingReach.publicCleartext,
+      );
+      // A name that could resolve anywhere is not assumed to be on the LAN.
+      expect(
+        pairingReach(Uri.parse('http://nas')),
+        PairingReach.publicCleartext,
+      );
+      // 100.64.0.0/10: a tailnet address, which is how a phone usually reaches a home library.
+      // Refusing it outright made a working, end-to-end-encrypted setup unpairable.
+      expect(
+        pairingReach(Uri.parse('http://100.100.42.7:8443')),
+        PairingReach.localCleartext,
+      );
+      // Just outside the range, so still the internet.
+      expect(
+        pairingReach(Uri.parse('http://100.128.0.1:8443')),
+        PairingReach.publicCleartext,
+      );
+      expect(
+        pairingReach(Uri.parse('http://100.63.255.255:8443')),
+        PairingReach.publicCleartext,
+      );
+      // The same LAN address in its v4-mapped v6 spelling.
+      expect(
+        pairingReach(Uri.parse('http://[::ffff:192.168.1.20]:8443')),
+        PairingReach.localCleartext,
+      );
+    });
 
     test('an unnamed library is not created', () async {
       final hub = _FakeLibrariesApi();
@@ -428,6 +520,9 @@ class _FakeTransport implements PairingTransport {
 
 class _FakeLibrariesApi implements LibrariesApi {
   var ticketsMinted = 0;
+
+  /// The `library_url` each mint was bound to — the Hub refuses a redemption from anywhere else.
+  final mintedFor = <String>[];
   var mintFails = false;
 
   /// Runs while a ticket is being minted, so a test can advance the clock the way a slow round
@@ -437,7 +532,8 @@ class _FakeLibrariesApi implements LibrariesApi {
   final created = <CreateLibraryRequest>[];
 
   @override
-  Future<PairTicket> mintPairTicket() async {
+  Future<PairTicket> mintPairTicket({required String libraryUrl}) async {
+    mintedFor.add(libraryUrl);
     ticketsMinted++;
     onMint?.call();
     if (mintFails) {
@@ -632,7 +728,8 @@ class _ScreenLibrariesApi implements LibrariesApi {
   Future<List<PublicUser>> friends() async => const [];
 
   @override
-  Future<PairTicket> mintPairTicket() => throw UnimplementedError();
+  Future<PairTicket> mintPairTicket({required String libraryUrl}) =>
+      throw UnimplementedError();
 
   @override
   Future<LibrarySummary> createLibrary(CreateLibraryRequest request) =>

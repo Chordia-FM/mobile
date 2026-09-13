@@ -105,6 +105,13 @@ class HttpPairingTransport implements PairingTransport {
     required String ticket,
     required String setupToken,
   }) async {
+    // Belt and braces behind the wizard's own refusal: a credential that would cross the internet
+    // in clear text never reaches a socket, whatever asked for it.
+    if (pairingReach(base) == PairingReach.publicCleartext) {
+      throw StateError(
+        'refusing to send a pairing credential in clear text to ${base.host}',
+      );
+    }
     final client = _factory.pinnedTo(pin);
     try {
       final url = base.replace(path: '${base.path}/v1/pairing/claim');
@@ -114,7 +121,12 @@ class HttpPairingTransport implements PairingTransport {
         // The TICKET, never the session token. A library server is a machine the Hub does not
         // vouch for, and this credential authorises exactly one call on exactly one endpoint.
         ..set(HttpHeaders.authorizationHeader, 'Bearer $ticket')
-        ..set('X-Setup-Token', setupToken);
+        ..set('X-Setup-Token', setupToken)
+        // The origin the ticket was minted for, which the library forwards to the Hub verbatim.
+        // Derived from the same `base` the mint used, so the two spellings cannot drift; the Hub
+        // refuses the redemption outright if this header is missing, which is how a library binary
+        // older than the Hub reports as "upgrade the library" rather than as a bad ticket.
+        ..set('X-Pair-Origin', base.origin);
       final response = await request.close().timeout(timeout);
       final text = await response.transform(utf8.decoder).join();
 
@@ -163,6 +175,81 @@ class HttpPairingTransport implements PairingTransport {
       client.close(force: true);
     }
   }
+}
+
+/// How safe an address is to hand a pairing credential to.
+///
+/// Pairing sends two credentials that are worth stealing — the Hub's one-time pair ticket and the
+/// server's setup token — so the address they travel over is a security decision, not a
+/// convenience. Plain HTTP is therefore split in two: the LAN case a self-hoster genuinely has
+/// (a server with no certificate on their own network), and the case that is never anything but a
+/// mistake or an attack.
+enum PairingReach {
+  /// HTTPS, or plain HTTP that never leaves the device. Nothing to confirm.
+  secure,
+
+  /// Plain HTTP to a private network. Sendable, but only after the person says so.
+  localCleartext,
+
+  /// Plain HTTP across the internet. Never sendable.
+  publicCleartext,
+}
+
+/// Rates [base] for sending a pairing credential to, by scheme and by where the host lives.
+///
+/// Hostnames that are not addresses are only local when their suffix says so: a name that could
+/// resolve anywhere is treated as the internet, because "it is probably on my LAN" is exactly the
+/// assumption a MITM wants made.
+PairingReach pairingReach(Uri base) {
+  if (base.scheme == 'https') return PairingReach.secure;
+  final host = base.host.toLowerCase();
+  // The emulator's alias for the developer machine belongs with loopback, as it does everywhere
+  // else in the app.
+  const deviceLocal = {'localhost', '127.0.0.1', '::1', '10.0.2.2'};
+  if (deviceLocal.contains(host)) return PairingReach.secure;
+  return _isPrivateHost(host)
+      ? PairingReach.localCleartext
+      : PairingReach.publicCleartext;
+}
+
+bool _isPrivateHost(String host) {
+  const localSuffixes = ['.local', '.lan', '.internal', '.home.arpa'];
+  for (final suffix in localSuffixes) {
+    if (host.endsWith(suffix)) return true;
+  }
+  final address = InternetAddress.tryParse(host);
+  if (address == null) return false;
+  if (address.isLoopback || address.isLinkLocal) return true;
+  final bytes = address.rawAddress;
+  if (address.type == InternetAddressType.IPv4) return _isPrivateV4(bytes);
+  // `::ffff:192.168.1.20` is a v4 address wearing a v6 spelling; without this it falls through to
+  // the ULA test, fails it, and a LAN server becomes unpairable for the way its address was typed.
+  if (_isV4Mapped(bytes)) return _isPrivateV4(bytes.sublist(12));
+  // fc00::/7 (unique local) and fe80::/10 (link local, for the addresses `isLinkLocal` misses).
+  return (bytes[0] & 0xfe) == 0xfc ||
+      (bytes[0] == 0xfe && (bytes[1] & 0xc0) == 0x80);
+}
+
+bool _isPrivateV4(List<int> bytes) =>
+    bytes[0] == 10 ||
+    (bytes[0] == 172 && bytes[1] >= 16 && bytes[1] < 32) ||
+    (bytes[0] == 192 && bytes[1] == 168) ||
+    // 100.64.0.0/10, the carrier-NAT range Tailscale hands out. Strictly it is a shared address
+    // space rather than a private one, so this is the one entry here that is a judgement: a
+    // tailnet address is reachable only from inside that tailnet and the traffic is already
+    // encrypted end to end, and the alternative is refusing a topology that in fact works with a
+    // message telling the user to get a certificate they cannot get.
+    (bytes[0] == 100 && bytes[1] >= 64 && bytes[1] < 128) ||
+    // Loopback and link-local, for the v4-mapped spellings `isLoopback`/`isLinkLocal` miss.
+    bytes[0] == 127 ||
+    (bytes[0] == 169 && bytes[1] == 254);
+
+/// `::ffff:0:0/96` — the v4-mapped v6 prefix.
+bool _isV4Mapped(List<int> bytes) {
+  for (var i = 0; i < 10; i++) {
+    if (bytes[i] != 0) return false;
+  }
+  return bytes[10] == 0xff && bytes[11] == 0xff;
 }
 
 /// The two halves of the link a library server prints at startup.

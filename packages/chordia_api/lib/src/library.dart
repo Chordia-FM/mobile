@@ -76,8 +76,9 @@ class LibraryClient {
 
   /// Resolves whether this library holds a copy of a track described by fingerprint.
   ///
-  /// Unauthenticated on the server, but still sent over the pinned client — the answer names what
-  /// somebody owns.
+  /// Authenticated like every other catalog read, and scoped on the server to what this token could
+  /// actually stream — the answer names what somebody owns, so an open version of this endpoint was
+  /// a possession oracle for anyone who knew the hostname.
   Future<MatchResult> match(MatchQuery query) async {
     final json = await _transport.send(
       method: 'GET',
@@ -100,8 +101,19 @@ class LibraryClient {
   /// connection, and served to the player from a loopback proxy. ExoPlayer and AVPlayer do TLS in
   /// the platform stack, which no Dart certificate callback can reach, so a pinned self-signed
   /// library is unplayable any other way.
-  Uri streamUrl(String trackRef, QualityProfile profile) =>
-      _url('/v1/stream/$trackRef', {'profile': profile.wire});
+  /// [download] marks the request as one that keeps a copy rather than plays it. The library
+  /// refuses it for a `read` (stream-only) grant, so a download must say so — and must spell the
+  /// flag `true`: `StreamQuery.download` is a Rust `bool` and the server's query deserializer
+  /// accepts only `true`/`false`, answering 400 for `1`.
+  Uri streamUrl(
+    String trackRef,
+    QualityProfile profile, {
+    bool download = false,
+  }) => _url('/v1/stream/$trackRef', {
+    'profile': profile.wire,
+    // Omitted entirely for playback, so a stream URL is unchanged by this parameter existing.
+    'download': download ? true : null,
+  });
 
   void close() => _transport.close();
 }

@@ -72,6 +72,14 @@
             </intent-filter>
         </activity>
 
+        <!-- Exported because a MediaBrowserService that a head unit cannot bind is not one:
+             Android Auto and the system media resumer reach it from their own processes. Android
+             does not tell the Dart side which app bound it (audio_service hands every caller a
+             browsable root and its own validator hook is commented out), and the plugin binds this
+             exact component by name, so it cannot be swapped for a subclass that would check.
+             The browse tree is therefore gated in Dart instead — see
+             `data/playback/external_browsing.dart`: nothing is served until the listener turns it
+             on, so binding this service reveals no playlists, liked songs or downloads. -->
         <service
             android:name="com.ryanheise.audioservice.AudioService"
             android:foregroundServiceType="mediaPlayback"

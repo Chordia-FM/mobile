@@ -14,6 +14,10 @@ enum PairingStep {
   /// Waiting for the setup link the library server printed.
   link,
 
+  /// The link is a plain-HTTP address on a private network: it has to be accepted before any
+  /// credential goes out over it.
+  insecure,
+
   /// The server signed its own certificate; it has to be confirmed before anything is sent.
   trust,
 
@@ -35,6 +39,10 @@ enum PairingStep {
 enum PairingFailure {
   /// The link is not a setup link.
   badLink,
+
+  /// The link is a plain-HTTP address that is not on a local network, so the credentials would
+  /// cross the internet in clear text. Not offered as a choice.
+  insecurePublic,
 
   /// Nothing answered at that address.
   unreachable,
@@ -80,6 +88,7 @@ class PairingController extends ChangeNotifier {
   bool _disposed = false;
 
   SetupLink? _link;
+  bool _insecureAccepted = false;
   CertFingerprint? _fingerprint;
   String? _ticket;
   DateTime? _ticketExpiresAt;
@@ -111,9 +120,10 @@ class PairingController extends ChangeNotifier {
 
   /// Reads a pasted setup link and gets as far as it can without asking anything else.
   ///
-  /// A server on plain HTTP or behind a real certificate goes straight to the handshake; a
-  /// self-signed one stops at [PairingStep.trust], because sending a credential to a certificate
-  /// nobody has vouched for is the one thing this flow must not do quietly.
+  /// A server behind a real certificate goes straight to the handshake; a self-signed one stops at
+  /// [PairingStep.trust] and a cleartext LAN address at [PairingStep.insecure], because sending
+  /// these two credentials to something nobody has vouched for — a certificate, or a network — is
+  /// the one thing this flow must not do quietly.
   Future<void> submitLink(String raw) async {
     final link = SetupLink.tryParse(raw);
     if (link == null) {
@@ -122,6 +132,46 @@ class PairingController extends ChangeNotifier {
     }
     _link = link;
     _fingerprint = null;
+    _insecureAccepted = false;
+    switch (pairingReach(link.base)) {
+      case PairingReach.publicCleartext:
+        // Nothing is sent, not even the probe: an http address out on the internet is a mistake or
+        // an attack, and there is no version of it worth offering as a choice.
+        _fail(PairingFailure.insecurePublic);
+        return;
+      case PairingReach.localCleartext:
+        // Clears an earlier failure the way [_run] does, so a corrected link does not arrive at
+        // this step still carrying the last one's sentence.
+        _failure = null;
+        _error = null;
+        _step = PairingStep.insecure;
+        _notify();
+        return;
+      case PairingReach.secure:
+        break;
+    }
+    await _probe();
+  }
+
+  /// The person has accepted that this address is unencrypted. Nothing is sent before this.
+  Future<void> acceptInsecure() async {
+    if (_step != PairingStep.insecure) return;
+    _insecureAccepted = true;
+    await _probe();
+  }
+
+  /// The person has confirmed the certificate. Nothing is sent before this returns.
+  Future<void> trustCertificate() async {
+    if (_step != PairingStep.trust) return;
+    await _run(
+      _claim,
+      onError: (error) => _fail(PairingFailure.unreachable, error),
+    );
+  }
+
+  Future<void> _probe() async {
+    final link = _link;
+    if (link == null) return;
     await _run(() async {
       final probe = await _transport.probe(link.base);
       if (probe.alreadyPaired) {
@@ -137,15 +187,6 @@ class PairingController extends ChangeNotifier {
     }, onError: (error) => _fail(PairingFailure.unreachable, error));
   }
 
-  /// The person has confirmed the certificate. Nothing is sent before this returns.
-  Future<void> trustCertificate() async {
-    if (_step != PairingStep.trust) return;
-    await _run(
-      _claim,
-      onError: (error) => _fail(PairingFailure.unreachable, error),
-    );
-  }
-
   /// Another go after a failure, from wherever it stopped.
   ///
   /// An expired ticket retries the handshake with a fresh one, which is why the failure is worth
@@ -154,6 +195,9 @@ class PairingController extends ChangeNotifier {
     _failure = null;
     _error = null;
     switch (_step) {
+      case PairingStep.insecure:
+        // Still the person's decision to make; there is nothing to retry yet.
+        _notify();
       case PairingStep.link:
       case PairingStep.trust:
       case PairingStep.claiming:
@@ -192,6 +236,7 @@ class PairingController extends ChangeNotifier {
     _failure = null;
     _error = null;
     _link = null;
+    _insecureAccepted = false;
     _fingerprint = null;
     _ticket = null;
     _ticketExpiresAt = null;
@@ -210,6 +255,19 @@ class PairingController extends ChangeNotifier {
   Future<void> _claim() async {
     final link = _link;
     if (link == null) return;
+    // The one place both credentials leave the phone, so the cleartext decision is enforced here
+    // rather than only where it is taken: every path into pairing goes through this method.
+    switch (pairingReach(link.base)) {
+      case PairingReach.publicCleartext:
+        _fail(PairingFailure.insecurePublic);
+        return;
+      case PairingReach.localCleartext when !_insecureAccepted:
+        _step = PairingStep.insecure;
+        _notify();
+        return;
+      case _:
+        break;
+    }
     _step = PairingStep.claiming;
     _notify();
 
@@ -223,7 +281,9 @@ class PairingController extends ChangeNotifier {
         // issues the ticket, so the round trip back to the phone is spent out of that window.
         // Dating the expiry from the answer would make a slow connection look like a fresh pass.
         final requestedAt = _clock();
-        final minted = await _hub.mintPairTicket();
+        // The origin this wizard is about to hand the ticket to, which is what the Hub binds it
+        // to. `claim` sends the same value back as `X-Pair-Origin`.
+        final minted = await _hub.mintPairTicket(libraryUrl: link.base.origin);
         _ticket = minted.ticket;
         _ticketExpiresAt = requestedAt.add(
           Duration(seconds: minted.expiresInSecs),

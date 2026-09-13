@@ -69,12 +69,28 @@ DownloadFetch pinnedDownloadFetch({
   return (request, {int from = 0, String? ifNoneMatch}) async {
     final grant = await grants.forLibrary(request.libraryId);
 
+    // A stream-only share may be played, never kept. The library refuses the download-flagged
+    // request below on its own — this is the same refusal, before a socket and a token are spent
+    // on an answer that is already known, and it reports the status the server would have.
+    if (!grant.allowsDownload) {
+      throw ApiException(
+        status: HttpStatus.forbidden,
+        title: 'This library is shared with you for streaming only.',
+        method: 'GET',
+        path: '/v1/stream/${request.trackRef}',
+        detail: 'The grant for this library carries stream-only permission.',
+      );
+    }
+
     // Built only to compose the URL — the byte leg opens its own connection below, so nothing is
     // kept alive by this client.
     final urls = LibraryClient(grant: grant, factory: factory);
     final Uri url;
     try {
-      url = urls.streamUrl(request.trackRef, request.profile);
+      // `download: true` is what makes the server's stream-only gate apply to this client too:
+      // without it a `read` share could be copied whole from mobile, which is exactly what the
+      // web client stopped being able to do.
+      url = urls.streamUrl(request.trackRef, request.profile, download: true);
     } finally {
       urls.close();
     }

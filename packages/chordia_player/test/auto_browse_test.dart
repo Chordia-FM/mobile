@@ -47,6 +47,20 @@ List<BrowseNode> sections() => [
   const BrowseNode(id: BrowseId(BrowseId.downloads), title: 'Downloads'),
 ];
 
+/// A tree that serves anybody, which is what every test but the gate's own assumes.
+AutoBrowse tree(
+  AutoBrowseSource source, {
+  Future<bool> Function() browsingAllowed = _allowed,
+}) => AutoBrowse(
+  sections: sections(),
+  source: source,
+  browsingAllowed: browsingAllowed,
+);
+
+Future<bool> _allowed() async => true;
+
+Future<bool> _refused() async => false;
+
 void main() {
   group('media ids survive the round trip', () {
     test('a section is its own name', () {
@@ -110,7 +124,7 @@ void main() {
 
   group('the tree', () {
     test('the root is the three sections the app supplied', () async {
-      final browse = AutoBrowse(sections: sections(), source: FakeSource());
+      final browse = tree(FakeSource());
       final children = await browse.getChildren(AutoBrowse.rootId);
 
       expect(children.map((i) => i.id), ['home', 'library', 'downloads']);
@@ -128,7 +142,7 @@ void main() {
           ),
         ],
       );
-      final browse = AutoBrowse(sections: sections(), source: source);
+      final browse = tree(source);
 
       final children = await browse.getChildren('library');
       expect(children.single.id, 'playlist:p1');
@@ -148,7 +162,7 @@ void main() {
           ),
         ],
       );
-      final browse = AutoBrowse(sections: sections(), source: source);
+      final browse = tree(source);
 
       final item = (await browse.getChildren('downloads')).single;
       expect(item.playable, isTrue);
@@ -158,7 +172,7 @@ void main() {
     });
 
     test('an unreadable parent is an empty shelf, not a crash', () async {
-      final browse = AutoBrowse(sections: sections(), source: FakeSource());
+      final browse = tree(FakeSource());
       // Inside the media service there is no UI to show an error in, and a throw here takes the
       // whole browse session down.
       expect(await browse.getChildren('%zz'), isEmpty);
@@ -168,7 +182,7 @@ void main() {
       final source = FakeSource(
         rows: [const BrowseNode(id: BrowseId(BrowseId.home), title: 'x')],
       );
-      final browse = AutoBrowse(sections: sections(), source: source);
+      final browse = tree(source);
 
       // A collection is level 2, so its children are the last level the tree has.
       expect(await browse.getChildren('album:a1'), isNotEmpty);
@@ -187,7 +201,7 @@ void main() {
 
     test('no options means the first page', () async {
       final source = FakeSource(rows: manyRows(250));
-      final browse = AutoBrowse(sections: sections(), source: source);
+      final browse = tree(source);
 
       final children = await browse.getChildren('albums');
       expect(children, hasLength(AutoBrowse.maxPageSize));
@@ -197,7 +211,7 @@ void main() {
 
     test('a page request becomes an offset', () async {
       final source = FakeSource(rows: manyRows(250));
-      final browse = AutoBrowse(sections: sections(), source: source);
+      final browse = tree(source);
 
       final children = await browse.getChildren('albums', {
         AutoBrowse.pageKey: 2,
@@ -210,7 +224,7 @@ void main() {
 
     test('a page size beyond the cap is clamped', () async {
       final source = FakeSource(rows: manyRows(1000));
-      final browse = AutoBrowse(sections: sections(), source: source);
+      final browse = tree(source);
 
       // A car asking for a thousand rows still gets a list a driver can use, and a response the
       // binder can carry.
@@ -219,7 +233,7 @@ void main() {
     });
 
     test('the root is not paged', () async {
-      final browse = AutoBrowse(sections: sections(), source: FakeSource());
+      final browse = tree(FakeSource());
       expect(await browse.getChildren(AutoBrowse.rootId), hasLength(3));
       expect(
         await browse.getChildren(AutoBrowse.rootId, {AutoBrowse.pageKey: 1}),
@@ -237,7 +251,7 @@ void main() {
           context: const PlaylistContext(id: 'p1', name: 'Morning'),
         ),
       );
-      final browse = AutoBrowse(sections: sections(), source: source);
+      final browse = tree(source);
 
       final playback = await browse.playback('track:lib-1:ref-t2');
       expect(playback!.tracks, hasLength(3));
@@ -248,11 +262,34 @@ void main() {
     });
 
     test('an id that cannot be parsed plays nothing', () async {
-      final browse = AutoBrowse(
-        sections: sections(),
-        source: FakeSource(result: BrowsePlayback(tracks: [track('t1')])),
+      final browse = tree(
+        FakeSource(result: BrowsePlayback(tracks: [track('t1')])),
       );
       expect(await browse.playback('%zz'), isNull);
+    });
+  });
+
+  group('who is allowed to browse', () {
+    test('nothing is served while browsing is off', () async {
+      // Android hands Dart no caller identity, so "off" has to mean off for everybody: an empty
+      // root, no item lookups, and no play. The source is never asked.
+      final source = FakeSource(
+        rows: [
+          BrowseNode(id: BrowseId.of(BrowseId.playlist, 'p1'), title: 'Secret'),
+        ],
+        one: BrowseNode(
+          id: BrowseId.of(BrowseId.playlist, 'p1'),
+          title: 'Secret',
+        ),
+        result: BrowsePlayback(tracks: [track('t1')]),
+      );
+      final browse = tree(source, browsingAllowed: _refused);
+
+      expect(await browse.getChildren(AutoBrowse.rootId), isEmpty);
+      expect(await browse.getChildren('library'), isEmpty);
+      expect(await browse.getMediaItem('playlist:p1'), isNull);
+      expect(await browse.playback('playlist:p1'), isNull);
+      expect(source.asked, isEmpty);
     });
   });
 
@@ -264,12 +301,12 @@ void main() {
           title: 'Morning',
         ),
       );
-      final browse = AutoBrowse(sections: sections(), source: source);
+      final browse = tree(source);
       expect((await browse.getMediaItem('playlist:p1'))?.title, 'Morning');
     });
 
     test('the root is not an item', () async {
-      final browse = AutoBrowse(sections: sections(), source: FakeSource());
+      final browse = tree(FakeSource());
       expect(await browse.getMediaItem(AutoBrowse.rootId), isNull);
     });
   });

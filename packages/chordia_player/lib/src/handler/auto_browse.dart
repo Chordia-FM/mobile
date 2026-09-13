@@ -20,14 +20,32 @@ import 'package:meta/meta.dart';
 /// hierarchy stays within [maxDepth] levels (root → section → collection → tracks) and a single
 /// list is served in pages of at most [maxPageSize]. Auto asks for a page explicitly through the
 /// browse options; when it does not, the first page is what it gets.
+/// ## Who is asking
+///
+/// Android's `MediaBrowserService` has to be exported for a head unit to reach it, and the
+/// platform binding gives Dart no way to tell which app bound it — `audio_service` hands back a
+/// browsable root to every caller with its validator hook commented out. So the browse tree is
+/// served only while [browsingAllowed] says so, and the app answers that from a setting the
+/// listener controls. With it off nothing is served to anybody, which is the only answer that is
+/// correct when the caller cannot be identified.
 class AutoBrowse {
-  AutoBrowse({required this.sections, required this.source});
+  AutoBrowse({
+    required this.sections,
+    required this.source,
+    required this.browsingAllowed,
+  });
 
   /// The fixed top level. Supplied by the app because these are the only nodes whose titles are
   /// translated strings rather than catalog data, and this package has no catalogs.
   final List<BrowseNode> sections;
 
   final AutoBrowseSource source;
+
+  /// Whether anything at all may be served over the media browser right now.
+  ///
+  /// Read per request rather than captured, so turning it off takes effect on the next browse
+  /// instead of on the next launch.
+  final Future<bool> Function() browsingAllowed;
 
   /// Levels below the root, inclusive of it. Auto's guidelines cap browse depth; going deeper turns
   /// a glance into a task.
@@ -48,6 +66,7 @@ class AutoBrowse {
     String parentMediaId, [
     Map<String, dynamic>? options,
   ]) async {
+    if (!await browsingAllowed()) return const [];
     final page = _int(options?[pageKey]) ?? 0;
     final size = (_int(options?[pageSizeKey]) ?? maxPageSize).clamp(
       1,
@@ -76,6 +95,7 @@ class AutoBrowse {
 
   /// One node by id, for a client that has an id but never browsed to it.
   Future<MediaItem?> getMediaItem(String mediaId) async {
+    if (!await browsingAllowed()) return null;
     if (mediaId == rootId) return null;
     final id = BrowseId.decode(mediaId);
     if (id == null) return null;
@@ -87,6 +107,9 @@ class AutoBrowse {
   /// Null when the id names something that cannot be played, or names content this account can no
   /// longer reach.
   Future<BrowsePlayback?> playback(String mediaId) async {
+    // The same gate: `playFromMediaId` is reachable over the same exported interface, and an id
+    // guessed or kept from an earlier session must not start playing or resolve a track ref.
+    if (!await browsingAllowed()) return null;
     final id = BrowseId.decode(mediaId);
     if (id == null) return null;
     return source.playback(id);
